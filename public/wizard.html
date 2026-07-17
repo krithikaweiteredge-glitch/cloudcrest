@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloudcrest BM - Business Registration Wizard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:'#0F1F3D', indigo:'#1E3A8A', saffron:'#F59E0B', sky:'#0EA5E9',
+            green:'#10B981', purple:'#7C3AED', rose:'#BE123C', slateText:'#64748B', line:'#E2E8F0'
+          },
+          fontFamily:{ sans:['Inter','ui-sans-serif','system-ui'], display:['Sora','Inter','sans-serif'] },
+          boxShadow:{ soft:'0 18px 45px rgba(15,31,61,.10)' }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    html{scroll-behavior:smooth} body{font-family:Inter,system-ui,sans-serif;background:linear-gradient(135deg,#EFF6FF 0%,#F8FAFC 55%,#FEF9F0 100%);color:#0F1F3D}.sidebar-item.active{background:#EFF6FF;color:#2563EB;font-weight:800}.sidebar-item.active .dot{background:#2563EB}.step-panel{display:none}.step-panel.active{display:block;animation:rise .18s ease-out}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.input{width:100%;border:1.5px solid #CBD5E1;border-radius:.65rem;padding:.7rem .85rem;background:#FAFBFC;font-size:.92rem}.input:focus{outline:3px solid rgba(37,99,235,.13);border-color:#2563EB;background:#fff}.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:.65rem;padding:.72rem 1.05rem;font-weight:800;font-size:.9rem;transition:.18s}.btn-primary{background:linear-gradient(135deg,#2563EB,#1D4ED8);color:white}.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(37,99,235,.25)}.btn-purple{background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white}.btn-back{background:#F1F5F9;color:#0F1F3D}.btn-gold{background:#F59E0B;color:white}.card-head{background:linear-gradient(135deg,#0F1F3D,#1E3A8A);color:#fff}.card-head.purple{background:linear-gradient(135deg,#1a1060,#7C3AED)}.card-head.teal{background:linear-gradient(135deg,#064E3B,#0F766E)}.card-head.orange{background:linear-gradient(135deg,#7C2D12,#F59E0B)}.card-head.slate{background:linear-gradient(135deg,#0F172A,#475569)}.card-head.rose{background:linear-gradient(135deg,#831843,#BE123C)}.radio-card input{display:none}.radio-card label{display:block;height:100%;border:1.5px solid #E2E8F0;border-radius:.9rem;padding:1rem;background:#FAFBFC;cursor:pointer;transition:.18s}.radio-card input:checked+label{border-color:#2563EB;background:#EFF6FF;box-shadow:0 0 0 3px rgba(37,99,235,.08);color:#2563EB}.radio-card.purple input:checked+label{border-color:#7C3AED;background:#F5F3FF;color:#7C3AED}.fee-table{width:100%;border-collapse:collapse;font-size:.88rem}.fee-table th{background:#0F1F3D;color:#fff;text-align:left;padding:.7rem}.fee-table td{border-bottom:1px solid #E2E8F0;padding:.7rem}.fee-table th:last-child,.fee-table td:last-child{text-align:right;font-weight:800}.doc-list li{display:flex;gap:.6rem;padding:.65rem .75rem;border-bottom:1px solid #E2E8F0}.doc-list li:last-child{border-bottom:0}.tick{height:1.25rem;width:1.25rem;flex:0 0 auto;border-radius:999px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:900}.summary-row{display:grid;grid-template-columns:210px 1fr;gap:.75rem;padding:.55rem 0;border-bottom:1px solid #E2E8F0;font-size:.9rem}.summary-row b{color:#64748B}.err{display:none;color:#DC2626;font-size:.78rem;margin-top:.25rem}.err.show{display:block}@media print{header,.hero,.sidebar,.nav-row,.no-print{display:none!important}body{background:white}.print-full{box-shadow:none!important;border:0!important}.step-panel{display:block!important}}
+  </style>
+</head>
+<body>
+<header class="sticky top-0 z-40 bg-navy text-white shadow-lg">
+  <div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
+    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-saffron to-orange-500 font-display text-lg font-black">CB</div>
+    <div><div class="font-display text-xl font-black">Cloudcrest <span class="text-saffron">BM</span></div><div class="text-xs text-slate-300">Business Management Private Limited</div></div>
+    <div class="ml-auto hidden items-center gap-3 text-sm md:flex"><a class="rounded-lg bg-white/10 px-3 py-2 hover:bg-white/15" href="tel:+918977079433">📞 +91 89770 79433</a><a class="rounded-lg bg-white/10 px-3 py-2 hover:bg-white/15" href="mailto:cloudcrestbm@gmail.com">✉️ cloudcrestbm@gmail.com</a></div>
+  </div>
+</header>
+<section class="hero mx-auto max-w-7xl px-4 py-6 sm:px-6">
+  <div class="rounded-3xl bg-gradient-to-br from-navy via-indigo to-sky p-7 text-white shadow-soft">
+    <div class="mb-3 inline-flex rounded-full border border-saffron/40 bg-saffron/20 px-3 py-1 text-xs font-extrabold text-yellow-200">MCA, Tax, Labour, Municipal & IP Registration Desk</div>
+    <h1 class="font-display text-3xl font-black sm:text-4xl">Business Registration & Compliance Wizard</h1>
+    <p class="mt-2 max-w-3xl text-sm leading-6 text-blue-100">A guided Cloudcrest BM workspace for Company, LLP, tax registrations, labour law, municipal licences, industry licences, and intellectual property filings.</p>
+    <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold"><span class="rounded-full bg-white/15 px-3 py-2">Real validations</span><span class="rounded-full bg-white/15 px-3 py-2">Dynamic fee estimate</span><span class="rounded-full bg-white/15 px-3 py-2">Document checklist</span><span class="rounded-full bg-white/15 px-3 py-2">Downloadable summary</span></div>
+  </div>
+</section>
+<main class="mx-auto grid max-w-7xl gap-5 px-4 pb-8 sm:px-6 lg:grid-cols-[285px_1fr]">
+  <aside class="sidebar h-fit overflow-hidden rounded-2xl border border-line bg-white shadow-soft" id="sidebar"></aside>
+  <section id="content" class="min-w-0"></section>
+</main>
+<footer class="bg-navy px-4 py-8 text-white">
+  <div class="mx-auto grid max-w-7xl gap-5 sm:grid-cols-3">
+    <div><div class="font-display text-xl font-black">Cloudcrest <span class="text-saffron">BM</span></div><p class="mt-2 text-sm text-slate-300">Registration, compliance, licensing and business advisory support.</p></div>
+    <div><div class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Phone / WhatsApp</div><a class="mt-1 block font-bold text-saffron" href="tel:+918977079433">+91 89770 79433</a></div>
+    <div><div class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Email</div><a class="mt-1 block font-bold text-saffron" href="mailto:cloudcrestbm@gmail.com">cloudcrestbm@gmail.com</a></div>
+  </div>
+</footer>
+<script>
+const CONTACT={phone:'+91 89770 79433',email:'cloudcrestbm@gmail.com'};
+const STATES=['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu','Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry'];
+const INDUSTRIES=['Information Technology','E-Commerce','FinTech','Manufacturing','Trading','Healthcare','Education','Real Estate','Food & Beverages','Consulting','Export & Import','Other'];
+const TAKEN=['reliance','tata','infosys','hdfc','wipro','mca','government','reserve bank'];
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+const el=id=>document.getElementById(id); const val=id=>(el(id)?.value||'').trim();
+const sidebarGroups=[
+  ['Entity Registration',[['company','Company Registration'],['llp','LLP Registration'],['partnership','Partnership Firm'],['trust','Trust & Societies'],['huf','HUF']]],
+  ['Tax Registration',[['gst','GST Registration'],['pantan','PAN & TAN'],['msme','MSME / Udyam'],['iec','IEC Import-Export'],['startup','Startup India / DPIIT']]],
+  ['Labour Law',[['labour','Labour Licence'],['epf','EPF Registration'],['esi','ESI Registration'],['pt','Professional Tax']]],
+  ['Municipal & Industry',[['trade','Trade Licence'],['fssai','FSSAI Licence'],['drug','Drug Licence'],['factory','Factory Licence'],['pollution','Pollution Control']]],
+  ['IP Registration',[['trademark','Trademark'],['copyright','Copyright'],['patent','Patent'],['design','Design Registration']]]
+];
+const simpleServices={
+ partnership:{theme:'teal',badge:'Partnership Firm',title:'Partnership Firm Registration',desc:'Governed by Indian Partnership Act, 1932. Simple structure for small businesses.',note:'Partnership firms are easy to form but partners have unlimited personal liability. Consider LLP for limited liability with similar flexibility.',fee:'Estimated Fee: ₹5,000 onwards + Stamp Duty',docs:['PAN Card of all Partners','Aadhaar / Passport / Voter ID of all Partners','Passport-size photographs','Partnership Deed signed by all partners on stamp paper','Registered Office Address Proof, NOC and Rent Agreement','Application Form A for Registrar of Firms']},
+ trust:{theme:'teal',badge:'Trust & Societies',title:'Trust & Society Registration',desc:'For NGOs, charitable institutions, religious organizations, and welfare bodies.',note:'Trusts are governed by Indian Trusts Act, 1882. Societies are registered under Societies Registration Act, 1860.',fee:'Estimated Fee: ₹8,000 onwards + Govt Fees',docs:['PAN & Aadhaar of all Trustees / Members','Trust Deed / Memorandum of Association','Rules & Regulations of the Society','Registered Office Address Proof','Passport-size photographs','Covering letter / application to Registrar','Affidavit by settler / president']},
+ huf:{theme:'teal',badge:'HUF',title:'HUF (Hindu Undivided Family)',desc:'A unique tax entity under Hindu law for families to manage ancestral property and business.',note:'HUF can have its own PAN, bank account and tax deductions under the Income Tax Act.',fee:'Estimated Fee: ₹3,000 onwards',docs:['PAN Card of Karta','Aadhaar Card of Karta','Proof of family members','HUF Deed','Bank Account proof for HUF','Address proof of HUF']},
+ gst:{theme:'',badge:'Tax Registration',title:'GST Registration',desc:'Mandatory for eligible businesses and inter-state supply of goods/services.',note:'GST registration is mandatory for inter-state supply and e-commerce sellers irrespective of turnover. <br><br><b>Additional Trade Name (if any):</b> Provide trade name if the business operates under a name different from the legal entity name.<br><b>Reason for Registration:</b> Select the applicable reason (options mirror the GST portal: Liability to register, Voluntary Registration, SEZ Developer, SEZ Unit, etc.).',fee:'Professional Fee: ₹3,000',docs:['Certificate of Incorporation / Partnership Deed','PAN of Business Entity','Aadhaar and Pan of Proprietor / Partners / Directors','Mobile Number and mail ids','Photograph of all Directors','Authorization Letter / Board Resolution','Business Address Proof: Rent Agreement / NOC and Electricity Bill','If there is an Additional place of business then proof of that place of business','Bank Account Proof']},
+ pantan:{theme:'',badge:'Tax Registration',title:'PAN & TAN Registration',desc:'Essential tax identifiers for every business entity in India.',note:'PAN is required for tax identity. TAN is required if the business deducts TDS.',fee:'Professional Fee: ₹500',docs:['Aadhaar of Directors / Partners / Trustees','Trust Deed / Partnership Deed','Registered Office Proof','PAN of Directors / Partners / Trustees']},
+ msme:{theme:'',badge:'Business Registration',title:'MSME / Udyam Registration',desc:'Udyam registration for government schemes, priority lending and MSME benefits.',note:'Government registration is free. Professional fee is for assisted filing and documentation.',fee:'Professional Fee: ₹1,500 (Govt Fee: NIL)',docs:['Aadhaar of Proprietor / Partner / Director linked to mobile','PAN of Business Entity','Certificate of Incorporation / Partnership Deed','Bank Account Details','Business Activity / NIC Code','Investment and machinery details']},
+ iec:{theme:'',badge:'Trade Registration',title:'IEC - Import Export Code',desc:'10-digit code issued by DGFT. Mandatory for import/export businesses.',note:'IEC is lifetime registration and is required for customs clearance and foreign remittances.',fee:'Professional Fee: ₹2,500 (Govt Fee: ₹500)',docs:['PAN of Business Entity','Certificate of Incorporation / Partnership Deed / GST Certificate','Aadhaar / PAN of authorised person','Cancelled Cheque or Bank Certificate','Business Address Proof','DSC if filing as company']},
+ startup:{theme:'',badge:'Government Scheme',title:'Startup India / DPIIT Recognition',desc:'DPIIT recognition unlocks tax exemptions, IP rebates and procurement benefits.',note:'Eligible entities include Pvt Ltd Company, LLP or registered partnership firm incorporated within 10 years.',fee:'Professional Fee: ₹10,000 (Govt Fee: NIL)',docs:['Certificate of Incorporation / LLP Deed','Authorised signatory details','PAN of Entity','Brief on innovation / business model','Website / pitch deck / product description','Funding details if any','Awards or recognition letters if any','Combo DSC']},
+ labour:{theme:'orange',badge:'Labour Law',title:'Labour Licence',desc:'Support for labour and establishment licensing requirements.',note:'Applicability and fees depend on state, business activity and worker count.',fee:'Professional Fee: ₹2,000 + Govt Fees Applicable',docs:['PAN of entity','Certificate of Incorporation / Partnership Deed','Business Address Proof','PAN & Aadhaar of employer','Number of employees / contract workers','KYC of principal employer']},
+ epf:{theme:'orange',badge:'Labour Law',title:'EPF Registration',desc:'Employee Provident Fund registration for eligible establishments.',note:'EPF is mandatory for establishments with 20 or more employees.',fee:'Professional Fee: ₹3,000',docs:['PAN of Entity','Certificate of Incorporation / Partnership Deed','GST Certificate if available','Directors / Partners KYC','Bank details','Digital Signature Certificate']},
+ esi:{theme:'orange',badge:'Labour Law',title:'ESI Registration',desc:'Employee State Insurance registration for eligible establishments.',note:'ESI applies based on employee count, wage threshold and state notification.',fee:'Professional Fee: ₹3,000',docs:['PAN of Entity','Certificate of Incorporation / Partnership Deed','GST Certificate if applicable','Address Proof of Establishment','Employee details with wages','Bank Account Details']},
+ pt:{theme:'orange',badge:'Labour Law',title:'Professional Tax Registration',desc:'State-level tax on professionals and employees.',note:'Professional Tax is state-specific. Rates and applicability vary by state.',fee:'Professional Fee: ₹1,000 + Govt Fees',docs:['Bank Account Details','Employee count and salary details','Entity documents','Authorization Letter / Board Resolution','Business Address Proof','Identity & Address Proof of authorised person']},
+ trade:{theme:'slate',badge:'Municipal Licence',title:'Trade Licence',desc:'Issued by municipal corporation / local body for commercial establishments.',note:'Trade licence rules differ by municipal authority and business activity.',fee:'Professional Fee: ₹2,000 + Govt Fees Applicable',docs:['Identity Proof of Proprietor / Director','Address Proof of Business Premises','Ownership / Rent Documents','Site Plan if required','NOC from Property Owner','Entity registration document']},
+ fssai:{theme:'slate',badge:'Industry Licence',title:'FSSAI Licence',desc:'Mandatory for food businesses under FSSAI.',note:'FSSAI has Basic, State and Central tiers based on turnover and operations.',fee:'Professional Fee: ₹10,000 + Govt Fees',docs:['PAN of Business Entity','Aadhaar of Proprietor / Director / Partner','Business Address Proof','Constitution Documents','Food business operation details','List of food products','NOC from local body if applicable']},
+ drug:{theme:'slate',badge:'Industry Licence',title:'Drug Licence',desc:'For manufacture, distribution and sale of drugs and pharmaceuticals.',note:'Requires compliant premises and qualified pharmacist / technical person where applicable.',fee:'Professional Fee: ₹10,000 + Govt Fees',docs:['Certificate of Incorporation / Partnership Deed','PAN of Entity','Ownership / Rent Documents','Electricity Bill / Property Tax Receipt','KYC of owner / director','Qualified Pharmacist certificate','Site layout plan']},
+ factory:{theme:'slate',badge:'Industry Licence',title:'Factory Licence',desc:'Mandatory under Factories Act for eligible premises.',note:'Applicability depends on worker count, power usage and manufacturing activity.',fee:'Professional Fee: ₹20,000 + Govt Fees',docs:['Business Documents and PAN','Land & Premises Documents','Building and Layout plan','Manufacturing process details','Employee and labour details','Environmental / Fire approvals if applicable']},
+ pollution:{theme:'slate',badge:'Industry Licence',title:'Pollution Control Board - NOC / Consent',desc:'Consent to Establish and Consent to Operate under Air & Water Acts.',note:'Industry category: Red, Orange, Green or White based on pollution potential.',fee:'Professional Fee: ₹10,000 + Govt Fees',docs:['Incorporation Certificate / LLP Deed / Partnership Deed','PAN & GST Certificate','Lease / Sale Deed','Site Layout Plan','Detailed Project Report and Process Flow','Water and waste treatment details','Machinery list and CA certificate']},
+ trademark:{theme:'rose',badge:'IP Registration',title:'Trademark Registration',desc:'Protect your brand name, logo or tagline.',note:'A registered trademark gives exclusive rights for 10 years and can be renewed.',fee:'Professional Fee: ₹15,000 + Govt Fees',docs:['Incorporation Certificate / LLP Deed / Partnership Deed','PAN of Applicant','Brand Name / Logo file','Goods or Services class selection','Address Proof','Authorization Letter / TM-48','Proof of prior use if applicable']},
+ copyright:{theme:'rose',badge:'IP Registration',title:'Copyright Registration',desc:'Protect original creative works, software, content, music, art and designs.',note:'Copyright protects original expression and ownership declarations are important.',fee:'Professional Fee: ₹20,000 + Govt Fees',docs:['Certificate of Incorporation / LLP Deed','PAN of Entity / Author','Work file','Ownership Declaration / NOC','Author details','NOC from publisher if applicable','Power of Attorney']},
+ patent:{theme:'rose',badge:'IP Registration',title:'Patent Registration',desc:'Protect product or process inventions under Patents Act.',note:'Patent process generally needs technical drafting, novelty review and prosecution.',fee:'Professional Fee: ₹20,000 + Govt Fees',docs:['Entity / Inventor PAN','Invention description','Drawings / diagrams','Inventor details','Form 1 and Form 2','Assignment Deed if applicable','Form 26 Power of Attorney']},
+ design:{theme:'rose',badge:'IP Registration',title:'Design Registration',desc:'Protect the unique visual appearance of a product.',note:'Design registration protects ornamental shape, configuration, pattern or colour.',fee:'Professional Fee: ₹20,000 + Govt Fees',docs:['Incorporation Certificate / LLP Deed','PAN of Applicant','Design drawings from multiple views','Article description','Statement of novelty','Authorization Letter','Power of Attorney']}
+};
+let currentService='company';
+const CS={step:1,type:'Private Limited Company',names:[],main:'',industry:'Information Technology',dir:2,shr:2,nominee:'',same:true,state:'',city:'',pin:'',address:'',owned:false,auth:100000,paid:100000};
+const LS={step:1,type:'Service-based LLP',names:[],main:'',industry:'Consulting',partners:2,state:'',city:'',pin:'',address:'',contribution:100000};
+const cRules={
+ 'Private Limited Company':{minD:2,minS:2,suffix:'Private Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Public Limited Company':{minD:3,minS:7,suffix:'Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'One Person Company (OPC)':{minD:1,minS:1,suffix:'(OPC) Private Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Section 8 Company (Non-Profit)':{minD:2,minS:2,suffix:'Foundation / Trust / Association / Society',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Company Limited by Guarantee':{minD:2,minS:2,suffix:'Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Nidhi Company':{minD:3,minS:7,suffix:'Nidhi Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Producer Company':{minD:5,minS:10,suffix:'Producer Company Limited',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']},
+ 'Foreign Company (Branch/Liaison)':{minD:1,minS:1,suffix:'Branch / Liaison Office',docs:['PAN and Aadhaar of Directors and shareholders','Mobile and Mail id\'s of Directors and shareholders','Sign image and photos of Directors','Registered office address with NOC','List of Directors','List of shareholders','Percentage of holding']}
+};
+let currentUser = null;
+
+async function init() {
+  renderSidebar();
+  selectService('company');
+  await checkAuth();
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch("/api/auth/me");
+    if (res.status === 200) {
+      const data = await res.json();
+      currentUser = data.user;
+    } else {
+      currentUser = null;
+    }
+  } catch (e) {
+    currentUser = null;
+  }
+}
+
+function authPanel(type, title) {
+  if (currentUser) {
+    return `
+      <div class="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5 text-center text-blue-800">
+        <div class="font-bold">Logged in as: ${currentUser.firstName} ${currentUser.lastName || ''} (${currentUser.email})</div>
+        <p class="text-xs text-blue-600 mt-1">Ready to submit your application directly to the database.</p>
+        <button class="btn btn-primary mt-4 w-full justify-center" onclick="submitRegistrationOrder('${type}', '${title}')">📤 Submit Application to Database</button>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="mt-6 rounded-xl border border-line bg-slate-50 p-5" id="auth-wizard-panel">
+      <div class="mb-3 text-sm font-extrabold uppercase tracking-wider text-slateText text-center">Sign In or Create Account to Submit</div>
+      <div class="flex gap-2 border-b border-line pb-3 mb-4">
+        <button class="flex-1 text-center font-extrabold text-sm pb-2 border-b-2 border-blue-600 text-blue-600" id="btn-toggle-reg" onclick="toggleAuthMode('register')">Create Account</button>
+        <button class="flex-1 text-center font-extrabold text-sm pb-2 text-slate-500" id="btn-toggle-login" onclick="toggleAuthMode('login')">Sign In</button>
+      </div>
+      
+      <!-- Register Form -->
+      <div id="form-register" class="grid gap-3">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <input class="input" id="reg-fname" placeholder="First Name *">
+          <input class="input" id="reg-lname" placeholder="Last Name">
+        </div>
+        <input class="input" id="reg-email" type="email" placeholder="Email Address *">
+        <input class="input" id="reg-phone" placeholder="Phone Number">
+        <input class="input" id="reg-password" type="password" placeholder="Password (min 6 chars) *">
+        <button class="btn btn-primary justify-center mt-2" onclick="handleAuthSubmit('register', '${type}', '${title}')">Create Account & Submit</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="form-login" class="grid gap-3 hidden">
+        <input class="input" id="log-email" type="email" placeholder="Email Address *">
+        <input class="input" id="log-password" type="password" placeholder="Password *">
+        <button class="btn btn-primary justify-center mt-2" onclick="handleAuthSubmit('login', '${type}', '${title}')">Sign In & Submit</button>
+      </div>
+      
+      <div class="err mt-3 text-center" id="authErr"></div>
+    </div>
+  `;
+}
+
+function toggleAuthMode(mode) {
+  const regBtn = el('btn-toggle-reg');
+  const logBtn = el('btn-toggle-login');
+  const regForm = el('form-register');
+  const logForm = el('form-login');
+  if (mode === 'register') {
+    regBtn.className = "flex-1 text-center font-extrabold text-sm pb-2 border-b-2 border-blue-600 text-blue-600";
+    logBtn.className = "flex-1 text-center font-extrabold text-sm pb-2 text-slate-500";
+    regForm.classList.remove('hidden');
+    logForm.classList.add('hidden');
+  } else {
+    logBtn.className = "flex-1 text-center font-extrabold text-sm pb-2 border-b-2 border-blue-600 text-blue-600";
+    regBtn.className = "flex-1 text-center font-extrabold text-sm pb-2 text-slate-500";
+    logForm.classList.remove('hidden');
+    regForm.classList.add('hidden');
+  }
+  el('authErr').classList.remove('show');
+}
+
+async function handleAuthSubmit(action, type, title) {
+  el('authErr').classList.remove('show');
+  let url = action === 'register' ? '/api/auth/register' : '/api/auth/login';
+  let payload = {};
+  if (action === 'register') {
+    const firstName = val('reg-fname');
+    const lastName = val('reg-lname');
+    const email = val('reg-email');
+    const phone = val('reg-phone');
+    const password = val('reg-password');
+    if (!firstName || !email || !password) {
+      setErr('authErr', 'Please fill in all required fields (*)');
+      return;
+    }
+    payload = { firstName, lastName, email, phone, password };
+  } else {
+    const email = val('log-email');
+    const password = val('log-password');
+    if (!email || !password) {
+      setErr('authErr', 'Please enter your email and password');
+      return;
+    }
+    payload = { email, password };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (res.status === 201 || res.status === 200) {
+      currentUser = data.user;
+      // Refresh summary view to show authenticated state
+      if (type === 'company') renderCompany(); else renderLLP();
+      await submitRegistrationOrder(type, title);
+    } else {
+      setErr('authErr', data.error || 'Authentication failed.');
+    }
+  } catch (e) {
+    setErr('authErr', 'Connection error during authentication.');
+  }
+}
+
+async function submitRegistrationOrder(type, title) {
+  let orderPayload = {};
+  if (type === 'company') {
+    let f = companyFee();
+    orderPayload = {
+      entityType: CS.type,
+      names: CS.names,
+      mainObjects: CS.main,
+      state: CS.state,
+      city: CS.city,
+      pincode: CS.pin,
+      address: CS.address,
+      capital: CS.auth,
+      paidUpCapital: CS.paid,
+      directorsCount: CS.dir,
+      shareholdersCount: CS.shr,
+      nominee: CS.nominee,
+      professionalFee: f.prof,
+      govtFee: f.roc,
+      gst: f.stamp + f.dsc + f.draft,
+      total: f.total
+    };
+  } else {
+    let f = llpFee();
+    orderPayload = {
+      entityType: LS.type,
+      names: LS.names,
+      mainObjects: LS.main,
+      state: LS.state,
+      city: LS.city,
+      pincode: LS.pin,
+      address: LS.address,
+      capital: LS.contribution,
+      paidUpCapital: LS.contribution,
+      directorsCount: LS.partners,
+      shareholdersCount: LS.partners,
+      nominee: '',
+      professionalFee: f.prof,
+      govtFee: f.filing,
+      gst: f.name + f.stamp + f.dsc + f.draft,
+      total: f.total
+    };
+  }
+
+  try {
+    el('content').innerHTML = `
+      <div class="overflow-hidden rounded-2xl border border-line bg-white shadow-soft p-12 text-center">
+        <div class="animate-bounce text-4xl mb-4">📤</div>
+        <h2 class="font-display text-2xl font-black">Submitting Application...</h2>
+        <p class="text-sm text-slateText mt-2">Uploading business data and creating order record in PostgreSQL.</p>
+      </div>
+    `;
+
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderPayload),
+    });
+
+    const data = await res.json();
+    if (res.status === 201) {
+      el('content').innerHTML = `
+        <div class="overflow-hidden rounded-2xl border border-line bg-white shadow-soft p-8 text-center print-full">
+          <div class="text-5xl mb-4">🎉</div>
+          <h2 class="font-display text-2xl font-black text-green-700">Application Submitted!</h2>
+          <p class="text-sm mt-2">Your company registration request has been successfully recorded in our database.</p>
+          
+          <div class="my-6 rounded-xl border border-green-200 bg-green-50 p-6 max-w-md mx-auto text-left">
+            <div class="summary-row"><b>Order Number</b><span class="font-extrabold text-blue-700">${data.order.orderNo}</span></div>
+            <div class="summary-row"><b>Entity Name</b><span>${data.order.businessName}</span></div>
+            <div class="summary-row"><b>Estimated Total</b><span>₹${Number(data.order.estimatedTotal).toLocaleString('en-IN')}</span></div>
+            <div class="summary-row"><b>Customer</b><span>${currentUser.firstName} ${currentUser.lastName || ''}</span></div>
+          </div>
+
+          <div class="flex justify-center gap-3 no-print">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print Summary</button>
+            <button class="btn btn-gold" onclick="window.location.reload()">🆕 Start New Wizard</button>
+          </div>
+        </div>
+      `;
+    } else {
+      alert("Error: " + (data.error || "Order submission failed."));
+      if (type === 'company') renderCompany(); else renderLLP();
+    }
+  } catch (e) {
+    alert("Network connection error submitting order.");
+    if (type === 'company') renderCompany(); else renderLLP();
+  }
+}
+
+function renderSidebar(){el('sidebar').innerHTML=sidebarGroups.map(g=>`<div><div class="border-b border-line bg-slate-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-slateText">${g[0]}</div>${g[1].map(([id,label])=>`<button class="sidebar-item flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left text-sm text-slateText transition hover:bg-slate-50" id="nav-${id}" onclick="selectService('${id}')"><span class="dot h-2 w-2 rounded-full bg-slate-300"></span>${label}</button>`).join('')}</div>`).join('')}
+function selectService(id){currentService=id;document.querySelectorAll('.sidebar-item').forEach(x=>x.classList.remove('active'));el('nav-'+id)?.classList.add('active'); if(id==='company') renderCompany(); else if(id==='llp') renderLLP(); else renderSimple(id); window.scrollTo({top:0,behavior:'smooth'})}
+function head(theme,badge,title,desc){return `<div class="card-head ${theme||''} px-6 py-6"><div class="mb-2 inline-flex rounded-full border border-white/25 bg-white/15 px-3 py-1 text-xs font-extrabold">${badge}</div><h2 class="font-display text-2xl font-black">${title}</h2><p class="mt-1 text-sm leading-6 text-white/80">${desc}</p></div>`}
+function renderSimple(id){const s=simpleServices[id];el('content').innerHTML=`<div class="overflow-hidden rounded-2xl border border-line bg-white shadow-soft print-full">${head(s.theme,s.badge,s.title,s.desc)}<div class="p-6"><div class="mb-5 rounded-xl border-l-4 ${s.theme==='orange'?'border-saffron bg-amber-50 text-amber-900':s.theme==='rose'?'border-purple bg-purple-50 text-purple-800':'border-green bg-green-50 text-green-800'} p-4 text-sm">${s.note}</div><div><h3 class="mb-3 text-sm font-extrabold uppercase tracking-wider text-slateText">Documents Required</h3><ul class="doc-list overflow-hidden rounded-xl border border-line">${s.docs.map(d=>`<li><span class="tick">✓</span><span>${d}</span></li>`).join('')}</ul></div><div class="mt-5 inline-flex rounded-xl bg-gradient-to-r from-green to-emerald-600 px-4 py-3 text-sm font-extrabold text-white">💰 ${s.fee}</div><div class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">📞 ${CONTACT.phone} &nbsp; | &nbsp; ✉️ ${CONTACT.email}</div></div></div>`}
+function stepper(prefix,step,labels,purple=false){return `<div class="mb-6 overflow-x-auto"><div class="flex min-w-[520px] items-start justify-between gap-2">${labels.map((l,i)=>`<div class="flex flex-1 flex-col items-center gap-1"><div class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-black ${i+1<=step?(purple?'bg-purple text-white':'bg-blue-600 text-white'):'bg-slate-200 text-slate-500'}">${i+1<step?'✓':i+1}</div><span class="text-center text-[11px] font-bold ${i+1===step?(purple?'text-purple':'text-blue-700'):'text-slate-500'}">${l}</span></div>`).join('')}</div></div>`}
+function options(arr,sel=''){return arr.map(x=>`<option ${x===sel?'selected':''}>${x}</option>`).join('')}
+function setErr(id,msg){const e=el(id); if(!e)return; e.textContent=msg; e.classList.add('show')} function clearErrs(){document.querySelectorAll('.err').forEach(e=>e.classList.remove('show'))}
+function nameStatus(name,need){if(!name)return '';let low=name.toLowerCase();let taken=TAKEN.some(t=>low.includes(t));let suffix=low.includes(need.toLowerCase().replace('"',''));if(taken)return '<span class="mt-2 inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">Not available</span>';if(!suffix)return '<span class="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Add required suffix: '+need+'</span>';return '<span class="mt-2 inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Available in mock check</span>'}
+function companyFee(){let roc=calcROC(CS.auth), stamp=CS.type.includes('Section 8')||CS.type.includes('Guarantee')?0:Math.max(500,Math.floor(CS.auth*.001)), name=1000, dsc=CS.dir*3000, prof=10000, draft=3000;return {name,roc,stamp,dsc,prof,draft,total:name+roc+stamp+dsc+prof+draft}}
+function llpFee(){let filing=calcLLP(LS.contribution), name=500, stamp=100, dsc=Math.max(2,LS.partners)*3000, prof=10000, draft=3000;return {name,filing,stamp,dsc,prof,draft,total:name+filing+stamp+dsc+prof+draft}}
+function calcROC(cap){cap=+cap||0;if(cap<=100000)return 2000;if(cap<=500000)return 3000;if(cap<=1000000)return 4000;if(cap<=5000000)return 5000;if(cap<=10000000)return 6000;return 7000}
+function calcLLP(c){c=+c||0;if(c<=100000)return 500;if(c<=500000)return 2000;if(c<=1000000)return 4000;return 5000}
+function row(k,v){return `<div class="summary-row"><b>${k}</b><span>${v||'-'}</span></div>`}
+function renderCompany(){const labels=['Type','Name','Details','Office','Capital','Fees','Summary'];el('content').innerHTML=`<div class="overflow-hidden rounded-2xl border border-line bg-white shadow-soft print-full">${head('', 'Company Registration - MCA / SPICe+', 'Company Incorporation Wizard', 'Accurate Company registration workflow using V4-style validations, suffix rules, capital preview and fee logic.')}<div class="p-6">${stepper('c',CS.step,labels)}<div id="cPanel"></div></div></div>`;renderCompanyStep()}
+function renderCompanyStep(){const r=cRules[CS.type], p=el('cPanel');
+ if(CS.step===1)p.innerHTML=`<div class="mb-4 rounded-xl bg-blue-50 p-4 text-sm text-blue-800"><b>Minimum rules:</b> Pvt Ltd 2 directors/2 shareholders, Public 3/7, OPC 1/1 + nominee, Section 8 for non-profit objects.</div><div class="grid gap-3 md:grid-cols-2">${Object.keys(cRules).map(t=>`<div class="radio-card"><input id="ct-${t}" name="ctype" type="radio" ${CS.type===t?'checked':''} onchange="CS.type='${t}';const rr=cRules[CS.type];CS.dir=rr.minD;CS.shr=rr.minS;renderCompanyStep()"><label for="ct-${t}"><b>${t}</b><div class="mt-1 text-xs text-slateText">Suffix: ${cRules[t].suffix}</div></label></div>`).join('')}</div><div class="nav-row mt-6 flex justify-end"><button class="btn btn-primary" onclick="cNext()">Next: Name</button></div>`;
+ if(CS.step===2)p.innerHTML=`<div class="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">Required suffix for <b>${CS.type}</b>: <b>${r.suffix}</b>. Provide up to 3 preferences.</div><div class="mt-4 grid gap-4">${[1,2,3].map(i=>`<label><b>Name Preference ${i}${i===1?' *':''}</b><div class="mt-1 flex gap-2"><input class="input" id="cn${i}" value="${CS.names[i-1]||''}" oninput="CS.names[${i-1}]=this.value"><button class="btn btn-back no-print" onclick="event.preventDefault();el('cns${i}').innerHTML=nameStatus(val('cn${i}'),'${r.suffix}')">Check</button></div><div id="cns${i}">${nameStatus(CS.names[i-1]||'',r.suffix)}</div></label>`).join('')}<div class="err" id="cErr"></div></div>${nav('c')}`;
+ if(CS.step===3)p.innerHTML=`<div class="grid gap-4"><label><b>Main Objects / Nature of Business *</b><textarea class="input mt-1 min-h-28" id="cMain">${CS.main}</textarea></label><label><b>Industry</b><select class="input mt-1" id="cIndustry">${options(INDUSTRIES,CS.industry)}</select></label><div class="grid gap-4 md:grid-cols-2"><label><b>Number of Directors *</b><input class="input mt-1" id="cDir" type="number" min="1" value="${CS.dir}"></label><label><b>Number of Shareholders *</b><input class="input mt-1" id="cShr" type="number" min="1" value="${CS.shr}"></label></div>${CS.type.includes('OPC')?`<label><b>Nominee Name (OPC) *</b><input class="input mt-1" id="cNom" value="${CS.nominee}"></label>`:''}<label class="flex items-center gap-3 rounded-xl bg-slate-50 p-4"><input type="checkbox" id="cSame" ${CS.same?'checked':''}> Directors and shareholders are the same</label><div class="err" id="cErr"></div></div>${nav('c')}`;
+ if(CS.step===4)p.innerHTML=`<div class="grid gap-4 md:grid-cols-2"><label><b>State *</b><select class="input mt-1" id="cState"><option value="">Select State</option>${options(STATES,CS.state)}</select></label><label><b>City / District *</b><input class="input mt-1" id="cCity" value="${CS.city}"></label><label><b>PIN Code *</b><input class="input mt-1" id="cPin" maxlength="6" value="${CS.pin}"></label><label class="flex items-center gap-3 rounded-xl bg-slate-50 p-4 self-end"><input type="checkbox" id="cOwned" ${CS.owned?'checked':''}> Owned premises</label><label class="md:col-span-2"><b>Full Registered Office Address *</b><textarea class="input mt-1 min-h-24" id="cAddress">${CS.address}</textarea></label><div class="err" id="cErr"></div></div>${nav('c')}`;
+ if(CS.step===5){let fee=companyFee();p.innerHTML=`<div class="rounded-xl bg-blue-50 p-4 text-sm text-blue-800"><b>Capital rule:</b> Paid-up capital cannot exceed authorised capital. ROC fees are estimated by authorised capital slab.</div><div class="mt-4 grid gap-4 md:grid-cols-2"><label><b>Authorised Capital *</b><select class="input mt-1" id="cAuth" onchange="CS.auth=+this.value;renderCompanyStep()">${[[100000,'₹1 Lakh'],[500000,'₹5 Lakh'],[1000000,'₹10 Lakh'],[2500000,'₹25 Lakh'],[5000000,'₹50 Lakh'],[10000000,'₹1 Crore']].map(a=>`<option value="${a[0]}" ${CS.auth==a[0]?'selected':''}>${a[1]}</option>`).join('')}</select></label><label><b>Paid-up Capital *</b><input class="input mt-1" id="cPaid" type="number" value="${CS.paid}"></label></div><div class="mt-4 grid gap-3 md:grid-cols-3"><div class="rounded-xl bg-slate-50 p-4"><div class="text-xs text-slateText">Authorised</div><b>${money(CS.auth)}</b></div><div class="rounded-xl bg-slate-50 p-4"><div class="text-xs text-slateText">Paid-up</div><b>${money(CS.paid)}</b></div><div class="rounded-xl bg-slate-50 p-4"><div class="text-xs text-slateText">Est. ROC</div><b>${money(fee.roc)}</b></div></div><div class="err" id="cErr"></div>${nav('c')}`}
+ if(CS.step===6){let f=companyFee();p.innerHTML=`${feeTable([['Name Reservation',f.name],['ROC Registration Fee',f.roc],['Stamp Duty',f.stamp],['DSC',f.dsc],['Professional Charges for Incorporation',f.prof],['Drafting of Documents',f.draft]],f.total)}<h3 class="mt-6 mb-3 text-sm font-extrabold uppercase tracking-wider text-slateText">Documents Required</h3><ul class="doc-list overflow-hidden rounded-xl border border-line">${r.docs.map(d=>`<li><span class="tick">✓</span>${d}</li>`).join('')}</ul>${nav('c','Generate Summary')}`}
+ if(CS.step===7){let f=companyFee();p.innerHTML=summary('Company Incorporation Summary',[['Company Type',CS.type],['Names',CS.names.filter(Boolean).join(', ')],['Main Objects',CS.main],['Industry',CS.industry],['Directors',CS.dir],['Shareholders',CS.shr],['Registered Office',`${CS.address}, ${CS.city}, ${CS.state} - ${CS.pin}`],['Authorised Capital',money(CS.auth)],['Paid-up Capital',money(CS.paid)],['Estimated Total',money(f.total)]],'company')}
+}
+function nav(prefix,last='Next'){return `<div class="nav-row mt-6 flex justify-between border-t border-line pt-5"><button class="btn btn-back" onclick="${prefix}Prev()">Previous</button><button class="btn btn-primary" onclick="${prefix}Next()">${last}</button></div>`}
+function feeTable(rows,total){return `<table class="fee-table overflow-hidden rounded-xl"><thead><tr><th>Fee Component</th><th>Amount</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r[0]}</td><td>${money(r[1])}</td></tr>`).join('')}<tr class="bg-navy text-white"><td class="font-black">Estimated Total</td><td>${money(total)}</td></tr></tbody></table><p class="mt-2 text-xs text-slateText">Indicative estimate only. Government fees and stamp duty may vary by state and portal assessment.</p>`}
+function summary(title,rows,type){return `<div class="rounded-2xl bg-green-50 p-5 text-center text-green-800"><div class="text-4xl">🎉</div><h2 class="font-display text-2xl font-black">Application Ready</h2><p class="text-sm">Review the details below and submit your application directly to the database.</p></div><div id="summary-${type}" class="mt-5 rounded-xl border border-line p-5">${rows.map(r=>row(r[0],r[1])).join('')}${row('Contact',CONTACT.phone+' | '+CONTACT.email)}</div>${authPanel(type,title)}<div class="nav-row mt-5 flex flex-wrap justify-center gap-3 no-print"><button class="btn btn-back" onclick="${type==='company'?'c':'l'}Prev()">Edit Details</button><button class="btn btn-gold" onclick="downloadSummary('${type}','${title}')">Download Summary</button></div>`}
+function cNext(){clearErrs(); if(!cSave())return; if(CS.step<7){CS.step++;renderCompany()} } function cPrev(){if(CS.step>1){CS.step--;renderCompany()}}
+function cSave(){let r=cRules[CS.type]; if(CS.step===2){CS.names=[val('cn1'),val('cn2'),val('cn3')]; if(!CS.names[0])return setErr('cErr','Please enter at least one company name.'),false; if(!CS.names[0].toLowerCase().includes(r.suffix.toLowerCase().split(' ')[0]))return setErr('cErr','Preference 1 should include the required suffix.'),false} if(CS.step===3){CS.main=val('cMain');CS.industry=val('cIndustry');CS.dir=+val('cDir');CS.shr=+val('cShr');CS.nominee=val('cNom');CS.same=el('cSame')?.checked;if(!CS.main)return setErr('cErr','Please enter main objects.'),false;if(CS.dir<r.minD||CS.shr<r.minS)return setErr('cErr',`Minimum required: ${r.minD} director(s), ${r.minS} shareholder(s).`),false;if(CS.type.includes('OPC')&&!CS.nominee)return setErr('cErr','OPC nominee name is required.'),false} if(CS.step===4){CS.state=val('cState');CS.city=val('cCity');CS.pin=val('cPin');CS.address=val('cAddress');CS.owned=el('cOwned')?.checked;if(!CS.state||!CS.city||!CS.address||!/^[0-9]{6}$/.test(CS.pin))return setErr('cErr','Please complete office details with valid 6-digit PIN.'),false} if(CS.step===5){CS.paid=+val('cPaid');if(!CS.paid||CS.paid>CS.auth)return setErr('cErr','Paid-up capital must be valid and cannot exceed authorised capital.'),false} return true}
+function renderLLP(){const labels=['Structure','Name','Details','Office','Contribution','Fees','Summary'];el('content').innerHTML=`<div class="overflow-hidden rounded-2xl border border-line bg-white shadow-soft print-full">${head('purple','LLP Registration - FiLLiP','LLP Incorporation Wizard','V4-style LLP flow with name suffix validation, partner rules, contribution preview, fee estimate and documents.')}<div class="p-6">${stepper('l',LS.step,labels,true)}<div id="lPanel"></div></div></div>`;renderLLPStep()}
+function renderLLPStep(){const p=el('lPanel');
+ if(LS.step===1)p.innerHTML=`<div class="mb-4 rounded-xl bg-purple-50 p-4 text-sm text-purple-800"><b>LLP key requirements:</b> Minimum 2 partners, at least 2 designated partners, and name must end with LLP or Limited Liability Partnership.</div><div class="grid gap-3 md:grid-cols-2">${['Service-based LLP','Trading LLP','Professional LLP','Manufacturing LLP','Startup / Tech LLP','Real Estate LLP'].map(t=>`<div class="radio-card purple"><input id="lt-${t}" name="ltype" type="radio" ${LS.type===t?'checked':''} onchange="LS.type='${t}';renderLLPStep()"><label for="lt-${t}"><b>${t}</b><div class="mt-1 text-xs text-slateText">Flexible profit sharing and limited liability</div></label></div>`).join('')}</div><div class="nav-row mt-6 flex justify-end"><button class="btn btn-purple" onclick="lNext()">Next: LLP Name</button></div>`;
+ if(LS.step===2)p.innerHTML=`<div class="rounded-xl bg-purple-50 p-4 text-sm text-purple-800">LLP name must end with <b>LLP</b> or <b>Limited Liability Partnership</b>.</div><div class="mt-4 grid gap-4">${[1,2,3].map(i=>`<label><b>LLP Name Preference ${i}${i===1?' *':''}</b><div class="mt-1 flex gap-2"><input class="input" id="ln${i}" value="${LS.names[i-1]||''}" oninput="LS.names[${i-1}]=this.value"><button class="btn btn-back no-print" onclick="event.preventDefault();el('lns${i}').innerHTML=nameStatus(val('ln${i}'),'LLP')">Check</button></div><div id="lns${i}">${nameStatus(LS.names[i-1]||'','LLP')}</div></label>`).join('')}<div class="err" id="lErr"></div></div>${lnav()}`;
+ if(LS.step===3)p.innerHTML=`<div class="grid gap-4"><label><b>Nature of Business / Main Activity *</b><textarea class="input mt-1 min-h-28" id="lMain">${LS.main}</textarea></label><label><b>Industry</b><select class="input mt-1" id="lIndustry">${options(INDUSTRIES,LS.industry)}</select></label><label><b>Total Partners *</b><input class="input mt-1" id="lPartners" type="number" min="2" value="${LS.partners}"></label><div class="err" id="lErr"></div></div>${lnav()}`;
+ if(LS.step===4)p.innerHTML=`<div class="grid gap-4 md:grid-cols-2"><label><b>State *</b><select class="input mt-1" id="lState"><option value="">Select State</option>${options(STATES,LS.state)}</select></label><label><b>City / District *</b><input class="input mt-1" id="lCity" value="${LS.city}"></label><label><b>PIN Code *</b><input class="input mt-1" id="lPin" maxlength="6" value="${LS.pin}"></label><label class="md:col-span-2"><b>Full Registered Office Address *</b><textarea class="input mt-1 min-h-24" id="lAddress">${LS.address}</textarea></label><div class="err" id="lErr"></div></div>${lnav()}`;
+ if(LS.step===5){let f=llpFee();p.innerHTML=`<div class="rounded-xl bg-purple-50 p-4 text-sm text-purple-800"><b>Contribution:</b> LLP has no share capital. Partners contribute as agreed in the LLP Agreement.</div><div class="mt-4"><label><b>Total Partner Contribution *</b><select class="input mt-1" id="lContrib" onchange="LS.contribution=+this.value;renderLLPStep()">${[[10000,'₹10,000'],[50000,'₹50,000'],[100000,'₹1 Lakh'],[500000,'₹5 Lakh'],[1000000,'₹10 Lakh']].map(a=>`<option value="${a[0]}" ${LS.contribution==a[0]?'selected':''}>${a[1]}</option>`).join('')}</select></label></div><div class="mt-4 grid gap-3 md:grid-cols-3"><div class="rounded-xl bg-purple-50 p-4"><div class="text-xs text-slateText">Contribution</div><b>${money(LS.contribution)}</b></div><div class="rounded-xl bg-purple-50 p-4"><div class="text-xs text-slateText">FiLLiP Fee</div><b>${money(f.filing)}</b></div><div class="rounded-xl bg-purple-50 p-4"><div class="text-xs text-slateText">Name Reservation</div><b>${money(f.name)}</b></div></div>${lnav()}`}
+ if(LS.step===6){let f=llpFee();p.innerHTML=`${feeTable([['Name Reservation RUN-LLP',f.name],['FiLLiP Filing Fee',f.filing],['LLP Agreement Stamp',f.stamp],['DSC',f.dsc],['Professional Charges for Incorporation',f.prof],['Drafting of Documents',f.draft]],f.total)}<h3 class="mt-6 mb-3 text-sm font-extrabold uppercase tracking-wider text-slateText">Documents Required</h3><ul class="doc-list overflow-hidden rounded-xl border border-line">${['PAN and Aadhaar of Partners','Mobile and Mail id\'s of Partners','Sign image and photos of Partners','Registered office address with NOC','Subscriber sheet signed by partners'].map(d=>`<li><span class="tick">✓</span>${d}</li>`).join('')}</ul>${lnav('Generate Summary')}`}
+ if(LS.step===7){let f=llpFee();p.innerHTML=summary('LLP Incorporation Summary',[['LLP Type',LS.type],['Names',LS.names.filter(Boolean).join(', ')],['Main Activity',LS.main],['Industry',LS.industry],['Partners',LS.partners],['Registered Office',`${LS.address}, ${LS.city}, ${LS.state} - ${LS.pin}`],['Contribution',money(LS.contribution)],['Estimated Total',money(f.total)]],'llp')}
+}
+function lnav(last='Next'){return `<div class="nav-row mt-6 flex justify-between border-t border-line pt-5"><button class="btn btn-back" onclick="lPrev()">Previous</button><button class="btn btn-purple" onclick="lNext()">${last}</button></div>`}
+function lNext(){clearErrs(); if(!lSave())return; if(LS.step<7){LS.step++;renderLLP()}} function lPrev(){if(LS.step>1){LS.step--;renderLLP()}}
+function lSave(){if(LS.step===2){LS.names=[val('ln1'),val('ln2'),val('ln3')];if(!LS.names[0])return setErr('lErr','Please enter at least one LLP name.'),false;if(!/\bllp\b|limited liability partnership/i.test(LS.names[0]))return setErr('lErr','LLP name must end with LLP or Limited Liability Partnership.'),false} if(LS.step===3){LS.main=val('lMain');LS.industry=val('lIndustry');LS.partners=+val('lPartners');if(!LS.main)return setErr('lErr','Please enter LLP business activity.'),false;if(LS.partners<2)return setErr('lErr','LLP requires minimum 2 partners.'),false} if(LS.step===4){LS.state=val('lState');LS.city=val('lCity');LS.pin=val('lPin');LS.address=val('lAddress');if(!LS.state||!LS.city||!LS.address||!/^[0-9]{6}$/.test(LS.pin))return setErr('lErr','Please complete office details with valid 6-digit PIN.'),false} return true}
+function downloadSummary(type,title){const node=el('summary-'+type);if(!node)return;const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>body{font-family:Arial,sans-serif;max-width:850px;margin:0 auto;padding:32px;color:#0F1F3D}.summary-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid #ddd;padding:8px 0}h1{border-bottom:3px solid #F59E0B;padding-bottom:8px}</style></head><body><h1>${title}</h1>${node.innerHTML}<p style="margin-top:24px;background:#f1f5f9;padding:12px;border-radius:8px">Cloudcrest BM | ${CONTACT.phone} | ${CONTACT.email}</p></body></html>`;const blob=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=title.replaceAll(' ','_')+'_Cloudcrest.html';a.click();URL.revokeObjectURL(a.href)}
+function openWhatsApp(){window.open('https://wa.me/918977079433?text='+encodeURIComponent('Hello Cloudcrest BM, I completed the business registration wizard and need assistance.'),'_blank')}
+init();
+</script>
+</body>
+</html>

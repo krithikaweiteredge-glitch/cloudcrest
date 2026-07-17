@@ -3,7 +3,7 @@ import { Phone, Mail, Search, Bell, ChevronRight, Sparkles, User, LogIn, LogOut,
 import { MODULE_GROUPS } from "@/lib/modules";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import logo from "@/assets/cloudcrest-logo.png.asset.json";
+import logo from "@/assets/cloudcrest-logo.png";
 
 export default function AppShell({ children }: { children?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -43,7 +43,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
             className="h-16 flex items-center gap-2 px-4 border-b border-border group"
           >
             <img
-              src={logo.url}
+              src={logo}
               alt="Cloudcrest BM"
               className="h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
             />
@@ -148,10 +148,6 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               </span>
             </nav>
             <div className="flex items-center gap-3">
-              <button className="hidden sm:flex items-center gap-2 px-3 h-8 rounded-md border border-border bg-surface hover:bg-muted transition-colors text-xs">
-                <span className="mono text-muted-foreground">Draft</span>
-                <span className="mono text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning">3</span>
-              </button>
               <button className="size-8 rounded-full bg-surface border border-border grid place-items-center relative hover:bg-muted transition-colors">
                 <Bell className="size-3.5 text-muted-foreground" />
                 <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary live-dot" />

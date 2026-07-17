@@ -4,7 +4,7 @@ import { MODULE_GROUPS, ALL_MODULES } from "@/lib/modules";
 import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, Star,
 } from "lucide-react";
-import logo from "@/assets/cloudcrest-logo.png.asset.json";
+import logo from "@/assets/cloudcrest-logo.png";
 
 const SUFFIXES = ["Private Limited", "LLP", "Foundation", "Producer Company"];
 
@@ -35,7 +35,7 @@ export function LandingHero() {
         />
         <div className="relative max-w-5xl mx-auto px-8 pt-14 pb-20 text-center">
           <div className="mx-auto mb-6 inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-white/95 shadow-elev">
-            <img src={logo.url} alt="Cloudcrest" className="h-7 w-auto object-contain" />
+            <img src={logo} alt="Cloudcrest" className="h-7 w-auto object-contain" />
             <span className="text-[11px] mono uppercase tracking-widest text-muted-foreground">
               Business Management
             </span>

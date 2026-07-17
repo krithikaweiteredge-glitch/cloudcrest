@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Mail, Phone, ArrowRight, ShieldCheck, Loader2, KeyRound } from "lucide-react";
-import logo from "@/assets/cloudcrest-logo.png.asset.json";
+import logo from "@/assets/cloudcrest-logo.png";
 import { z } from "zod";
 
 type Search = { next?: string };
@@ -115,7 +115,7 @@ function AuthPage() {
           }}
         />
         <Link to="/" className="relative flex items-center gap-3">
-          <img src={logo.url} alt="Cloudcrest BM" className="h-10 w-auto" />
+          <img src={logo} alt="Cloudcrest BM" className="h-10 w-auto" />
           <div className="font-display font-semibold tracking-tight">Cloudcrest BM</div>
         </Link>
         <div className="relative space-y-6 max-w-md">
@@ -149,7 +149,7 @@ function AuthPage() {
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
           <Link to="/" className="lg:hidden flex items-center gap-2 mb-8">
-            <img src={logo.url} alt="Cloudcrest BM" className="h-9 w-auto" />
+            <img src={logo} alt="Cloudcrest BM" className="h-9 w-auto" />
           </Link>
           <h2 className="text-2xl font-display font-semibold">Sign in or create account</h2>
           <p className="text-sm text-muted-foreground mt-1.5">
