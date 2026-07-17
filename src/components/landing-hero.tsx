@@ -27,20 +27,30 @@ export function LandingHero() {
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden gradient-hero text-white">
-        <div className="absolute inset-0 opacity-40 pointer-events-none"
+        <div className="absolute inset-0 opacity-50 pointer-events-none"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 15% 15%, oklch(0.7 0.19 45 / 0.45), transparent 45%), radial-gradient(circle at 85% 85%, oklch(0.6 0.18 240 / 0.5), transparent 45%)",
+              "radial-gradient(circle at 12% 18%, oklch(0.58 0.22 27 / 0.45), transparent 42%), radial-gradient(circle at 88% 20%, oklch(0.62 0.16 152 / 0.45), transparent 45%), radial-gradient(circle at 50% 95%, oklch(0.55 0.20 255 / 0.55), transparent 50%)",
           }}
         />
-        <div className="relative max-w-5xl mx-auto px-8 pt-16 pb-20 text-center">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
-            <Sparkles className="size-3 text-primary" />
+        <div className="relative max-w-5xl mx-auto px-8 pt-14 pb-20 text-center">
+          <div className="mx-auto mb-6 inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-white/95 shadow-elev">
+            <img src={logo.url} alt="Cloudcrest" className="h-7 w-auto object-contain" />
+            <span className="text-[11px] mono uppercase tracking-widest text-muted-foreground">
+              Business Management
+            </span>
+          </div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
+            <span className="size-1.5 rounded-full bg-destructive live-dot" />
+            <span className="size-1.5 rounded-full bg-success" />
+            <span className="size-1.5 rounded-full bg-primary" />
             India's compliance workspace · 22 registration modules
-          </span>
+          </div>
           <h1 className="mt-6 text-4xl md:text-6xl font-display font-semibold tracking-tight leading-[1.02]">
             Start your business.<br />
-            <span className="text-primary">Get it registered in days.</span>
+            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, oklch(0.58 0.22 27), oklch(0.62 0.16 152) 50%, oklch(0.65 0.20 255))" }}>
+              Get it registered in days.
+            </span>
           </h1>
           <p className="mt-5 text-white/70 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
             Search your company name, upload documents, and let Cloudcrest BM associates handle the
