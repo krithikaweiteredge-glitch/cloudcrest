@@ -12,7 +12,7 @@ export function Stepper({
   onGo?: (i: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+    <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1">
       {steps.map((s, i) => {
         const done = i < current;
         const active = i === current;
@@ -22,32 +22,34 @@ export function Stepper({
               type="button"
               onClick={() => onGo?.(i)}
               className={
-                "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] mono transition-colors " +
+                "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] mono transition-all " +
                 (active
-                  ? "bg-brand/10 text-brand ring-1 ring-brand/40"
+                  ? "bg-primary/10 text-primary ring-1 ring-primary/30"
                   : done
-                  ? "text-foreground hover:bg-panel"
-                  : "text-muted-foreground hover:bg-panel/60")
+                  ? "text-foreground hover:bg-muted"
+                  : "text-muted-foreground hover:bg-muted/60")
               }
             >
               <span
                 className={
-                  "size-4 rounded-full grid place-items-center text-[9px] font-semibold " +
+                  "size-5 rounded-full grid place-items-center text-[10px] font-semibold transition-colors " +
                   (active
-                    ? "bg-brand text-brand-foreground"
+                    ? "bg-primary text-primary-foreground shadow-brand"
                     : done
-                    ? "bg-success/20 text-success"
+                    ? "bg-success/15 text-success"
                     : "bg-muted text-muted-foreground")
                 }
               >
-                {done ? <Check className="size-2.5" /> : String(i + 1).padStart(2, "0")}
+                {done ? <Check className="size-3" /> : String(i + 1).padStart(2, "0")}
               </span>
-              <span className="uppercase tracking-wider text-[10px]">
+              <span className="uppercase tracking-wider text-[10px] font-semibold">
                 {s.label}
               </span>
             </button>
             {i < steps.length - 1 && (
-              <span className="text-muted-foreground/40 text-[10px]">/</span>
+              <span className={"text-muted-foreground/40 text-[10px] " + (done ? "text-success/50" : "")}>
+                →
+              </span>
             )}
           </div>
         );
