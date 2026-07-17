@@ -14,6 +14,11 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MSlugRouteImport } from './routes/m.$slug'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile.index'
+import { Route as AuthenticatedProfileSettingsRouteImport } from './routes/_authenticated/profile.settings'
+import { Route as AuthenticatedProfileRequestsRouteImport } from './routes/_authenticated/profile.requests'
+import { Route as AuthenticatedProfileOrdersRouteImport } from './routes/_authenticated/profile.orders'
+import { Route as AuthenticatedProfileDocumentsRouteImport } from './routes/_authenticated/profile.documents'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,32 +44,93 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProfileIndexRoute =
+  AuthenticatedProfileIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedProfileRoute,
+  } as any)
+const AuthenticatedProfileSettingsRoute =
+  AuthenticatedProfileSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedProfileRoute,
+  } as any)
+const AuthenticatedProfileRequestsRoute =
+  AuthenticatedProfileRequestsRouteImport.update({
+    id: '/requests',
+    path: '/requests',
+    getParentRoute: () => AuthenticatedProfileRoute,
+  } as any)
+const AuthenticatedProfileOrdersRoute =
+  AuthenticatedProfileOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AuthenticatedProfileRoute,
+  } as any)
+const AuthenticatedProfileDocumentsRoute =
+  AuthenticatedProfileDocumentsRouteImport.update({
+    id: '/documents',
+    path: '/documents',
+    getParentRoute: () => AuthenticatedProfileRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/profile': typeof AuthenticatedProfileRoute
+  '/profile': typeof AuthenticatedProfileRouteWithChildren
   '/m/$slug': typeof MSlugRoute
+  '/profile/documents': typeof AuthenticatedProfileDocumentsRoute
+  '/profile/orders': typeof AuthenticatedProfileOrdersRoute
+  '/profile/requests': typeof AuthenticatedProfileRequestsRoute
+  '/profile/settings': typeof AuthenticatedProfileSettingsRoute
+  '/profile/': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/profile': typeof AuthenticatedProfileRoute
   '/m/$slug': typeof MSlugRoute
+  '/profile/documents': typeof AuthenticatedProfileDocumentsRoute
+  '/profile/orders': typeof AuthenticatedProfileOrdersRoute
+  '/profile/requests': typeof AuthenticatedProfileRequestsRoute
+  '/profile/settings': typeof AuthenticatedProfileSettingsRoute
+  '/profile': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRouteWithChildren
   '/m/$slug': typeof MSlugRoute
+  '/_authenticated/profile/documents': typeof AuthenticatedProfileDocumentsRoute
+  '/_authenticated/profile/orders': typeof AuthenticatedProfileOrdersRoute
+  '/_authenticated/profile/requests': typeof AuthenticatedProfileRequestsRoute
+  '/_authenticated/profile/settings': typeof AuthenticatedProfileSettingsRoute
+  '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/profile' | '/m/$slug'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/profile'
+    | '/m/$slug'
+    | '/profile/documents'
+    | '/profile/orders'
+    | '/profile/requests'
+    | '/profile/settings'
+    | '/profile/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/profile' | '/m/$slug'
+  to:
+    | '/'
+    | '/auth'
+    | '/m/$slug'
+    | '/profile/documents'
+    | '/profile/orders'
+    | '/profile/requests'
+    | '/profile/settings'
+    | '/profile'
   id:
     | '__root__'
     | '/'
@@ -72,6 +138,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/profile'
     | '/m/$slug'
+    | '/_authenticated/profile/documents'
+    | '/_authenticated/profile/orders'
+    | '/_authenticated/profile/requests'
+    | '/_authenticated/profile/settings'
+    | '/_authenticated/profile/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,15 +189,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/profile/': {
+      id: '/_authenticated/profile/'
+      path: '/'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof AuthenticatedProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedProfileRoute
+    }
+    '/_authenticated/profile/settings': {
+      id: '/_authenticated/profile/settings'
+      path: '/settings'
+      fullPath: '/profile/settings'
+      preLoaderRoute: typeof AuthenticatedProfileSettingsRouteImport
+      parentRoute: typeof AuthenticatedProfileRoute
+    }
+    '/_authenticated/profile/requests': {
+      id: '/_authenticated/profile/requests'
+      path: '/requests'
+      fullPath: '/profile/requests'
+      preLoaderRoute: typeof AuthenticatedProfileRequestsRouteImport
+      parentRoute: typeof AuthenticatedProfileRoute
+    }
+    '/_authenticated/profile/orders': {
+      id: '/_authenticated/profile/orders'
+      path: '/orders'
+      fullPath: '/profile/orders'
+      preLoaderRoute: typeof AuthenticatedProfileOrdersRouteImport
+      parentRoute: typeof AuthenticatedProfileRoute
+    }
+    '/_authenticated/profile/documents': {
+      id: '/_authenticated/profile/documents'
+      path: '/documents'
+      fullPath: '/profile/documents'
+      preLoaderRoute: typeof AuthenticatedProfileDocumentsRouteImport
+      parentRoute: typeof AuthenticatedProfileRoute
+    }
   }
 }
 
+interface AuthenticatedProfileRouteChildren {
+  AuthenticatedProfileDocumentsRoute: typeof AuthenticatedProfileDocumentsRoute
+  AuthenticatedProfileOrdersRoute: typeof AuthenticatedProfileOrdersRoute
+  AuthenticatedProfileRequestsRoute: typeof AuthenticatedProfileRequestsRoute
+  AuthenticatedProfileSettingsRoute: typeof AuthenticatedProfileSettingsRoute
+  AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
+}
+
+const AuthenticatedProfileRouteChildren: AuthenticatedProfileRouteChildren = {
+  AuthenticatedProfileDocumentsRoute: AuthenticatedProfileDocumentsRoute,
+  AuthenticatedProfileOrdersRoute: AuthenticatedProfileOrdersRoute,
+  AuthenticatedProfileRequestsRoute: AuthenticatedProfileRequestsRoute,
+  AuthenticatedProfileSettingsRoute: AuthenticatedProfileSettingsRoute,
+  AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
+}
+
+const AuthenticatedProfileRouteWithChildren =
+  AuthenticatedProfileRoute._addFileChildren(AuthenticatedProfileRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
