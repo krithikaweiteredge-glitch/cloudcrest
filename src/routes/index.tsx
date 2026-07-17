@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import AppShell from "@/components/app-shell";
-import { ModulePage } from "@/components/module-page";
+import { LandingHero } from "@/components/landing-hero";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Cloudcrest BM — Business Registration & Compliance Wizard" },
-      { name: "description", content: "Enterprise-grade workspace for company, LLP, tax, labour, municipal, industry and IP registrations across India." },
-      { property: "og:title", content: "Cloudcrest BM — Compliance Operations" },
-      { property: "og:description", content: "MCA, GST, Labour, Municipal & IP registration desk with real validations, dynamic fees and document checklists." },
+      { title: "Cloudcrest BM — Register your Indian business, end to end" },
+      { name: "description", content: "Search your company name, upload documents, and get MCA, GST, MSME, Trademark and 20+ registrations filed by Cloudcrest BM associates." },
+      { property: "og:title", content: "Cloudcrest BM — Business Registration & Compliance" },
+      { property: "og:description", content: "One dashboard to register a Company, LLP, GST, MSME, IEC, Trademark and more. Backed by CA/CS professionals." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: () => (
     <AppShell>
-      <ModulePage slug="company" />
+      <LandingHero />
     </AppShell>
   ),
 });
+
