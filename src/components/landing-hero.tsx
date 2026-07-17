@@ -4,6 +4,7 @@ import { MODULE_GROUPS, ALL_MODULES } from "@/lib/modules";
 import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, Star,
 } from "lucide-react";
+import logo from "@/assets/cloudcrest-logo.png.asset.json";
 
 const SUFFIXES = ["Private Limited", "LLP", "Foundation", "Producer Company"];
 
