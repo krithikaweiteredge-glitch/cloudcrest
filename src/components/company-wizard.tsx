@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Stepper } from "@/components/stepper";
+import { RegisterDialog } from "@/components/register-dialog";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
-  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown,
+  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send,
 } from "lucide-react";
 
 const STEPS = [
@@ -54,6 +55,7 @@ export function CompanyWizard() {
   const [shareholders, setShareholders] = useState(2);
   const [capital, setCapital] = useState(100000);
   const [objects, setObjects] = useState("");
+  const [openReg, setOpenReg] = useState(false);
 
   const selected = ENTITY_TYPES.find((e) => e.key === entity)!;
   const fees = FEE_TABLE[entity];
@@ -349,9 +351,17 @@ export function CompanyWizard() {
               </button>
               <div className="flex items-center gap-4">
                 {step === STEPS.length - 1 ? (
-                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow">
-                    <Download className="size-4" /> Download Summary
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-surface text-sm font-medium hover:bg-muted transition-colors">
+                      <Download className="size-4" /> Summary
+                    </button>
+                    <button
+                      onClick={() => setOpenReg(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow"
+                    >
+                      <Send className="size-4" /> Submit Application
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={next}
