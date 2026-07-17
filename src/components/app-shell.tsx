@@ -1,7 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Phone, Mail, Search, Bell, ChevronRight, Sparkles } from "lucide-react";
+import { Phone, Mail, Search, Bell, ChevronRight, Sparkles, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon } from "lucide-react";
 import { MODULE_GROUPS } from "@/lib/modules";
-import type { ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import logo from "@/assets/cloudcrest-logo.png.asset.json";
 
 export default function AppShell({ children }: { children?: ReactNode }) {
