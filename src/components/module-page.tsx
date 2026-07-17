@@ -225,6 +225,7 @@ function GenericModule({ slug }: { slug: string }) {
       <RegisterDialog
         open={openReg}
         onClose={() => setOpenReg(false)}
+        serviceSlug={slug}
         serviceTitle={m.title}
         authority={m.authority}
         form={m.form}
