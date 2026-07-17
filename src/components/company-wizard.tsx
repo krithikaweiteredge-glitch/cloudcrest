@@ -348,12 +348,6 @@ export function CompanyWizard() {
                 <ArrowLeft className="size-3.5" /> Back
               </button>
               <div className="flex items-center gap-4">
-                <div className="hidden sm:flex flex-col items-end">
-                  <span className="label-eyebrow">Total Estimate</span>
-                  <span className="mono text-base font-semibold text-foreground">
-                    ₹ {total.toLocaleString("en-IN")}
-                  </span>
-                </div>
                 {step === STEPS.length - 1 ? (
                   <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow">
                     <Download className="size-4" /> Download Summary
@@ -372,26 +366,15 @@ export function CompanyWizard() {
           </div>
         </div>
 
-        {/* Right live panel */}
+        {/* Right panel — checklist only */}
         <aside className="hidden lg:block w-80 border-l border-border bg-surface">
           <div className="sticky top-16 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="label-eyebrow text-primary">Live Fee Estimate</div>
-              <span className="mono text-[9px] text-success flex items-center gap-1">
-                <span className="size-1.5 rounded-full bg-success live-dot" />
-                LIVE
-              </span>
-            </div>
-            <FeeStack fees={fees} dsc={dsc} total={total} />
-
-            <div className="mt-7">
-              <div className="label-eyebrow mb-2.5">Current Selection</div>
-              <div className="rounded-lg border border-border bg-panel p-3">
-                <div className="text-[11px] text-muted-foreground">Entity Type</div>
-                <div className="text-sm font-semibold mt-0.5">{selected.title}</div>
-                <div className="text-[10px] mono text-primary mt-2">
-                  Form · {selected.form}
-                </div>
+            <div className="label-eyebrow mb-2.5 text-primary">Current Selection</div>
+            <div className="rounded-lg border border-border bg-panel p-3">
+              <div className="text-[11px] text-muted-foreground">Entity Type</div>
+              <div className="text-sm font-semibold mt-0.5">{selected.title}</div>
+              <div className="text-[10px] mono text-primary mt-2">
+                Form · {selected.form}
               </div>
             </div>
 
@@ -423,8 +406,8 @@ export function CompanyWizard() {
             <div className="mt-7 rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
               <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
               <div className="text-[11px] text-foreground/70 leading-relaxed">
-                Government fees are indicative and vary with state stamp duty. Final
-                quote confirmed on SPICe+ Part A submission.
+                Cloudcrest BM associates review every document before filing on the
+                MCA portal.
               </div>
             </div>
           </div>

@@ -1,10 +1,48 @@
+import { useState } from "react";
 import { getModule, MODULE_GROUPS } from "@/lib/modules";
 import { CompanyWizard } from "@/components/company-wizard";
+import { RegisterDialog } from "@/components/register-dialog";
 import { Link } from "@tanstack/react-router";
 import {
   FileText, ShieldCheck, Clock, ArrowRight, CheckCircle2,
   Sparkles, Phone,
 } from "lucide-react";
+
+const DEFAULT_DOCS = [
+  "PAN card of applicant / entity",
+  "Aadhaar of applicant / authorised signatory",
+  "Passport-size photograph",
+  "Address proof (utility bill < 2 months)",
+  "Registered office proof",
+  "Rent agreement + NOC (if premises rented)",
+  "Board resolution / authorisation letter",
+  "Bank account statement (last 3 months)",
+];
+
+const DOCS_BY_SLUG: Record<string, string[]> = {
+  llp: ["PAN & Aadhaar of designated partners", "Passport-size photos", "Digital Signature (DSC)", "Address proof of office", "Rent agreement + NOC", "LLP agreement draft", "Consent letters (Form 9)"],
+  partnership: ["PAN of all partners", "Aadhaar of partners", "Partnership deed", "Address proof of firm", "Rent agreement / ownership proof"],
+  "trust-society": ["Trust deed / MoA", "PAN & Aadhaar of trustees / members", "Address proof of office", "Photographs of trustees", "Registered office NOC"],
+  huf: ["PAN of Karta", "Aadhaar of Karta and coparceners", "HUF deed on stamp paper", "Bank account proof"],
+  gst: ["PAN of business", "Aadhaar of proprietor / partners", "Business address proof", "Rent agreement + NOC", "Bank statement or cancelled cheque", "Board resolution (companies)", "Digital Signature (DSC)"],
+  "pan-tan": ["Identity proof (Aadhaar / Passport)", "Address proof", "Date of birth proof", "Passport-size photograph", "Business registration proof (for TAN)"],
+  msme: ["Aadhaar of proprietor / signatory", "PAN of business", "Bank account details", "Business address proof", "Investment & turnover details"],
+  iec: ["PAN of applicant / entity", "Aadhaar / voter ID of proprietor", "Business address proof", "Cancelled cheque of current account", "Digital photograph"],
+  dpiit: ["Certificate of incorporation", "PAN of entity", "Brief write-up on innovation", "Website / pitch deck", "Details of directors / founders"],
+  "labour-licence": ["Certificate of incorporation", "PAN of establishment", "Address proof", "List of workers / contract labour", "Consent of principal employer"],
+  epf: ["PAN of establishment", "Certificate of incorporation", "Address proof of premises", "List of employees with salary", "Bank account details", "Digital Signature (DSC)"],
+  esi: ["PAN of establishment", "Registration certificate under Shops & Estd. / Factories Act", "Address proof", "List of employees & wages", "Bank details", "Cancelled cheque"],
+  "shop-establishment": ["PAN & Aadhaar of proprietor", "Address proof of shop", "Rent agreement / ownership proof", "Photograph of shop front", "List of employees"],
+  "trade-licence": ["PAN & Aadhaar of applicant", "Property tax receipt / ownership proof", "NOC from landlord", "Layout plan of premises", "Photographs of the premises"],
+  "fire-noc": ["Building plan approved by authority", "Ownership / lease deed", "Occupancy certificate", "Details of fire safety measures", "Photographs of installations"],
+  fssai: ["PAN & Aadhaar of applicant", "Business address proof", "List of food products", "Layout of processing unit", "Water test report", "Food safety management plan"],
+  "pollution-ncb": ["Incorporation certificate", "Site plan & manufacturing process", "Consent application form", "Land documents", "List of hazardous materials"],
+  "drug-licence": ["Site plan & key plan of premises", "Qualification certificates of pharmacist", "Affidavit of non-conviction", "Ownership / rent proof", "Cold storage details (if applicable)"],
+  trademark: ["Logo / wordmark in JPG/PNG", "Trademark class & description", "Applicant identity proof", "Business registration proof", "User affidavit (if prior use)", "Power of Attorney (TM-48)"],
+  patent: ["Detailed invention description", "Drawings / diagrams", "Applicant details", "Priority document (if any)", "Form-1, 2, 3, 5 drafts", "Assignment deed (if applicable)"],
+  copyright: ["Copy of the work being registered", "Applicant identity proof", "NOC from author (if different)", "Power of Attorney", "Publisher details (if published)"],
+  design: ["Representation of the design (4 views)", "Novelty statement", "Applicant identity proof", "Power of Attorney", "Class of article (Locarno)"],
+};
 
 export function ModulePage({ slug }: { slug: string }) {
   const m = getModule(slug);
@@ -24,6 +62,8 @@ function GenericModule({ slug }: { slug: string }) {
   const Icon = m.icon;
   const group = MODULE_GROUPS.find((g) => g.items.some((i) => i.slug === slug))!;
   const siblings = group.items.filter((i) => i.slug !== slug).slice(0, 3);
+  const docs = DOCS_BY_SLUG[slug] ?? DEFAULT_DOCS;
+  const [openReg, setOpenReg] = useState(false);
 
   return (
     <div>
@@ -45,14 +85,26 @@ function GenericModule({ slug }: { slug: string }) {
             <div className="size-14 rounded-xl bg-white/10 border border-white/20 backdrop-blur grid place-items-center shrink-0">
               <Icon className="size-7 text-primary" />
             </div>
-            <div>
+            <div className="flex-1">
               <h1 className="text-4xl font-semibold font-display tracking-tight leading-[1.05]">
                 {m.title}
               </h1>
               <p className="text-white/70 mt-2 text-[15px] max-w-2xl">
-                Guided workflow for {m.title.toLowerCase()} — validation, document
-                checklist, dynamic fee estimate and downloadable summary.
+                End-to-end {m.title.toLowerCase()} handled by Cloudcrest BM associates —
+                document verification, filing and post-approval support.
               </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  onClick={() => setOpenReg(true)}
+                  className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-brand hover:shadow-elev hover:brightness-110 transition-all"
+                >
+                  Register Now <ArrowRight className="size-4" />
+                </button>
+                <a href="tel:+918977079433"
+                  className="flex items-center gap-2 px-5 py-3 rounded-lg bg-white/10 border border-white/20 backdrop-blur text-sm font-medium hover:bg-white/15 transition-colors">
+                  <Phone className="size-4" /> Talk to advisor
+                </a>
+              </div>
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
@@ -109,7 +161,10 @@ function GenericModule({ slug }: { slug: string }) {
                 Backed by Cloudcrest BM compliance associates. Advisor call
                 included in professional fee.
               </p>
-              <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all self-start sm:self-auto">
+              <button
+                onClick={() => setOpenReg(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all self-start sm:self-auto"
+              >
                 Start {m.short} Application <ArrowRight className="size-4" />
               </button>
             </div>
@@ -117,38 +172,21 @@ function GenericModule({ slug }: { slug: string }) {
 
           <div className="space-y-6">
             <div className="rounded-xl border border-border bg-surface shadow-card p-6">
-              <div className="label-eyebrow mb-3 text-primary">What's included</div>
-              <ul className="space-y-2.5">
-                {[
-                  "End-to-end compliance filing",
-                  "Real-time status tracking",
-                  "Digital & physical certificates",
-                  "Post-filing advisory (30 days)",
-                ].map((t) => (
-                  <li key={t} className="flex items-start gap-2 text-sm">
+              <div className="label-eyebrow mb-3 text-primary">Documents required</div>
+              <ul className="space-y-2">
+                {docs.map((d) => (
+                  <li key={d} className="flex items-start gap-2 text-[13px]">
                     <CheckCircle2 className="size-4 text-success shrink-0 mt-0.5" />
-                    <span>{t}</span>
+                    <span className="text-foreground/85">{d}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="rounded-xl gradient-hero text-white p-6 relative overflow-hidden">
-              <div className="absolute -right-8 -bottom-8 size-32 rounded-full bg-primary/30 blur-3xl" />
-              <div className="relative">
-                <div className="label-eyebrow text-white/70 mb-2">Talk to advisor</div>
-                <div className="mono text-lg font-semibold flex items-center gap-2">
-                  <Phone className="size-4 text-primary" />
-                  +91 89770 79433
-                </div>
-                <p className="text-white/60 text-[12px] mt-2 leading-relaxed">
-                  Speak to a Cloudcrest BM associate for personalised guidance on{" "}
-                  {m.short}.
-                </p>
-                <button className="mt-4 w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold transition-colors">
-                  Book 15-min call
-                </button>
-              </div>
+              <button
+                onClick={() => setOpenReg(true)}
+                className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all"
+              >
+                Upload documents & register
+              </button>
             </div>
           </div>
         </div>
@@ -183,6 +221,15 @@ function GenericModule({ slug }: { slug: string }) {
           </div>
         </div>
       </div>
+
+      <RegisterDialog
+        open={openReg}
+        onClose={() => setOpenReg(false)}
+        serviceTitle={m.title}
+        authority={m.authority}
+        form={m.form}
+        documents={docs}
+      />
     </div>
   );
 }
