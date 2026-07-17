@@ -1,11 +1,15 @@
-import { useRef, useState } from "react";
-import { X, UploadCloud, FileText, CheckCircle2, Trash2, ShieldCheck, Send } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { X, UploadCloud, FileText, CheckCircle2, Trash2, ShieldCheck, Send, Loader2, LogIn } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
-type UploadedFile = { name: string; size: number };
+type UploadedFile = { file: File; name: string; size: number };
 
 export function RegisterDialog({
   open,
   onClose,
+  serviceSlug,
   serviceTitle,
   authority,
   form,
@@ -13,54 +17,141 @@ export function RegisterDialog({
 }: {
   open: boolean;
   onClose: () => void;
+  serviceSlug: string;
   serviceTitle: string;
   authority: string;
   form?: string;
   documents: string[];
 }) {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [business, setBusiness] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refNo, setRefNo] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Prefill from profile
+  useEffect(() => {
+    if (!open || !user) return;
+    setEmail(user.email ?? "");
+    setPhone(user.phone ?? "");
+    supabase.from("profiles").select("full_name, mobile, company_name").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data) {
+        setName((n) => n || data.full_name || "");
+        setBusiness((b) => b || data.company_name || "");
+        setPhone((p) => p || data.mobile || "");
+      }
+    });
+  }, [open, user]);
 
   if (!open) return null;
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    const arr: UploadedFile[] = Array.from(list).map((f) => ({ name: f.name, size: f.size }));
-    setFiles((prev) => [...prev, ...arr]);
+    setFiles((prev) => [...prev, ...Array.from(list).map((f) => ({ file: f, name: f.name, size: f.size }))]);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+
+    if (!user) {
+      navigate({ to: "/auth", search: { next: `/m/${serviceSlug}` } });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { data: req, error: reqErr } = await supabase
+        .from("service_requests")
+        .insert({
+          user_id: user.id,
+          service_slug: serviceSlug,
+          service_title: serviceTitle,
+          authority,
+          form,
+          business_name: business || null,
+          contact_name: name,
+          contact_email: email,
+          contact_phone: phone,
+          notes: notes || null,
+        })
+        .select("id, reference_no")
+        .single();
+      if (reqErr) throw reqErr;
+
+      // Upload files under user_id/request_id/
+      for (const f of files) {
+        const path = `${user.id}/${req.id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error: upErr } = await supabase.storage.from("documents").upload(path, f.file);
+        if (upErr) throw upErr;
+        await supabase.from("request_documents").insert({
+          request_id: req.id,
+          user_id: user.id,
+          name: f.name,
+          size_bytes: f.size,
+          storage_path: path,
+          mime_type: f.file.type,
+        });
+      }
+
+      setRefNo(req.reference_no);
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const reset = () => {
     setSubmitted(false);
-    setName(""); setEmail(""); setPhone(""); setNotes(""); setFiles([]);
+    setName(""); setBusiness(""); setEmail(""); setPhone(""); setNotes(""); setFiles([]); setError(null);
     onClose();
+  };
+
+  const goSignIn = () => {
+    onClose();
+    navigate({ to: "/auth", search: { next: `/m/${serviceSlug}` } });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in-up">
       <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={reset} />
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl border border-border bg-surface shadow-elev flex flex-col">
-        {/* Header */}
         <div className="gradient-hero text-white px-6 py-5 flex items-start justify-between">
           <div>
-            <div className="label-eyebrow text-white/70 mb-1">Register · {authority}{form ? ` · ${form}` : ""}</div>
+            <div className="label-eyebrow text-white/70 mb-1">
+              Register · {authority}{form ? ` · ${form}` : ""}
+            </div>
             <h3 className="text-xl font-display font-semibold leading-tight">{serviceTitle}</h3>
           </div>
-          <button onClick={reset} className="text-white/70 hover:text-white transition-colors">
-            <X className="size-5" />
-          </button>
+          <button onClick={reset} className="text-white/70 hover:text-white"><X className="size-5" /></button>
         </div>
 
-        {submitted ? (
+        {!authLoading && !user ? (
+          <div className="p-10 text-center flex flex-col items-center gap-4">
+            <div className="size-16 rounded-full bg-primary/12 text-primary grid place-items-center">
+              <LogIn className="size-7" />
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold">Sign in to continue</h4>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Create a free Cloudcrest BM account to submit your {serviceTitle} application and track it in your dashboard.
+              </p>
+            </div>
+            <button onClick={goSignIn} className="mt-2 px-6 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand flex items-center gap-2">
+              <LogIn className="size-4" /> Sign in / Sign up
+            </button>
+          </div>
+        ) : submitted ? (
           <div className="p-10 text-center flex flex-col items-center gap-4">
             <div className="size-16 rounded-full bg-success/15 text-success grid place-items-center">
               <CheckCircle2 className="size-8" />
@@ -68,47 +159,37 @@ export function RegisterDialog({
             <div>
               <h4 className="text-lg font-semibold">Application received</h4>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                A Cloudcrest BM associate will call {phone || "you"} within 2 business hours to verify documents and begin your {serviceTitle}.
+                Reference <span className="mono text-foreground font-semibold">{refNo}</span>. A Cloudcrest BM associate will call {phone} within 2 business hours.
               </p>
             </div>
-            <button
-              onClick={reset}
-              className="mt-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand"
-            >
-              Done
-            </button>
+            <div className="flex gap-2">
+              <button onClick={reset} className="px-4 py-2.5 rounded-lg border border-border text-sm">Close</button>
+              <button onClick={() => { onClose(); navigate({ to: "/profile/requests" }); }} className="px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand">
+                View my registrations
+              </button>
+            </div>
           </div>
         ) : (
           <form onSubmit={submit} className="flex-1 overflow-y-auto p-6 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FieldLabel label="Full name">
-                <input required value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="Rahul Sharma"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+                <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rahul Sharma" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
               </FieldLabel>
               <FieldLabel label="Business name">
-                <input placeholder="Acme Pvt Ltd"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+                <input value={business} onChange={(e) => setBusiness(e.target.value)} placeholder="Acme Pvt Ltd" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
               </FieldLabel>
               <FieldLabel label="Email">
-                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.in"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+                <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.in" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
               </FieldLabel>
               <FieldLabel label="Mobile">
-                <input required value={phone} onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98xxx xxxxx"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+                <input required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98xxx xxxxx" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
               </FieldLabel>
             </div>
 
             <FieldLabel label="Anything we should know?">
-              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="State of operation, urgency, prior filings, etc."
-                className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+              <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="State of operation, urgency, prior filings, etc." className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
             </FieldLabel>
 
-            {/* Documents checklist */}
             <div className="rounded-xl border border-border bg-panel p-4">
               <div className="label-eyebrow text-primary mb-2">Documents required</div>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5">
@@ -121,7 +202,6 @@ export function RegisterDialog({
               </ul>
             </div>
 
-            {/* Uploader */}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
@@ -141,8 +221,7 @@ export function RegisterDialog({
                     <FileText className="size-3.5 text-primary" />
                     <span className="flex-1 truncate">{f.name}</span>
                     <span className="mono text-[10px] text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
-                    <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))}
-                      className="text-muted-foreground hover:text-destructive transition-colors">
+                    <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
                       <Trash2 className="size-3.5" />
                     </button>
                   </li>
@@ -152,17 +231,20 @@ export function RegisterDialog({
 
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border pt-4">
               <ShieldCheck className="size-3.5 text-success" />
-              Your documents are encrypted end-to-end and shared only with your Cloudcrest BM advisor.
+              Your documents are encrypted and shared only with your Cloudcrest BM advisor.
             </div>
 
+            {error && (
+              <div className="text-[12px] text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+                {error}
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={reset}
-                className="px-4 py-2.5 rounded-lg text-sm border border-border hover:bg-muted transition-colors">
-                Cancel
-              </button>
-              <button type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all">
-                <Send className="size-4" /> Submit application
+              <button type="button" onClick={reset} className="px-4 py-2.5 rounded-lg text-sm border border-border hover:bg-muted">Cancel</button>
+              <button type="submit" disabled={submitting} className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand disabled:opacity-60">
+                {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                Submit application
               </button>
             </div>
           </form>

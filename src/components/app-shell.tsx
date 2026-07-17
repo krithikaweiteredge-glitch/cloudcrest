@@ -1,7 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Phone, Mail, Search, Bell, ChevronRight, Sparkles } from "lucide-react";
+import { Phone, Mail, Search, Bell, ChevronRight, Sparkles, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon } from "lucide-react";
 import { MODULE_GROUPS } from "@/lib/modules";
-import type { ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import logo from "@/assets/cloudcrest-logo.png.asset.json";
 
 export default function AppShell({ children }: { children?: ReactNode }) {
@@ -155,15 +156,95 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 <Bell className="size-3.5 text-muted-foreground" />
                 <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary live-dot" />
               </button>
-              <div className="size-8 rounded-full bg-white border border-border grid place-items-center overflow-hidden shadow-card">
-                <img src={logo.url} alt="Cloudcrest" className="h-5 w-auto object-contain" />
-              </div>
+              <AccountMenu />
             </div>
           </header>
 
           <div className="flex-1 min-w-0">{children ?? <Outlet />}</div>
         </main>
       </div>
+    </div>
+  );
+}
+
+function AccountMenu() {
+  const { user, signOut, loading } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  if (loading) {
+    return <div className="size-8 rounded-full bg-muted animate-pulse" />;
+  }
+
+  if (!user) {
+    return (
+      <Link
+        to="/auth"
+        className="flex items-center gap-1.5 h-8 px-3.5 rounded-md gradient-brand text-white text-xs font-semibold shadow-brand"
+      >
+        <LogIn className="size-3.5" /> Sign in
+      </Link>
+    );
+  }
+
+  const initial = (user.email ?? user.phone ?? "U").charAt(0).toUpperCase();
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="size-8 rounded-full gradient-brand text-white grid place-items-center text-sm font-semibold shadow-brand hover:shadow-elev transition-all"
+      >
+        {initial}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-11 w-64 rounded-xl border border-border bg-surface shadow-elev overflow-hidden z-20 animate-in-up">
+          <div className="p-3 border-b border-border">
+            <div className="text-[11px] mono uppercase text-muted-foreground">Signed in as</div>
+            <div className="text-sm font-medium truncate">{user.email ?? user.phone}</div>
+          </div>
+          <div className="p-1.5">
+            {[
+              { to: "/profile", icon: User, label: "Overview" },
+              { to: "/profile/requests", icon: FileText, label: "My Registrations" },
+              { to: "/profile/orders", icon: Receipt, label: "Orders & Invoices" },
+              { to: "/profile/settings", icon: SettingsIcon, label: "Account Settings" },
+            ].map((m) => {
+              const Icon = m.icon;
+              return (
+                <Link
+                  key={m.to}
+                  to={m.to as "/profile"}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] hover:bg-muted"
+                >
+                  <Icon className="size-3.5 text-muted-foreground" />
+                  {m.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className="border-t border-border p-1.5">
+            <button
+              onClick={async () => {
+                await signOut();
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="size-3.5" /> Sign out
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
