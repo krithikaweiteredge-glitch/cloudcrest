@@ -8,13 +8,13 @@ export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfileLayout,
 });
 
-const NAV = [
+const NAV: { to: string; label: string; icon: typeof User; exact?: boolean }[] = [
   { to: "/profile", label: "Overview", icon: User, exact: true },
   { to: "/profile/requests", label: "My Registrations", icon: FileText },
   { to: "/profile/orders", label: "Orders & Invoices", icon: Receipt },
   { to: "/profile/documents", label: "Documents Vault", icon: FolderLock },
   { to: "/profile/settings", label: "Account Settings", icon: Settings },
-] as const;
+];
 
 function ProfileLayout() {
   const { user, signOut } = useAuth();
