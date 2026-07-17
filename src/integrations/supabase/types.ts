@@ -14,7 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          amount_inr: number
+          created_at: string
+          description: string
+          id: string
+          invoice_no: string
+          request_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_inr?: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_no?: string
+          request_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_inr?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_no?: string
+          request_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "service_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company_name: string | null
+          created_at: string
+          full_name: string | null
+          gstin: string | null
+          id: string
+          mobile: string | null
+          pan: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          gstin?: string | null
+          id: string
+          mobile?: string | null
+          pan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          gstin?: string | null
+          id?: string
+          mobile?: string | null
+          pan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      request_documents: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string | null
+          name: string
+          request_id: string | null
+          size_bytes: number | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          request_id?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          request_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_documents_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "service_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_requests: {
+        Row: {
+          authority: string | null
+          business_name: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          form: string | null
+          id: string
+          notes: string | null
+          reference_no: string
+          service_slug: string
+          service_title: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          authority?: string | null
+          business_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          form?: string | null
+          id?: string
+          notes?: string | null
+          reference_no?: string
+          service_slug: string
+          service_title: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          authority?: string | null
+          business_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          form?: string | null
+          id?: string
+          notes?: string | null
+          reference_no?: string
+          service_slug?: string
+          service_title?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
