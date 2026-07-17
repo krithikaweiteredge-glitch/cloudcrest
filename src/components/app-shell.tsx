@@ -39,20 +39,20 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         <aside className="w-72 flex-shrink-0 bg-surface border-r border-border flex flex-col sticky top-0 h-screen self-start">
           <Link
             to="/"
-            className="h-16 flex items-center gap-3 px-5 border-b border-border group"
+            className="h-16 flex items-center gap-2 px-4 border-b border-border group"
           >
-            <div className="relative">
-              <div className="size-10 rounded-lg gradient-brand grid place-items-center text-white font-bold tracking-tight shadow-brand transition-transform group-hover:scale-105">
-                CB
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-success border-2 border-surface" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-[15px] font-semibold font-display">
-                Cloudcrest <span className="text-primary">BM</span>
-              </div>
-              <div className="text-[10px] mono text-muted-foreground tracking-widest uppercase">
+            <img
+              src={logo.url}
+              alt="Cloudcrest BM"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+            />
+            <div className="leading-tight ml-1">
+              <div className="text-[11px] mono text-muted-foreground tracking-widest uppercase">
                 Registration Desk
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="size-1.5 rounded-full bg-success live-dot" />
+                <span className="text-[10px] mono text-success">Live · advisors online</span>
               </div>
             </div>
           </Link>
