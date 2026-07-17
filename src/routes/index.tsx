@@ -1,24 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import AppShell from "@/components/app-shell";
+import { ModulePage } from "@/components/module-page";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Cloudcrest BM — Business Registration & Compliance Wizard" },
+      { name: "description", content: "Enterprise-grade workspace for company, LLP, tax, labour, municipal, industry and IP registrations across India." },
+      { property: "og:title", content: "Cloudcrest BM — Compliance Operations" },
+      { property: "og:description", content: "MCA, GST, Labour, Municipal & IP registration desk with real validations, dynamic fees and document checklists." },
+    ],
+  }),
+  component: () => (
+    <AppShell>
+      <ModulePage slug="company" />
+    </AppShell>
+  ),
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
