@@ -423,6 +423,24 @@ export function CompanyWizard() {
           </div>
         </aside>
       </div>
+
+      <RegisterDialog
+        open={openReg}
+        onClose={() => setOpenReg(false)}
+        serviceSlug="company"
+        serviceTitle={`Company Registration — ${selected.title}`}
+        authority="MCA"
+        form={selected.form}
+        documents={[
+          "PAN & Aadhaar of all directors",
+          "Passport-size photographs",
+          "Address proof (utility bill < 2 mo)",
+          "Registered office proof",
+          "Rent agreement + NOC (if rented)",
+          "Digital Signature Certificate (DSC)",
+          "MoA & AoA drafts",
+        ]}
+      />
     </div>
   );
 }
