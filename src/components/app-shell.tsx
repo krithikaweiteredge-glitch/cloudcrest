@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { Phone, Mail, Search, Bell, ChevronRight, Sparkles } from "lucide-react";
 import { MODULE_GROUPS } from "@/lib/modules";
 import type { ReactNode } from "react";
+import logo from "@/assets/cloudcrest-logo.png.asset.json";
 
 export default function AppShell({ children }: { children?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
