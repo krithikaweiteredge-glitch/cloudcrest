@@ -348,12 +348,6 @@ export function CompanyWizard() {
                 <ArrowLeft className="size-3.5" /> Back
               </button>
               <div className="flex items-center gap-4">
-                <div className="hidden sm:flex flex-col items-end">
-                  <span className="label-eyebrow">Total Estimate</span>
-                  <span className="mono text-base font-semibold text-foreground">
-                    ₹ {total.toLocaleString("en-IN")}
-                  </span>
-                </div>
                 {step === STEPS.length - 1 ? (
                   <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow">
                     <Download className="size-4" /> Download Summary
