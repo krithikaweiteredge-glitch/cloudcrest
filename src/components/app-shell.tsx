@@ -155,8 +155,8 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 <Bell className="size-3.5 text-muted-foreground" />
                 <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary live-dot" />
               </button>
-              <div className="size-8 rounded-full gradient-brand grid place-items-center text-[10px] mono font-bold text-white shadow-brand">
-                CB
+              <div className="size-8 rounded-full bg-white border border-border grid place-items-center overflow-hidden shadow-card">
+                <img src={logo.url} alt="Cloudcrest" className="h-5 w-auto object-contain" />
               </div>
             </div>
           </header>
