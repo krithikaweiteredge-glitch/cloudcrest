@@ -1,5 +1,7 @@
 // Custom Supabase Client pointing to real Node.js/PostgreSQL backend for OTP authentication
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
+
 const getMockUser = () => {
   if (typeof window === 'undefined') return null;
   const email = localStorage.getItem("mock_user_email");
@@ -78,7 +80,7 @@ const mockAuth = {
   },
   signInWithOtp: async (params: any) => {
     try {
-      const response = await fetch("/api/auth/send-otp", {
+      const response = await fetch(`${BACKEND_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: params.email }),
@@ -94,7 +96,7 @@ const mockAuth = {
   },
   verifyOtp: async (params: any) => {
     try {
-      const response = await fetch("/api/auth/verify-otp", {
+      const response = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: params.email, code: params.token }),
@@ -122,7 +124,7 @@ const mockAuth = {
       localStorage.removeItem("mock_temp_email");
       
       try {
-        await fetch("/api/auth/logout", { method: "POST" });
+        await fetch(`${BACKEND_URL}/api/auth/logout`, { method: "POST" });
       } catch (err) {}
       
       window.location.reload();
