@@ -1,4 +1,4 @@
-// Mock Supabase Client supporting customizable email sign-in for local development
+// Custom Supabase Client pointing to real Node.js/PostgreSQL backend for OTP authentication
 
 const getMockUser = () => {
   if (typeof window === 'undefined') return null;
@@ -67,28 +67,58 @@ const mockAuth = {
     const user = isLoggedOut ? null : getMockUser();
     return Promise.resolve({ data: { user }, error: isLoggedOut || !user ? new Error("Not logged in") : null });
   },
-  signInWithOtp: (params: any) => {
-    if (typeof window !== 'undefined' && params.email) {
-      localStorage.setItem("mock_temp_email", params.email);
+  signInWithOtp: async (params: any) => {
+    try {
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: params.email }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send verification code");
+      }
+      return { data: { user: null }, error: null };
+    } catch (err: any) {
+      return { data: null, error: err };
     }
-    return Promise.resolve({ data: { user: null }, error: null });
   },
-  verifyOtp: (params: any) => {
-    if (typeof window !== 'undefined') {
-      const email = params.email || localStorage.getItem("mock_temp_email") || "developer@cloudcrest.com";
-      localStorage.setItem("mock_user_email", email);
-      localStorage.setItem("mock_logged_out", "false");
+  verifyOtp: async (params: any) => {
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: params.email, code: params.token }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to verify code");
+      }
+      
+      // Save session in local storage for navigation & profile rendering
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("mock_user_email", data.user.email);
+        localStorage.setItem("mock_logged_out", "false");
+      }
+      
+      return { data: { user: data.user, session: {} }, error: null };
+    } catch (err: any) {
+      return { data: null, error: err };
     }
-    return Promise.resolve({ data: { user: getMockUser(), session: getMockSession() }, error: null });
   },
-  signOut: () => {
+  signOut: async () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem("mock_logged_out", "true");
       localStorage.removeItem("mock_user_email");
       localStorage.removeItem("mock_temp_email");
+      
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch (err) {}
+      
       window.location.reload();
     }
-    return Promise.resolve({ error: null });
+    return { error: null };
   },
   setSession: (tokens: any) => {
     return Promise.resolve({ data: { session: getMockSession() }, error: null });
