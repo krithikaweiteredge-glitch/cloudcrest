@@ -26,17 +26,26 @@ const getMockSession = () => {
   };
 };
 
-// Chained query mock resolving to empty sets to avoid runtime errors on local db calls
+const mockSingleRecord = {
+  id: 999,
+  reference_no: "CC-REG-100001",
+  full_name: "Local Developer",
+  mobile: "9999999999",
+  company_name: "Cloudcrest BM Testing",
+};
+
+// Chained query mock resolving to mock records to avoid runtime errors on local calls
 const mockQuery: any = {
   select: () => mockQuery,
   eq: () => mockQuery,
   order: () => mockQuery,
   limit: () => mockQuery,
-  maybeSingle: () => Promise.resolve({ data: null, error: null }),
-  insert: () => Promise.resolve({ data: null, error: null }),
-  upsert: () => Promise.resolve({ data: null, error: null }),
-  then: (onfulfilled: any) => Promise.resolve({ data: [], error: null, count: 0 }).then(onfulfilled),
-  catch: (onrejected: any) => Promise.resolve({ data: [], error: null, count: 0 }).catch(onrejected),
+  insert: () => mockQuery,
+  upsert: () => mockQuery,
+  single: () => Promise.resolve({ data: mockSingleRecord, error: null }),
+  maybeSingle: () => Promise.resolve({ data: mockSingleRecord, error: null }),
+  then: (onfulfilled: any) => Promise.resolve({ data: [mockSingleRecord], error: null, count: 1 }).then(onfulfilled),
+  catch: (onrejected: any) => Promise.resolve({ data: [mockSingleRecord], error: null, count: 1 }).catch(onrejected),
 };
 
 const mockAuth = {
@@ -125,7 +134,15 @@ const mockAuth = {
   }
 };
 
+const mockStorage = {
+  from: () => ({
+    upload: () => Promise.resolve({ data: { path: "mock-path" }, error: null }),
+    createSignedUrl: () => Promise.resolve({ data: { signedUrl: "https://example.com/mock-file.pdf" }, error: null }),
+  }),
+};
+
 export const supabase: any = {
   auth: mockAuth,
   from: () => mockQuery,
+  storage: mockStorage,
 };
