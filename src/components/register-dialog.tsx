@@ -42,13 +42,17 @@ export function RegisterDialog({
     if (!open || !user) return;
     setEmail(user.email ?? "");
     setPhone(user.phone ?? "");
-    supabase.from("profiles").select("full_name, mobile, company_name").eq("id", user.id).maybeSingle().then(({ data }) => {
-      if (data) {
-        setName((n) => n || data.full_name || "");
-        setBusiness((b) => b || data.company_name || "");
-        setPhone((p) => p || data.mobile || "");
-      }
-    });
+    fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/profiles/me`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          const businessRecord = data.businesses?.[0] || {};
+          setName((n) => n || `${data.user?.firstName || ""} ${data.user?.lastName || ""}`.trim());
+          setBusiness((b) => b || businessRecord.businessName || "");
+          setPhone((p) => p || data.user?.phone || "");
+        }
+      })
+      .catch((err) => console.error("Error prefilling form profile:", err));
   }, [open, user]);
 
   if (!open) return null;
@@ -69,40 +73,46 @@ export function RegisterDialog({
 
     setSubmitting(true);
     try {
-      const { data: req, error: reqErr } = await supabase
-        .from("service_requests")
-        .insert({
-          user_id: user.id,
-          service_slug: serviceSlug,
-          service_title: serviceTitle,
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceSlug,
+          serviceTitle,
           authority,
           form,
-          business_name: business || null,
-          contact_name: name,
-          contact_email: email,
-          contact_phone: phone,
+          businessName: business || null,
+          contactName: name,
+          contactEmail: email,
+          contactPhone: phone,
           notes: notes || null,
-        })
-        .select("id, reference_no")
-        .single();
-      if (reqErr) throw reqErr;
+        }),
+      });
 
-      // Upload files under user_id/request_id/
-      for (const f of files) {
-        const path = `${user.id}/${req.id}/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error: upErr } = await supabase.storage.from("documents").upload(path, f.file);
-        if (upErr) throw upErr;
-        await supabase.from("request_documents").insert({
-          request_id: req.id,
-          user_id: user.id,
-          name: f.name,
-          size_bytes: f.size,
-          storage_path: path,
-          mime_type: f.file.type,
-        });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to submit application");
       }
 
-      setRefNo(req.reference_no);
+      const req = await response.json();
+
+      // Upload files
+      for (const f of files) {
+        const formData = new FormData();
+        formData.append("file", f.file);
+
+        const docRes = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/${req.id}/documents`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!docRes.ok) {
+          const docErr = await docRes.json();
+          throw new Error(docErr.error || `Failed to upload document ${f.name}`);
+        }
+      }
+
+      setRefNo(req.referenceNo);
       setSubmitted(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");

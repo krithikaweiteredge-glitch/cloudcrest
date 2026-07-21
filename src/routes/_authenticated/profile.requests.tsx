@@ -12,12 +12,19 @@ function RequestsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-requests"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests`);
+      if (!res.ok) throw new Error("Failed to load requests");
+      const list = await res.json();
+      return list.map((r: any) => ({
+        id: r.id,
+        service_title: r.serviceTitle,
+        reference_no: r.referenceNo,
+        business_name: r.businessName,
+        authority: r.authority,
+        form: r.form,
+        created_at: r.createdAt,
+        status: r.status,
+      }));
     },
   });
 
@@ -50,7 +57,7 @@ function RequestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {data.map((r) => (
+              {data.map((r: any) => (
                 <tr key={r.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

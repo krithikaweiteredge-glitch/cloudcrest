@@ -12,12 +12,48 @@ export function LandingHero() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [pick, setPick] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const suggestions = q.trim()
     ? SUFFIXES.map((s) => `${q.trim()} ${s}`)
     : [];
 
-  const goCompany = () => navigate({ to: "/m/$slug", params: { slug: "company" } });
+  const checkAndGo = async (finalName: string) => {
+    if (checking || !finalName.trim()) return;
+    setChecking(true);
+    setErrorMsg(null);
+
+    try {
+      const response = await fetch("/api/mca/name-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: finalName }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to check name availability");
+      }
+
+      if (data.available) {
+        // Direct redirect to company wizard with prefilled name!
+        navigate({
+          to: "/m/$slug",
+          params: { slug: "company" },
+          search: { name: finalName },
+        });
+      } else {
+        setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
+      }
+    } catch (err: any) {
+      console.error("Name check error:", err);
+      setErrorMsg(err.message || "An error occurred while validating name.");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const filteredModules = q.trim()
     ? ALL_MODULES.filter((m) => m.title.toLowerCase().includes(q.toLowerCase())).slice(0, 4)
@@ -60,7 +96,7 @@ export function LandingHero() {
           {/* Search */}
           <div className="mt-9 mx-auto max-w-2xl">
             <form
-              onSubmit={(e) => { e.preventDefault(); goCompany(); }}
+              onSubmit={(e) => { e.preventDefault(); checkAndGo(`${q.trim()} ${SUFFIXES[pick]}`); }}
               className="flex items-stretch rounded-xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-primary/40 transition-shadow"
             >
               <div className="pl-4 pr-2 grid place-items-center">
@@ -68,12 +104,14 @@ export function LandingHero() {
               </div>
               <input
                 autoFocus
+                disabled={checking}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Enter your business name — e.g. Acme Tech"
                 className="flex-1 py-4 text-foreground text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
               />
               <select
+                disabled={checking}
                 value={pick}
                 onChange={(e) => setPick(Number(e.target.value))}
                 className="hidden md:block border-l border-border bg-white text-foreground text-sm px-3 focus:outline-none"
@@ -82,11 +120,19 @@ export function LandingHero() {
               </select>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-6 gradient-brand text-white font-semibold text-sm hover:brightness-110 transition-all"
+                disabled={checking}
+                className="flex items-center gap-2 px-6 gradient-brand text-white font-semibold text-sm hover:brightness-110 transition-all disabled:opacity-50"
               >
-                Check &amp; Start <ArrowRight className="size-4" />
+                {checking ? "Checking..." : "Check & Start"} <ArrowRight className="size-4" />
               </button>
             </form>
+
+            {errorMsg && (
+              <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-left flex items-start gap-2.5">
+                <span className="font-semibold shrink-0">Status:</span>
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             {(suggestions.length > 0 || filteredModules.length > 0) && (
               <div className="mt-3 rounded-xl bg-white text-foreground shadow-elev border border-border text-left overflow-hidden">
@@ -97,15 +143,16 @@ export function LandingHero() {
                       {suggestions.map((s, i) => (
                         <li key={s}>
                           <button
-                            onClick={goCompany}
-                            className="w-full text-left flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors"
+                            onClick={() => checkAndGo(s)}
+                            disabled={checking}
+                            className="w-full text-left flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors disabled:opacity-50"
                           >
                             <span className="text-sm">
                               <span className="font-semibold">{q.trim()}</span>{" "}
                               <span className="text-muted-foreground">{s.replace(q.trim(), "").trim()}</span>
                             </span>
                             <span className="text-[11px] mono text-success flex items-center gap-1">
-                              <span className="size-1.5 rounded-full bg-success" /> Likely available
+                              <span className="size-1.5 rounded-full bg-success" /> Click to check
                             </span>
                           </button>
                           {i < suggestions.length - 1 && <div className="border-b border-border" />}

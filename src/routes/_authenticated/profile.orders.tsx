@@ -12,12 +12,17 @@ function OrdersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/orders/my-orders`);
+      if (!res.ok) throw new Error("Failed to load orders");
+      const list = await res.json();
+      return list.map((o: any) => ({
+        id: o.id,
+        invoice_no: o.orderNo,
+        description: o.serviceName ? `${o.serviceName} Registration` : "Filing service",
+        amount_inr: o.total || 0,
+        status: o.status,
+        created_at: o.createdAt,
+      }));
     },
   });
 
@@ -45,7 +50,7 @@ function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {data.map((o) => (
+              {data.map((o: any) => (
                 <tr key={o.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 mono text-[12px]">{o.invoice_no}</td>
                   <td className="px-4 py-3 text-[13px]">{o.description}</td>

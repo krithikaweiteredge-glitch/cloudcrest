@@ -11,15 +11,38 @@ function Overview() {
   const { data } = useQuery({
     queryKey: ["profile-overview"],
     queryFn: async () => {
-      const [reqs, orders, docs] = await Promise.all([
-        supabase.from("service_requests").select("id, service_title, status, created_at, reference_no").order("created_at", { ascending: false }).limit(4),
-        supabase.from("orders").select("id, invoice_no, amount_inr, status, created_at").order("created_at", { ascending: false }).limit(3),
-        supabase.from("request_documents").select("id", { count: "exact", head: true }),
+      const [reqsRes, ordersRes, docsRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests?limit=4`),
+        fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/orders/my-orders`),
+        fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/documents`),
       ]);
+
+      if (!reqsRes.ok || !ordersRes.ok || !docsRes.ok) {
+        throw new Error("Failed to load profile overview");
+      }
+
+      const [reqsList, ordersList, docsList] = await Promise.all([
+        reqsRes.json(),
+        ordersRes.json(),
+        docsRes.json(),
+      ]);
+
       return {
-        requests: reqs.data ?? [],
-        orders: orders.data ?? [],
-        docCount: docs.count ?? 0,
+        requests: reqsList.map((r: any) => ({
+          id: r.id,
+          service_title: r.serviceTitle,
+          reference_no: r.referenceNo,
+          status: r.status,
+          created_at: r.createdAt,
+        })),
+        orders: ordersList.slice(0, 3).map((o: any) => ({
+          id: o.id,
+          invoice_no: o.orderNo,
+          amount_inr: o.total || 0,
+          status: o.status,
+          created_at: o.createdAt,
+        })),
+        docCount: docsList.length,
       };
     },
   });
@@ -53,7 +76,7 @@ function Overview() {
         </div>
         {data?.requests.length ? (
           <ul className="divide-y divide-border">
-            {data.requests.map((r) => (
+            {data.requests.map((r: any) => (
               <li key={r.id} className="px-5 py-3.5 flex items-center gap-3">
                 <div className="size-8 rounded-md bg-primary/10 text-primary grid place-items-center">
                   <FileText className="size-4" />
@@ -87,7 +110,7 @@ function Overview() {
         </div>
         {data?.orders.length ? (
           <ul className="divide-y divide-border">
-            {data.orders.map((o) => (
+            {data.orders.map((o: any) => (
               <li key={o.id} className="px-5 py-3.5 flex items-center gap-3">
                 <div className="size-8 rounded-md bg-accent/10 text-accent grid place-items-center">
                   <Receipt className="size-4" />

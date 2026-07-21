@@ -12,18 +12,27 @@ function DocsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-docs"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("request_documents")
-        .select("*, service_requests(service_title, reference_no)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/documents`);
+      if (!res.ok) throw new Error("Failed to load documents");
+      const list = await res.json();
+      return list.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        size_bytes: d.sizeBytes,
+        storage_path: d.storagePath,
+        created_at: d.createdAt,
+        service_requests: d.serviceTitle
+          ? {
+              service_title: d.serviceTitle,
+              reference_no: d.referenceNo,
+            }
+          : null,
+      }));
     },
   });
 
-  const openDoc = async (path: string) => {
-    const { data } = await supabase.storage.from("documents").createSignedUrl(path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener");
+  const openDoc = (path: string) => {
+    window.open(`${import.meta.env.VITE_BACKEND_URL || ""}/${path}`, "_blank", "noopener");
   };
 
   return (
@@ -39,7 +48,7 @@ function DocsPage() {
           <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
         ) : data && data.length > 0 ? (
           <ul className="divide-y divide-border">
-            {data.map((d) => (
+            {data.map((d: any) => (
               <li key={d.id} className="px-5 py-3.5 flex items-center gap-3">
                 <div className="size-9 rounded-md bg-primary/10 text-primary grid place-items-center shrink-0">
                   <FileText className="size-4" />

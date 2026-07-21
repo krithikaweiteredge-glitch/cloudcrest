@@ -45,16 +45,19 @@ const HIGHLIGHTS = [
   { icon: FileDown, label: "Downloadable Summary" },
 ];
 
-export function CompanyWizard() {
-  const [step, setStep] = useState(0);
+export function CompanyWizard({ initialName }: { initialName?: string }) {
+  const [step, setStep] = useState(initialName ? 1 : 0);
   const [entity, setEntity] = useState("pvt");
-  const [name1, setName1] = useState("");
+  const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [state, setState] = useState("Maharashtra");
   const [directors, setDirectors] = useState(2);
   const [shareholders, setShareholders] = useState(2);
   const [capital, setCapital] = useState(100000);
   const [objects, setObjects] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
   const [openReg, setOpenReg] = useState(false);
 
   const selected = ENTITY_TYPES.find((e) => e.key === entity)!;
@@ -73,6 +76,51 @@ export function CompanyWizard() {
 
   const capitalCategory =
     capital <= 100000 ? "Small" : capital <= 1000000 ? "Standard" : capital <= 10000000 ? "Growth" : "Large";
+
+  const downloadSummaryPdf = async () => {
+    try {
+      const res = await fetch("/api/requests/summary/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: selected.title,
+          name1,
+          name2,
+          suffix: selected.suffix,
+          form: selected.form,
+          directors,
+          shareholders,
+          capital,
+          objects,
+          address,
+          city,
+          state,
+          pincode,
+          professionalFee: fees.professional,
+          mcaFee: fees.mca,
+          dscFee: dsc,
+          stampFee: fees.stamp,
+          total,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to generate PDF summary");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = `Filing_Summary_${name1 ? name1.trim().replace(/\s+/g, "_") : "Company"}.pdf`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("PDF generation failed:", err);
+      alert(err.message || "Failed to download PDF summary");
+    }
+  };
 
   const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
   const back = () => setStep((s) => Math.max(0, s - 1));
@@ -262,6 +310,8 @@ export function CompanyWizard() {
                     <Field label="Registered Office Address">
                       <textarea
                         rows={3}
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
                         placeholder="Line 1, Line 2, Locality"
                         className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
                       />
@@ -279,10 +329,10 @@ export function CompanyWizard() {
                         </select>
                       </Field>
                       <Field label="City">
-                        <Input value="" onChange={() => {}} placeholder="Mumbai" />
+                        <Input value={city} onChange={setCity} placeholder="Mumbai" />
                       </Field>
                       <Field label="PIN Code">
-                        <Input value="" onChange={() => {}} placeholder="400001" />
+                        <Input value={pincode} onChange={setPincode} placeholder="400001" />
                       </Field>
                     </div>
                   </div>
@@ -352,7 +402,10 @@ export function CompanyWizard() {
               <div className="flex items-center gap-4">
                 {step === STEPS.length - 1 ? (
                   <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-surface text-sm font-medium hover:bg-muted transition-colors">
+                    <button
+                      onClick={downloadSummaryPdf}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border bg-surface text-sm font-medium hover:bg-muted transition-colors"
+                    >
                       <Download className="size-4" /> Summary
                     </button>
                     <button

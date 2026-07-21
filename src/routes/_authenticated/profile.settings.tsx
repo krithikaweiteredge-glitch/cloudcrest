@@ -24,8 +24,17 @@ function SettingsPage() {
   const { data: profile, isLoading } = useQuery({
     queryKey: ["my-profile"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle();
-      return data;
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/profiles/me`);
+      if (!res.ok) throw new Error("Failed to load profile");
+      const data = await res.json();
+      const business = data.businesses?.[0] || {};
+      return {
+        full_name: `${data.user?.firstName || ""} ${data.user?.lastName || ""}`.trim(),
+        mobile: data.user?.phone || "",
+        company_name: business.businessName || "",
+        gstin: business.gstin || "",
+        pan: business.pan || "",
+      };
     },
     enabled: !!user,
   });
@@ -48,8 +57,28 @@ function SettingsPage() {
   const save = useMutation({
     mutationFn: async () => {
       const parsed = schema.parse(form);
-      const { error } = await supabase.from("profiles").upsert({ id: user!.id, ...parsed });
-      if (error) throw error;
+      const nameParts = (parsed.full_name || "").trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/profiles/me`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          phone: parsed.mobile,
+          businessName: parsed.company_name,
+          legalName: parsed.company_name,
+          gstin: parsed.gstin,
+          pan: parsed.pan,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to save profile changes");
+      }
     },
     onSuccess: () => {
       setSaved(true);

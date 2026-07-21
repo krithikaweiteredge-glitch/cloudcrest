@@ -44,7 +44,7 @@ const DOCS_BY_SLUG: Record<string, string[]> = {
   design: ["Representation of the design (4 views)", "Novelty statement", "Applicant identity proof", "Power of Attorney", "Class of article (Locarno)"],
 };
 
-export function ModulePage({ slug }: { slug: string }) {
+export function ModulePage({ slug, initialName }: { slug: string; initialName?: string }) {
   const m = getModule(slug);
   if (!m) {
     return (
@@ -53,7 +53,7 @@ export function ModulePage({ slug }: { slug: string }) {
       </div>
     );
   }
-  if (slug === "company") return <CompanyWizard />;
+  if (slug === "company") return <CompanyWizard initialName={initialName} />;
   return <GenericModule slug={slug} />;
 }
 
