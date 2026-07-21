@@ -1,5 +1,24 @@
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
+// Automatically intercept all fetch requests to our backend URL and include credentials/cookies
+if (typeof window !== "undefined") {
+  const originalFetch = window.fetch;
+  window.fetch = function (input, init) {
+    let url = "";
+    if (typeof input === "string") {
+      url = input;
+    } else if (input && typeof input === "object" && "url" in input) {
+      url = (input as any).url;
+    }
+
+    if (BACKEND_URL && url.startsWith(BACKEND_URL)) {
+      init = init || {};
+      init.credentials = "include";
+    }
+    return originalFetch.call(this, input, init);
+  };
+}
+
 const getMockUser = () => {
   if (typeof window === 'undefined') return null;
   const email = localStorage.getItem("mock_user_email");
