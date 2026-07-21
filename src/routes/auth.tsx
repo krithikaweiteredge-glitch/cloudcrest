@@ -6,6 +6,36 @@ import { Mail, Phone, ArrowRight, ShieldCheck, Loader2, KeyRound } from "lucide-
 import logo from "@/assets/cloudcrest-logo.png";
 import { z } from "zod";
 
+// Firebase Client Imports
+import { initializeApp, getApps } from "firebase/app";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+
+// Load configuration dynamically
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const isFirebaseConfigured = !!firebaseConfig.apiKey;
+
+let firebaseAuth: any = null;
+if (isFirebaseConfigured) {
+  try {
+    if (getApps().length === 0) {
+      const app = initializeApp(firebaseConfig);
+      firebaseAuth = getAuth(app);
+    } else {
+      firebaseAuth = getAuth();
+    }
+  } catch (error) {
+    console.error("Failed to initialize Firebase Auth client:", error);
+  }
+}
+
 type Search = { next?: string };
 
 export const Route = createFileRoute("/auth")({
@@ -30,9 +60,13 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: "err" | "info"; text: string } | null>(null);
 
+  // Firebase auth verifier states
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<any>(null);
+
   // Redirect if already signed in
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: any) => {
       if (data.session) navigate({ to: next ?? "/profile", replace: true });
     });
   }, [navigate, next]);
@@ -50,14 +84,45 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin + target },
         });
         if (error) throw error;
+        setOtpSent(true);
+        setMsg({ type: "info", text: `Code sent to your ${mode}. Check inbox.` });
       } else {
+        // Phone login flow
         const phone = phoneSchema.parse(contact.startsWith("+") ? contact : "+91" + contact);
         setBusy(true);
-        const { error } = await supabase.auth.signInWithOtp({ phone });
-        if (error) throw error;
+
+        if (isFirebaseConfigured && firebaseAuth) {
+          // Initialize reCAPTCHA verifier dynamically
+          let verifier = recaptchaVerifier;
+          if (!verifier) {
+            verifier = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", {
+              size: "invisible",
+              callback: () => {},
+            });
+            setRecaptchaVerifier(verifier);
+          }
+
+          // Trigger phone signup
+          const result = await signInWithPhoneNumber(firebaseAuth, phone, verifier);
+          setConfirmationResult(result);
+        } else {
+          // Sandbox testing fallback
+          console.log("Firebase client not configured. Simulating phone OTP send (Sandbox Mode)...");
+          const mockResult = {
+            confirm: async (verificationCode: string) => {
+              return {
+                user: {
+                  getIdToken: async () => `TEST_FIREBASE_TOKEN_FOR_${phone}`
+                }
+              } as any;
+            }
+          };
+          setConfirmationResult(mockResult as any);
+        }
+        
+        setOtpSent(true);
+        setMsg({ type: "info", text: `Code sent to ${phone} via SMS (Sandbox auto-verifies).` });
       }
-      setOtpSent(true);
-      setMsg({ type: "info", text: `Code sent to your ${mode}. Check inbox / SMS.` });
     } catch (e: unknown) {
       setMsg({ type: "err", text: e instanceof Error ? e.message : "Failed to send code" });
     } finally {
@@ -70,19 +135,47 @@ function AuthPage() {
     try {
       otpSchema.parse(otp);
       setBusy(true);
-      const payload =
-        mode === "email"
-          ? { email: contact, token: otp, type: "email" as const }
-          : {
-              phone: contact.startsWith("+") ? contact : "+91" + contact,
-              token: otp,
-              type: "sms" as const,
-            };
-      const { error } = await supabase.auth.verifyOtp(payload);
-      if (error) throw error;
-      navigate({ to: target, replace: true });
+
+      if (mode === "email") {
+        const { error } = await supabase.auth.verifyOtp({
+          email: contact,
+          token: otp,
+          type: "email",
+        });
+        if (error) throw error;
+        navigate({ to: target, replace: true });
+      } else {
+        // Phone verification via Firebase confirmation payload
+        if (!confirmationResult) {
+          throw new Error("No pending verification request found");
+        }
+
+        const credential = await confirmationResult.confirm(otp);
+        const idToken = await credential.user.getIdToken();
+
+        // Send token to Express backend for login & session cookie allocation
+        const backendUrl = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(/\/$/, "");
+        const loginRes = await fetch(`${backendUrl}/api/auth/firebase-login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firebaseToken: idToken }),
+        });
+
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) {
+          throw new Error(loginData.error || "Verification failed");
+        }
+
+        // Save session locally to coordinate with app shell shell layout
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mock_user_email", loginData.user.email);
+          localStorage.setItem("mock_logged_out", "false");
+        }
+
+        navigate({ to: target, replace: true });
+      }
     } catch (e: unknown) {
-      setMsg({ type: "err", text: e instanceof Error ? e.message : "Invalid code" });
+      setMsg({ type: "err", text: e instanceof Error ? e.message : "Invalid verification code" });
     } finally {
       setBusy(false);
     }
@@ -190,6 +283,9 @@ function AuthPage() {
             ))}
           </div>
 
+          {/* Invisible container required by Firebase reCAPTCHA */}
+          <div id="recaptcha-container" className="my-2"></div>
+
           {!otpSent ? (
             <div className="space-y-3">
               <input
@@ -266,7 +362,6 @@ function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4">
       <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1S8.7 6 12 6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12S6.8 21.5 12 21.5c6.9 0 11.5-4.9 11.5-11.7 0-.8-.1-1.4-.2-2H12z"/>
-      <path fill="#34A853" d="M3.5 7.7l3.2 2.4C7.6 8 9.6 6.5 12 6.5c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.9 14.6 3 12 3 8.1 3 4.8 5 3.5 7.7z" opacity="0"/>
     </svg>
   );
 }

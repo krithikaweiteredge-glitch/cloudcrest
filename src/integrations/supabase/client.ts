@@ -1,6 +1,4 @@
-// Custom Supabase Client pointing to real Node.js/PostgreSQL backend for OTP authentication
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
 const getMockUser = () => {
   if (typeof window === 'undefined') return null;
