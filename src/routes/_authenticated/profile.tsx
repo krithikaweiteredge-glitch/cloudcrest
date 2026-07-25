@@ -1,7 +1,9 @@
 import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import AppShell from "@/components/app-shell";
 import { useAuth } from "@/hooks/use-auth";
-import { User, FileText, Receipt, FolderLock, Settings, LogOut, ShieldCheck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { User, FileText, Receipt, FolderLock, Settings, LogOut } from "lucide-react";
+import { ProfileBanner } from "@/components/profile-banner";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "My Account — Cloudcrest BM" }] }),
@@ -21,29 +23,39 @@ function ProfileLayout() {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile-layout"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/profiles/me`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load profile");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
   const handleSignOut = async () => {
     await signOut();
     navigate({ to: "/", replace: true });
   };
 
-  const initial = (user?.email ?? user?.phone ?? "U").charAt(0).toUpperCase();
+  const business = profile?.businesses?.[0];
+  // The banner needs email/status; prefer the fetched profile, fall back to the
+  // auth session so the header still renders before the profile query resolves.
+  const bannerUser = profile?.user ?? {
+    email: user?.email ?? undefined,
+    phone: user?.phone ?? undefined,
+    status: user?.status ?? undefined,
+  };
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto px-6 md:px-10 py-8 animate-in-up">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="size-14 rounded-full gradient-brand text-white grid place-items-center text-xl font-semibold shadow-brand">
-            {initial}
-          </div>
-          <div className="min-w-0">
-            <div className="label-eyebrow text-primary">My Account</div>
-            <h1 className="text-2xl font-display font-semibold truncate">
-              {user?.email ?? user?.phone ?? "Welcome"}
-            </h1>
-            <div className="flex items-center gap-1.5 text-[11px] mono text-muted-foreground mt-0.5">
-              <ShieldCheck className="size-3 text-success" /> Verified · ID {user?.id.slice(0, 8)}
-            </div>
-          </div>
+      {/* Fluid width so the page fills whatever the sidebar leaves behind, with a
+          cap that keeps line lengths sane on very wide screens. */}
+      <div className="w-full max-w-[1600px] mx-auto px-6 md:px-10 py-8 animate-in-up">
+        <div className="mb-8">
+          <ProfileBanner business={business} user={bannerUser} completion={profile?.profileCompletion ?? 0} />
         </div>
 
         <div className="grid lg:grid-cols-[220px_1fr] gap-8">

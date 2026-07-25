@@ -1,9 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { SignInDialog } from "@/components/sign-in-dialog";
+import {
+  useCatalogService,
+  resolveFees,
+  resolveDocuments,
+  type ResolvedFees,
+} from "@/lib/service-catalog";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
-  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send,
+  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
 } from "lucide-react";
 
 const STEPS = [
@@ -27,16 +35,29 @@ const ENTITY_TYPES = [
   { key: "foreign", title: "Foreign Company (Branch/Liaison)", suffix: "Branch / Liaison Office", form: "FC-1", tags: ["RBI Approval"] },
 ];
 
-const FEE_TABLE: Record<string, { professional: number; mca: number; stamp: number }> = {
-  pvt: { professional: 7500, mca: 2200, stamp: 500 },
-  public: { professional: 14500, mca: 5600, stamp: 1200 },
-  opc: { professional: 6500, mca: 1700, stamp: 400 },
-  sec8: { professional: 12500, mca: 2000, stamp: 300 },
-  guarantee: { professional: 9500, mca: 2400, stamp: 500 },
-  nidhi: { professional: 22500, mca: 4200, stamp: 800 },
-  producer: { professional: 18500, mca: 3400, stamp: 700 },
-  foreign: { professional: 45000, mca: 7500, stamp: 2000 },
+// Used only when the admin catalog has no row for this entity type — the
+// catalog (`services` table) is the source of truth for pricing.
+const FALLBACK_FEES: Record<string, { professional: number; govt: number; gstPercent: number }> = {
+  pvt: { professional: 2499, govt: 1500, gstPercent: 18 },
+  public: { professional: 6499, govt: 3500, gstPercent: 18 },
+  opc: { professional: 2499, govt: 1500, gstPercent: 18 },
+  sec8: { professional: 4499, govt: 2000, gstPercent: 18 },
+  guarantee: { professional: 3499, govt: 1700, gstPercent: 18 },
+  nidhi: { professional: 8499, govt: 4000, gstPercent: 18 },
+  producer: { professional: 6499, govt: 3500, gstPercent: 18 },
+  foreign: { professional: 14999, govt: 7000, gstPercent: 18 },
 };
+
+// Fallback checklist when the admin hasn't configured document types.
+const FALLBACK_DOCS = [
+  "PAN & Aadhaar of all directors",
+  "Passport-size photographs",
+  "Address proof (utility bill < 2 mo)",
+  "Registered office proof",
+  "Rent agreement + NOC (if rented)",
+  "Digital Signature Certificate (DSC)",
+  "MoA & AoA drafts",
+];
 
 const HIGHLIGHTS = [
   { icon: ShieldCheck, label: "Real Validations" },
@@ -45,7 +66,24 @@ const HIGHLIGHTS = [
   { icon: FileDown, label: "Downloadable Summary" },
 ];
 
+function format10DigitPhone(phoneStr?: string | null): string {
+  if (!phoneStr) return "";
+  let cleaned = phoneStr.trim();
+  if (cleaned.startsWith("+91")) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith("91") && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  }
+  cleaned = cleaned.replace(/\D/g, "");
+  if (cleaned.length > 10) {
+    cleaned = cleaned.slice(-10);
+  }
+  return cleaned;
+}
+
 export function CompanyWizard({ initialName }: { initialName?: string }) {
+  const { user } = useAuth();
+
   const [step, setStep] = useState(initialName ? 1 : 0);
   const [entity, setEntity] = useState("pvt");
   const [name1, setName1] = useState(initialName || "");
@@ -54,16 +92,51 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const [directors, setDirectors] = useState(2);
   const [shareholders, setShareholders] = useState(2);
   const [capital, setCapital] = useState(100000);
+  const [paidCapital, setPaidCapital] = useState(100000);
   const [objects, setObjects] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
+  const [nominee, setNominee] = useState("");
+  const [applicantEmail, setApplicantEmail] = useState("");
+  const [applicantPhone, setApplicantPhone] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    setApplicantEmail((prev) => prev || user.email || "");
+    setApplicantPhone((prev) => prev || format10DigitPhone(user.phone));
+
+    fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/profiles/me`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setApplicantEmail((prev) => prev || data.user.email || user.email || "");
+          setApplicantPhone((prev) => prev || format10DigitPhone(data.user.phone || user.phone));
+        }
+      })
+      .catch((err) => console.error("Error prefilling wizard profile:", err));
+  }, [user]);
+
   const [openReg, setOpenReg] = useState(false);
+  const [openSignIn, setOpenSignIn] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [stepError, setStepError] = useState<string | null>(null);
 
   const selected = ENTITY_TYPES.find((e) => e.key === entity)!;
-  const fees = FEE_TABLE[entity];
-  const dsc = directors * 900;
-  const total = fees.professional + fees.mca + fees.stamp + dsc;
+
+  // Pricing & checklist come from the admin catalog. A per-entity row
+  // (`company-pvt`) wins over the base `company` service when one exists.
+  const { service, loading: catalogLoading } = useCatalogService([`company-${entity}`, "company"]);
+  const fees = resolveFees(service, "MCA", FALLBACK_FEES[entity]);
+  const total = fees.total;
+  const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
+
+  // The proposed names are stored with the entity suffix appended, so the record
+  // holds the full company name (e.g. "ACME TECH SOLUTIONS Private Limited").
+  const withSuffix = (n: string) => {
+    const t = n.trim();
+    return t ? `${t} ${selected.suffix}` : "";
+  };
 
   const nameOk = useMemo(() => {
     if (!name1) return null;
@@ -77,10 +150,149 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const capitalCategory =
     capital <= 100000 ? "Small" : capital <= 1000000 ? "Standard" : capital <= 10000000 ? "Growth" : "Large";
 
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Record<string, string> = {};
+    let globalMsg: string | null = null;
+
+    if (currentStep === 1) {
+      if (!name1.trim()) {
+        newErrors.name1 = "Please enter Proposed Name 1.";
+        globalMsg = "Proposed Name 1 is required.";
+      } else if (name1.trim().length < 3) {
+        newErrors.name1 = "Proposed Name 1 must be at least 3 characters long.";
+        globalMsg = "Proposed Name 1 is too short.";
+      } else if (/(India|National|Bharat|President|Bank)/i.test(name1)) {
+        newErrors.name1 = "Contains restricted keyword requiring Central Govt approval.";
+        globalMsg = "Proposed Name 1 contains restricted keywords.";
+      }
+
+      if (!objects.trim()) {
+        newErrors.objects = "Please describe the main object / nature of business.";
+        if (!globalMsg) globalMsg = "Main object of business is required.";
+      } else if (objects.trim().length < 10) {
+        newErrors.objects = "Main objects should be at least 10 characters long.";
+        if (!globalMsg) globalMsg = "Please provide a more detailed main object description.";
+      }
+    } else if (currentStep === 2) {
+      const minDir = entity === "public" ? 3 : entity === "opc" ? 1 : 2;
+      const minShr = entity === "public" ? 7 : entity === "opc" ? 1 : 2;
+
+      if (directors < minDir) {
+        newErrors.directors = `${selected.title} requires a minimum of ${minDir} director(s).`;
+        globalMsg = `Minimum required: ${minDir} director(s).`;
+      }
+
+      if (shareholders < minShr) {
+        newErrors.shareholders = `${selected.title} requires a minimum of ${minShr} shareholder(s).`;
+        if (!globalMsg) globalMsg = `Minimum required: ${minShr} shareholder(s).`;
+      }
+
+      if (entity === "opc" && !nominee.trim()) {
+        newErrors.nominee = "Nominee name is mandatory for One Person Company (OPC).";
+        if (!globalMsg) globalMsg = "OPC Nominee name is required.";
+      }
+
+      if (applicantEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail.trim())) {
+        newErrors.applicantEmail = "Invalid email address format.";
+        if (!globalMsg) globalMsg = "Please enter a valid applicant email.";
+      }
+
+      if (applicantPhone.trim()) {
+        const cleanPhone = format10DigitPhone(applicantPhone);
+        if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+          newErrors.applicantPhone = "Invalid 10-digit mobile number.";
+          if (!globalMsg) globalMsg = "Please enter a valid 10-digit phone number.";
+        }
+      }
+    } else if (currentStep === 3) {
+      if (!address.trim()) {
+        newErrors.address = "Please enter the full registered office address.";
+        globalMsg = "Registered office address is required.";
+      } else if (address.trim().length < 10) {
+        newErrors.address = "Address should be at least 10 characters long.";
+        globalMsg = "Registered office address is too short.";
+      }
+
+      if (!state.trim()) {
+        newErrors.state = "Please select a state.";
+        if (!globalMsg) globalMsg = "State is required.";
+      }
+
+      if (!city.trim()) {
+        newErrors.city = "Please enter city / district.";
+        if (!globalMsg) globalMsg = "City is required.";
+      }
+
+      if (!pincode.trim()) {
+        newErrors.pincode = "Please enter a 6-digit PIN Code.";
+        if (!globalMsg) globalMsg = "PIN Code is required.";
+      } else if (!/^[1-9][0-9]{5}$/.test(pincode.trim())) {
+        newErrors.pincode = "Must be a valid 6-digit Indian PIN Code (e.g. 400001).";
+        if (!globalMsg) globalMsg = "Invalid 6-digit PIN Code.";
+      }
+    } else if (currentStep === 4) {
+      if (!capital || capital < 10000) {
+        newErrors.capital = "Authorised capital must be at least ₹10,000.";
+        globalMsg = "Authorised capital must be at least ₹10,000.";
+      }
+
+      if (!paidCapital || paidCapital < 10000) {
+        newErrors.paidCapital = "Paid-up capital must be at least ₹10,000.";
+        if (!globalMsg) globalMsg = "Paid-up capital must be at least ₹10,000.";
+      } else if (paidCapital > capital) {
+        newErrors.paidCapital = "Paid-up capital cannot exceed Authorised Capital.";
+        if (!globalMsg) globalMsg = "Paid-up capital cannot exceed Authorised Capital.";
+      }
+    }
+
+    setErrors(newErrors);
+    setStepError(globalMsg);
+    return Object.keys(newErrors).length === 0 && !globalMsg;
+  };
+
+  const next = () => {
+    // Advancing past the first step requires an account — the wizard collects
+    // filing details and shows pricing, both of which are for signed-in users.
+    if (!user) {
+      setOpenSignIn(true);
+      return;
+    }
+    if (validateStep(step)) {
+      setStep((s) => Math.min(STEPS.length - 1, s + 1));
+      setStepError(null);
+      setErrors({});
+    }
+  };
+
+  const back = () => {
+    setStep((s) => Math.max(0, s - 1));
+    setStepError(null);
+    setErrors({});
+  };
+
+  const handleStepChange = (targetStep: number) => {
+    if (targetStep > step && !user) {
+      setOpenSignIn(true);
+      return;
+    }
+    if (targetStep < step) {
+      setStep(targetStep);
+      setStepError(null);
+      setErrors({});
+    } else {
+      if (validateStep(step)) {
+        setStep(targetStep);
+        setStepError(null);
+        setErrors({});
+      }
+    }
+  };
+
   const downloadSummaryPdf = async () => {
     try {
-      const res = await fetch("/api/requests/summary/pdf", {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/summary/pdf`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: selected.title,
@@ -96,10 +308,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           city,
           state,
           pincode,
-          professionalFee: fees.professional,
-          mcaFee: fees.mca,
-          dscFee: dsc,
-          stampFee: fees.stamp,
+          // Catalog-driven line items; the PDF renders whatever labels it gets.
+          fees: fees.lines,
           total,
         }),
       });
@@ -122,9 +332,6 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     }
   };
 
-  const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
-  const back = () => setStep((s) => Math.max(0, s - 1));
-
   return (
     <div>
       {/* Hero band */}
@@ -141,8 +348,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             MCA · Tax · Labour · Municipal · IP Registration Desk
           </span>
           <h1 className="mt-4 text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
-            Business Registration &amp;<br />
-            <span className="text-primary">Compliance Wizard</span>
+            Business Registration <br />
+            {/* <span className="text-primary">Compliance Wizard</span> */}
           </h1>
           <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed">
             A guided Cloudcrest BM workspace for Company, LLP, tax registrations,
@@ -182,8 +389,15 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div className="rounded-xl border border-border bg-surface shadow-card p-4">
-              <Stepper steps={STEPS} current={step} onGo={setStep} />
+              <Stepper steps={STEPS} current={step} onGo={handleStepChange} />
             </div>
+
+            {stepError && (
+              <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 flex items-center gap-2.5 text-xs text-destructive animate-in fade-in-50">
+                <AlertTriangle className="size-4 shrink-0" />
+                <span className="font-semibold">{stepError}</span>
+              </div>
+            )}
 
             <div className="mt-6 rounded-xl border border-warning/25 bg-warning/8 p-4 flex gap-3">
               <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
@@ -203,7 +417,15 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       <button
                         key={t.key}
                         type="button"
-                        onClick={() => setEntity(t.key)}
+                        onClick={() => {
+                          setEntity(t.key);
+                          const minD = t.key === "public" ? 3 : t.key === "opc" ? 1 : 2;
+                          const minS = t.key === "public" ? 7 : t.key === "opc" ? 1 : 2;
+                          setDirectors(minD);
+                          setShareholders(minS);
+                          setErrors({});
+                          setStepError(null);
+                        }}
                         className={
                           "text-left p-4 rounded-xl bg-surface border transition-all hover-lift ring-focus " +
                           (active
@@ -246,9 +468,14 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 1 && (
                 <Card>
                   <div className="space-y-6">
-                    <Field label="Proposed Name 1">
+                    <Field label="Proposed Name 1 *" error={errors.name1}>
                       <div className="flex gap-2">
-                        <Input value={name1} onChange={setName1} placeholder="e.g. ACME TECH SOLUTIONS" />
+                        <Input
+                          value={name1}
+                          onChange={(v) => { setName1(v); setErrors((prev) => ({ ...prev, name1: "" })); }}
+                          placeholder="e.g. ACME TECH SOLUTIONS"
+                          error={errors.name1}
+                        />
                         <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
                           {selected.suffix}
                         </span>
@@ -270,15 +497,23 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       )}
                     </Field>
                     <Field label="Proposed Name 2 (Alternate)">
-                      <Input value={name2} onChange={setName2} placeholder="Optional alternate name" />
+                      <div className="flex gap-2">
+                        <Input value={name2} onChange={setName2} placeholder="Optional alternate name" />
+                        <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
+                          {selected.suffix}
+                        </span>
+                      </div>
                     </Field>
-                    <Field label="Object / Industry">
+                    <Field label="Object / Industry *" error={errors.objects}>
                       <textarea
                         value={objects}
-                        onChange={(e) => setObjects(e.target.value)}
+                        onChange={(e) => { setObjects(e.target.value); setErrors((prev) => ({ ...prev, objects: "" })); }}
                         rows={3}
-                        placeholder="Main object of the company (e.g. software development, trading of…)"
-                        className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+                        placeholder="Main object of the company (e.g. software development, IT services, trading…)"
+                        className={
+                          "w-full bg-input border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow " +
+                          (errors.objects ? "border-destructive focus:ring-destructive/25" : "border-border")
+                        }
                       />
                     </Field>
                   </div>
@@ -288,17 +523,53 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 2 && (
                 <Card>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Number of Directors">
-                      <NumberInput value={directors} onChange={setDirectors} min={1} max={15} />
+                    <Field label="Number of Directors *" error={errors.directors}>
+                      <NumberInput
+                        value={directors}
+                        onChange={(v) => { setDirectors(v); setErrors((prev) => ({ ...prev, directors: "" })); }}
+                        min={1}
+                        max={15}
+                        error={errors.directors}
+                      />
                     </Field>
-                    <Field label="Number of Shareholders">
-                      <NumberInput value={shareholders} onChange={setShareholders} min={1} max={200} />
+                    <Field label="Number of Shareholders *" error={errors.shareholders}>
+                      <NumberInput
+                        value={shareholders}
+                        onChange={(v) => { setShareholders(v); setErrors((prev) => ({ ...prev, shareholders: "" })); }}
+                        min={1}
+                        max={200}
+                        error={errors.shareholders}
+                      />
                     </Field>
-                    <Field label="Applicant PAN">
-                      <Input value="" onChange={() => {}} placeholder="ABCDE1234F" />
+                    {entity === "opc" && (
+                      <Field label="OPC Nominee Name *" error={errors.nominee}>
+                        <Input
+                          value={nominee}
+                          onChange={(v) => { setNominee(v); setErrors((prev) => ({ ...prev, nominee: "" })); }}
+                          placeholder="Nominee Full Name"
+                          error={errors.nominee}
+                        />
+                      </Field>
+                    )}
+                    <Field label="Applicant Email" error={errors.applicantEmail}>
+                      <Input
+                        value={applicantEmail}
+                        onChange={(v) => { setApplicantEmail(v); setErrors((prev) => ({ ...prev, applicantEmail: "" })); }}
+                        placeholder="applicant@company.in"
+                        error={errors.applicantEmail}
+                      />
                     </Field>
-                    <Field label="Applicant Email">
-                      <Input value="" onChange={() => {}} placeholder="applicant@company.in" />
+                    <Field label="Applicant Mobile" error={errors.applicantPhone}>
+                      <Input
+                        value={applicantPhone}
+                        onChange={(v) => {
+                          const clean = format10DigitPhone(v);
+                          setApplicantPhone(clean);
+                          setErrors((prev) => ({ ...prev, applicantPhone: "" }));
+                        }}
+                        placeholder="9876543210"
+                        error={errors.applicantPhone}
+                      />
                     </Field>
                   </div>
                 </Card>
@@ -307,32 +578,48 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 3 && (
                 <Card>
                   <div className="space-y-4">
-                    <Field label="Registered Office Address">
+                    <Field label="Registered Office Address *" error={errors.address}>
                       <textarea
                         rows={3}
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Line 1, Line 2, Locality"
-                        className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+                        onChange={(e) => { setAddress(e.target.value); setErrors((prev) => ({ ...prev, address: "" })); }}
+                        placeholder="Building Name, Flat/Door No., Street, Locality"
+                        className={
+                          "w-full bg-input border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow " +
+                          (errors.address ? "border-destructive focus:ring-destructive/25" : "border-border")
+                        }
                       />
                     </Field>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Field label="State">
+                      <Field label="State *" error={errors.state}>
                         <select
                           value={state}
-                          onChange={(e) => setState(e.target.value)}
-                          className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+                          onChange={(e) => { setState(e.target.value); setErrors((prev) => ({ ...prev, state: "" })); }}
+                          className={
+                            "w-full bg-input border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow " +
+                            (errors.state ? "border-destructive focus:ring-destructive/25" : "border-border")
+                          }
                         >
                           {["Maharashtra","Karnataka","Delhi","Tamil Nadu","Gujarat","Telangana","West Bengal","Uttar Pradesh"].map((s) => (
                             <option key={s}>{s}</option>
                           ))}
                         </select>
                       </Field>
-                      <Field label="City">
-                        <Input value={city} onChange={setCity} placeholder="Mumbai" />
+                      <Field label="City / District *" error={errors.city}>
+                        <Input
+                          value={city}
+                          onChange={(v) => { setCity(v); setErrors((prev) => ({ ...prev, city: "" })); }}
+                          placeholder="Mumbai"
+                          error={errors.city}
+                        />
                       </Field>
-                      <Field label="PIN Code">
-                        <Input value={pincode} onChange={setPincode} placeholder="400001" />
+                      <Field label="PIN Code *" error={errors.pincode}>
+                        <Input
+                          value={pincode}
+                          onChange={(v) => { setPincode(v); setErrors((prev) => ({ ...prev, pincode: "" })); }}
+                          placeholder="400001"
+                          error={errors.pincode}
+                        />
                       </Field>
                     </div>
                   </div>
@@ -342,19 +629,39 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 4 && (
                 <Card>
                   <div className="space-y-6">
-                    <Field label="Authorised Capital (INR)">
+                    <Field label="Authorised Capital (INR) *" error={errors.capital}>
                       <div className="flex items-center gap-3">
-                        <NumberInput value={capital} onChange={setCapital} min={10000} step={10000} />
+                        <NumberInput
+                          value={capital}
+                          onChange={(v) => { setCapital(v); setErrors((prev) => ({ ...prev, capital: "" })); }}
+                          min={10000}
+                          step={10000}
+                          error={errors.capital}
+                        />
                         <span className="px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20 text-[10px] mono uppercase tracking-wider text-primary">
                           {capitalCategory}
                         </span>
                       </div>
                     </Field>
+                    <Field label="Paid-up Capital (INR) *" error={errors.paidCapital}>
+                      <NumberInput
+                        value={paidCapital}
+                        onChange={(v) => { setPaidCapital(v); setErrors((prev) => ({ ...prev, paidCapital: "" })); }}
+                        min={10000}
+                        step={10000}
+                        error={errors.paidCapital}
+                      />
+                    </Field>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[100000, 1000000, 10000000].map((c) => (
                         <button
                           key={c}
-                          onClick={() => setCapital(c)}
+                          type="button"
+                          onClick={() => {
+                            setCapital(c);
+                            if (paidCapital > c) setPaidCapital(c);
+                            setErrors({});
+                          }}
                           className={
                             "p-3 rounded-lg border text-left transition-all hover-lift " +
                             (capital === c
@@ -374,7 +681,12 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               )}
 
               {step === 5 && (
-                <FeeBreakdown fees={fees} dsc={dsc} total={total} />
+                <FeeBreakdown
+                  fees={fees}
+                  loading={catalogLoading}
+                  signedIn={!!user}
+                  onSignIn={() => setOpenSignIn(true)}
+                />
               )}
 
               {step === 6 && (
@@ -442,25 +754,19 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div className="mt-7">
-              <div className="label-eyebrow mb-3">Document Checklist</div>
+              <div className="label-eyebrow mb-3">
+                Documents Required
+                {!docsFromCatalog && !catalogLoading && (
+                  <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
+                    (indicative)
+                  </span>
+                )}
+              </div>
               <ul className="space-y-2.5">
-                {[
-                  ["PAN & Aadhaar (all directors)", true],
-                  ["Passport-size photograph", true],
-                  ["Address proof (utility bill < 2 mo)", !!name1],
-                  ["Rent agreement + NOC of premises", step >= 3],
-                  ["Digital Signature Certificate (DSC)", step >= 2],
-                  ["MoA & AoA drafts", step >= 4],
-                ].map(([label, done]) => (
-                  <li key={label as string} className="flex items-start gap-2 text-[12px]">
-                    {done ? (
-                      <CheckCircle2 className="size-3.5 text-success shrink-0 mt-0.5" />
-                    ) : (
-                      <Circle className="size-3.5 text-muted-foreground/50 shrink-0 mt-0.5" />
-                    )}
-                    <span className={done ? "text-foreground" : "text-muted-foreground"}>
-                      {label as string}
-                    </span>
+                {documents.map((label) => (
+                  <li key={label} className="flex items-start gap-2 text-[12px]">
+                    <CheckCircle2 className="size-3.5 text-success shrink-0 mt-0.5" />
+                    <span className="text-foreground">{label}</span>
                   </li>
                 ))}
               </ul>
@@ -484,15 +790,34 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         serviceTitle={`Company Registration — ${selected.title}`}
         authority="MCA"
         form={selected.form}
-        documents={[
-          "PAN & Aadhaar of all directors",
-          "Passport-size photographs",
-          "Address proof (utility bill < 2 mo)",
-          "Registered office proof",
-          "Rent agreement + NOC (if rented)",
-          "Digital Signature Certificate (DSC)",
-          "MoA & AoA drafts",
-        ]}
+        initialEmail={applicantEmail}
+        initialPhone={applicantPhone}
+        capital={capital}
+        paidCapital={paidCapital}
+        formData={{
+          name1: withSuffix(name1),
+          name2: withSuffix(name2),
+          suffix: selected.suffix,
+          objects,
+          address,
+          city,
+          state,
+          pincode,
+          directors,
+          shareholders,
+          capital,
+          paidCapital,
+        }}
+        documents={documents}
+        fees={fees.lines}
+        feeTotal={fees.total}
+      />
+
+      <SignInDialog
+        open={openSignIn}
+        onClose={() => setOpenSignIn(false)}
+        reason="Sign in to continue your company incorporation — we'll save your progress, show the fee breakdown and let you submit the application."
+        next="/m/company"
       />
     </div>
   );
@@ -507,29 +832,38 @@ function Card({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="label-eyebrow mb-1.5">{label}</div>
       {children}
+      {error && (
+        <p className="mt-1 text-[11px] font-medium text-destructive flex items-center gap-1 animate-in fade-in-50">
+          <AlertTriangle className="size-3 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 function Input({
-  value, onChange, placeholder,
-}: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  value, onChange, placeholder, error,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; error?: string }) {
   return (
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+      className={
+        "w-full bg-input border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow " +
+        (error ? "border-destructive focus:ring-destructive/25" : "border-border")
+      }
     />
   );
 }
 function NumberInput({
-  value, onChange, min = 0, max, step = 1,
-}: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+  value, onChange, min = 0, max, step = 1, error,
+}: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; error?: string }) {
   return (
     <input
       type="number"
@@ -538,32 +872,27 @@ function NumberInput({
       max={max}
       step={step}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm mono ring-focus transition-shadow"
+      className={
+        "w-full bg-input border rounded-lg px-3 py-2.5 text-sm mono ring-focus transition-shadow " +
+        (error ? "border-destructive focus:ring-destructive/25" : "border-border")
+      }
     />
   );
 }
 
-function FeeStack({
-  fees, dsc, total,
-}: { fees: { professional: number; mca: number; stamp: number }; dsc: number; total: number }) {
-  const rows = [
-    ["Professional Fee", fees.professional],
-    ["MCA Govt. Filing", fees.mca],
-    ["DSC (per director)", dsc],
-    ["Stamp Duty (est.)", fees.stamp],
-  ] as const;
+function FeeStack({ fees }: { fees: ResolvedFees }) {
   return (
     <div className="space-y-2.5">
-      {rows.map(([label, amt]) => (
-        <div key={label} className="flex justify-between items-center text-xs">
-          <span className="text-muted-foreground">{label}</span>
-          <span className="mono text-foreground">₹ {amt.toLocaleString("en-IN")}</span>
+      {fees.lines.map((line) => (
+        <div key={line.label} className="flex justify-between items-center text-xs">
+          <span className="text-muted-foreground">{line.label}</span>
+          <span className="mono text-foreground">₹ {line.amount.toLocaleString("en-IN")}</span>
         </div>
       ))}
       <div className="pt-3 mt-2 border-t border-border flex justify-between items-baseline">
         <span className="text-xs font-semibold">Total Estimate</span>
         <span className="mono text-2xl font-semibold text-primary">
-          ₹ {total.toLocaleString("en-IN")}
+          ₹ {fees.total.toLocaleString("en-IN")}
         </span>
       </div>
     </div>
@@ -571,18 +900,60 @@ function FeeStack({
 }
 
 function FeeBreakdown({
-  fees, dsc, total,
-}: { fees: { professional: number; mca: number; stamp: number }; dsc: number; total: number }) {
+  fees,
+  loading,
+  signedIn,
+  onSignIn,
+}: {
+  fees: ResolvedFees;
+  loading: boolean;
+  signedIn: boolean;
+  onSignIn: () => void;
+}) {
+  // Pricing is for customers only — the backend withholds it when signed out.
+  if (!signedIn) {
+    return (
+      <div className="rounded-xl border border-border bg-surface shadow-card p-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Lock className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold">Sign in to view fees</h3>
+        </div>
+        <p className="text-[13px] text-muted-foreground max-w-[60ch]">
+          Fee estimates are available to signed-in customers. Sign in to see the
+          breakdown, download the summary and submit your application.
+        </p>
+        <button
+          onClick={onSignIn}
+          className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all"
+        >
+          Sign in to continue <ArrowRight className="size-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-surface shadow-card p-6">
       <div className="flex items-center gap-2 mb-4">
         <FileText className="size-4 text-primary" />
         <h3 className="text-sm font-semibold">Fee Breakdown</h3>
       </div>
-      <FeeStack fees={fees} dsc={dsc} total={total} />
+      {loading ? (
+        <div className="text-xs text-muted-foreground py-4">Loading current pricing…</div>
+      ) : (
+        <FeeStack fees={fees} />
+      )}
       <div className="mt-6 text-[11px] text-muted-foreground border-t border-border pt-4 leading-relaxed">
         This estimate covers name reservation, SPICe+ Part A &amp; B, DSC, PAN,
         TAN and INC-33/34. Additional state-specific stamp duty may apply.
+        {!fees.fromCatalog && !loading && (
+          <>
+            {" "}
+            <span className="text-warning">
+              Indicative pricing — confirmed by your advisor before payment.
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

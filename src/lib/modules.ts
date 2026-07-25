@@ -80,3 +80,48 @@ export const ALL_MODULES: ModuleItem[] = MODULE_GROUPS.flatMap((g) => g.items);
 export function getModule(slug: string): ModuleItem | undefined {
   return ALL_MODULES.find((m) => m.slug === slug);
 }
+
+/** A service published from the admin catalog (DB-driven). */
+export type CatalogGroup = {
+  label: string;
+  items: { slug: string; title: string; short: string; authority: string; form: string; icon?: string }[];
+};
+
+/** Icon names stored on `services.icon` -> lucide components. */
+const ICON_MAP: Record<string, ModuleItem["icon"]> = {
+  Building2, Handshake, Users, Shield, HomeIcon, Wallet, IdCard, Factory, Globe,
+  Rocket, HardHat, Coins, HeartPulse, Store, FlameKindling, Leaf, Pill,
+  ShieldCheck, Award, FileBadge2, Copyright, Palette,
+};
+
+/** Resolve a stored icon name to a component, falling back to a generic badge. */
+export function iconFor(name?: string | null): ModuleItem["icon"] {
+  return (name && ICON_MAP[name]) || FileBadge2;
+}
+
+/**
+ * Convert the backend catalog into sidebar groups. The database is the source of
+ * truth for services; the built-in MODULE_GROUPS are only used as a fallback when
+ * the catalog is unavailable (offline / API error).
+ */
+export function catalogToGroups(groups: CatalogGroup[]): ModuleGroup[] {
+  if (!groups || groups.length === 0) return MODULE_GROUPS;
+
+  const mapped: ModuleGroup[] = groups
+    .map((g) => ({
+      label: g.label,
+      items: g.items
+        .filter((i) => !!i.slug)
+        .map((i) => ({
+          slug: i.slug,
+          title: i.title,
+          short: i.short || i.title,
+          icon: iconFor(i.icon),
+          authority: i.authority || "—",
+          form: i.form || undefined,
+        })),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  return mapped.length > 0 ? mapped : MODULE_GROUPS;
+}

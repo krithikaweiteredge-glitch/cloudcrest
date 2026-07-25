@@ -1,32 +1,85 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { FileText, ArrowRight } from "lucide-react";
+import { assetUrl } from "@/lib/file-url";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { FileText, Download, UploadCloud, X, Loader2, Info, User, Mail, Phone, Building2, Coins, Calendar, CheckCircle2, ChevronRight, Clock } from "lucide-react";
 import { StatusPill, EmptyState } from "./profile.index";
 
 export const Route = createFileRoute("/_authenticated/profile/requests")({
+  validateSearch: (s: Record<string, unknown>): { ref?: string } => ({
+    ref: typeof s.ref === "string" ? s.ref : undefined,
+  }),
   component: RequestsPage,
 });
 
+function formatDateTime(dateStr: string | Date) {
+  if (!dateStr) return "—";
+  let d: Date;
+  if (dateStr instanceof Date) {
+    d = dateStr;
+  } else {
+    const s = String(dateStr).trim();
+    const isoCandidate = s.includes(" ") && !s.includes("T") ? s.replace(" ", "T") : s;
+    d = new Date(isoCandidate);
+  }
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function RequestsPage() {
+  const queryClient = useQueryClient();
+  const { ref } = Route.useSearch();
+  const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
+  const openedRef = useRef<string | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["my-requests"],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests`);
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests`, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Failed to load requests");
       const list = await res.json();
       return list.map((r: any) => ({
         id: r.id,
-        service_title: r.serviceTitle,
-        reference_no: r.referenceNo,
-        business_name: r.businessName,
+        serviceTitle: r.serviceTitle,
+        referenceNo: r.referenceNo,
+        businessName: r.businessName,
         authority: r.authority,
         form: r.form,
-        created_at: r.createdAt,
-        status: r.status,
+        contactName: r.contactName,
+        contactEmail: r.contactEmail,
+        contactPhone: r.contactPhone,
+        authorisedCapital: r.authorisedCapital,
+        paidCapital: r.paidCapital,
+        notes: r.notes,
+        formData: r.formData,
+        createdAt: r.createdAt,
+        status: r.status || "pending",
+        documents: r.documents || [],
       }));
     },
   });
+
+  // When arriving from a notification (?ref=CC-XXXX), auto-open that registration
+  // once. Tracked in a ref so it doesn't reopen after the user closes the modal.
+  useEffect(() => {
+    if (ref && data && openedRef.current !== ref) {
+      const match = data.find((r: any) => r.referenceNo === ref);
+      if (match) {
+        setSelectedRequest(match);
+        openedRef.current = ref;
+      }
+    }
+  }, [ref, data]);
 
   return (
     <div className="space-y-4">
@@ -34,47 +87,59 @@ function RequestsPage() {
         <div>
           <h2 className="text-lg font-display font-semibold">My Registrations</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Every service you've submitted through Cloudcrest BM.
+            View live status, admin remarks, and manage uploaded files for your submissions.
           </p>
         </div>
-        <Link to="/" className="text-xs px-3 py-2 rounded-lg gradient-brand text-white shadow-brand font-semibold">
+        <Link to="/" className="text-xs px-3.5 py-2 rounded-lg gradient-brand text-white shadow-brand font-semibold">
           New registration
         </Link>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface shadow-card overflow-hidden">
+      <div className="rounded-xl border border-border bg-surface shadow-card overflow-x-auto">
         {isLoading ? (
           <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
         ) : data && data.length > 0 ? (
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-[10px] mono uppercase tracking-wider text-muted-foreground">
+            <thead className="bg-muted/50 text-[10px] mono uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>
-                <th className="text-left px-4 py-2.5">Service</th>
-                <th className="text-left px-4 py-2.5">Reference</th>
-                <th className="text-left px-4 py-2.5">Business</th>
-                <th className="text-left px-4 py-2.5">Submitted</th>
-                <th className="text-left px-4 py-2.5">Status</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Service</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Reference</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Submitted</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="text-right px-4 py-3 whitespace-nowrap">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {data.map((r: any) => (
-                <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3">
+                <tr
+                  key={r.id}
+                  onClick={() => setSelectedRequest(r)}
+                  className="hover:bg-muted/40 cursor-pointer transition-colors group"
+                >
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center gap-2">
-                      <FileText className="size-3.5 text-primary" />
-                      <span className="font-medium">{r.service_title}</span>
+                      <FileText className="size-3.5 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold group-hover:text-primary transition-colors">{r.serviceTitle}</span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
                       {r.authority} {r.form ? `· ${r.form}` : ""}
                     </div>
                   </td>
-                  <td className="px-4 py-3 mono text-[12px]">{r.reference_no}</td>
-                  <td className="px-4 py-3 text-[12px]">{r.business_name ?? "—"}</td>
-                  <td className="px-4 py-3 text-[12px] text-muted-foreground">
-                    {new Date(r.created_at).toLocaleDateString()}
+                  <td className="px-4 py-3.5 mono text-[12px] font-bold text-foreground/90 whitespace-nowrap">{r.referenceNo}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-muted-foreground whitespace-nowrap">
+                    {formatDateTime(r.createdAt)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     <StatusPill status={r.status} />
+                  </td>
+                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedRequest(r); }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                    >
+                      View Details <ChevronRight className="size-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -89,6 +154,337 @@ function RequestsPage() {
           />
         )}
       </div>
+
+      {selectedRequest && (
+        <RegistrationDetailDialog
+          request={selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+          onRefresh={async () => {
+            await queryClient.invalidateQueries({ queryKey: ["my-requests"] });
+            fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/${selectedRequest.id}`, {
+              credentials: "include",
+            })
+              .then((res) => (res.ok ? res.json() : null))
+              .then((updated) => {
+                if (updated) setSelectedRequest(updated);
+              });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function RegistrationDetailDialog({
+  request,
+  onClose,
+  onRefresh,
+}: {
+  request: any;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+  const openDoc = (path: string) => {
+    window.open(assetUrl(path), "_blank", "noopener");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    try {
+      for (const f of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("file", f);
+
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/${request.id}/documents`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || `Failed to upload ${f.name}`);
+        }
+      }
+
+      setUploadSuccess("Document(s) uploaded successfully!");
+      onRefresh();
+    } catch (err: any) {
+      setUploadError(err.message || "Failed to upload document");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const capitalVal = request.paidCapital || request.authorisedCapital || request.capital;
+
+  let fd: any = {};
+  if (request.formData) {
+    try {
+      fd = typeof request.formData === "string" ? JSON.parse(request.formData) : request.formData;
+    } catch (_) {}
+  }
+
+  const isCompanyReg =
+    (request.serviceTitle && request.serviceTitle.toLowerCase().includes("company")) ||
+    (request.form && request.form.toLowerCase().includes("spice")) ||
+    Boolean(request.businessName || capitalVal || fd.name1 || fd.address);
+
+  const content = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
+      {/* 100% Viewport Dark Backdrop Blur */}
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onClick={onClose} />
+
+      {/* Modal Dialog Card */}
+      <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl flex flex-col z-10 animate-in zoom-in-95 duration-200 my-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-navy/95 to-slate-900 text-white px-6 py-5 flex items-center justify-between border-b border-white/10 shrink-0">
+          <div className="space-y-1 min-w-0 pr-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="mono text-[10px] font-bold uppercase tracking-wider bg-white/15 text-white px-2.5 py-0.5 rounded-md border border-white/20">
+                {request.referenceNo}
+              </span>
+              <span className="text-white/80 text-xs font-medium">
+                {request.authority}{request.form ? ` · ${request.form}` : ""}
+              </span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-display font-bold leading-snug text-white truncate">
+              {request.serviceTitle}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition-colors shrink-0"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Modal Scroll Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Status Bar */}
+          <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Clock className="size-4 text-primary shrink-0" />
+              <span className="text-xs font-semibold text-foreground">Current Application Status</span>
+            </div>
+            <StatusPill status={request.status || "pending"} />
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Contact Info Card */}
+            <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3 shadow-sm">
+              <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                <User className="size-3.5" /> Contact Information
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-start gap-2">
+                  <User className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Full Name</span>
+                    <span className="font-semibold text-foreground">{request.contactName || "—"}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Mail className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Email Address</span>
+                    <span className="font-medium text-foreground">{request.contactEmail || "—"}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Phone className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Mobile Number</span>
+                    <span className="font-medium text-foreground">{request.contactPhone || "—"}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Calendar className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Submission Timestamp</span>
+                    <span className="font-medium text-foreground">{formatDateTime(request.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Entity & Filing Details Card */}
+            {isCompanyReg && (
+              <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3 shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                  <Building2 className="size-3.5" /> Entity & Filing Details
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <Building2 className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                    <div>
+                      <span className="text-[11px] text-muted-foreground block">Proposed Name 1</span>
+                      <span className="font-semibold text-foreground">{fd.name1 || request.businessName || "—"}</span>
+                    </div>
+                  </div>
+                  {fd.name2 && (
+                    <div className="flex items-start gap-2">
+                      <Building2 className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <span className="text-[11px] text-muted-foreground block">Proposed Name 2</span>
+                        <span className="font-medium text-foreground">{fd.name2}</span>
+                      </div>
+                    </div>
+                  )}
+                  {capitalVal && (
+                    <div className="flex items-start gap-2">
+                      <Coins className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <span className="text-[11px] text-muted-foreground block">Proposed Capital</span>
+                        <span className="font-semibold text-foreground">₹{Number(capitalVal).toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  )}
+                  {(fd.directors || fd.partners) && (
+                    <div className="flex items-start gap-2">
+                      <User className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <span className="text-[11px] text-muted-foreground block">Directors / Partners</span>
+                        <span className="font-medium text-foreground">{fd.directors || fd.partners}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Registered Office Address Card */}
+          {(fd.address || fd.city || fd.state) && (
+            <div className="p-4 rounded-xl border border-border/70 bg-card space-y-2 shadow-sm">
+              <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                <Building2 className="size-3.5" /> Registered Office Address
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                <div>
+                  <span className="text-[11px] text-muted-foreground block">Address Line</span>
+                  <span className="font-medium text-foreground">{fd.address || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-muted-foreground block">City, State & PIN Code</span>
+                  <span className="font-medium text-foreground">
+                    {[fd.city, fd.state].filter(Boolean).join(", ")} {fd.pincode ? `- ${fd.pincode}` : ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Admin Remarks / Notes */}
+          {request.notes && (
+            <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
+              <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
+                <Info className="size-4 shrink-0" /> Advisor Notes & Instructions
+              </div>
+              <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">
+                {request.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Documents Section */}
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Uploaded Documents ({request.documents?.length || 0})
+                </h4>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Files attached to this registration. You can upload additional requested files below.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0"
+              >
+                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
+                Upload File
+              </button>
+              <input ref={fileInputRef} type="file" multiple hidden onChange={handleFileUpload} />
+            </div>
+
+            {uploadError && (
+              <div className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2">
+                {uploadError}
+              </div>
+            )}
+
+            {uploadSuccess && (
+              <div className="text-xs text-success rounded-lg border border-success/30 bg-success/10 px-3.5 py-2 flex items-center gap-1.5 font-medium">
+                <CheckCircle2 className="size-3.5" /> {uploadSuccess}
+              </div>
+            )}
+
+            {request.documents && request.documents.length > 0 ? (
+              <ul className="grid grid-cols-1 gap-2">
+                {request.documents.map((doc: any) => (
+                  <li key={doc.id} className="flex items-center justify-between gap-3 text-xs rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-colors shadow-sm">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="size-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                        <FileText className="size-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-foreground truncate">{doc.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {doc.sizeBytes ? `${(doc.sizeBytes / 1024).toFixed(0)} KB · ` : ""}
+                          {formatDateTime(doc.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openDoc(doc.storagePath)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground shrink-0"
+                    >
+                      <Download className="size-3" /> View
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                No files attached yet for this registration. Click "Upload File" above to add documents.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-border bg-muted/20 flex justify-end shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded-lg text-xs font-semibold border border-border hover:bg-muted transition-colors"
+          >
+            Close Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(content, document.body);
 }

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { MODULE_GROUPS, ALL_MODULES } from "@/lib/modules";
+import { useCatalogGroups } from "@/lib/service-catalog";
+import { useAuth } from "@/hooks/use-auth";
+import { HeroBackdrop } from "@/components/hero-backdrop";
 import {
-  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, Star,
+  Search, ArrowRight, ShieldCheck, Sparkles, Clock,
 } from "lucide-react";
 import logo from "@/assets/cloudcrest-logo.png";
 
@@ -10,6 +12,16 @@ const SUFFIXES = ["Private Limited", "LLP", "Foundation", "Producer Company"];
 
 export function LandingHero() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  // Same source as the sidebar, so an admin-published service shows up in both.
+  const { groups } = useCatalogGroups();
+  const allModules = groups.flatMap((g) => g.items);
+
+  // Admins land on a service's registrations; customers on the service page.
+  const openService = (slug: string) =>
+    isAdmin
+      ? navigate({ to: "/admin", search: { service: slug } })
+      : navigate({ to: "/m/$slug", params: { slug } });
   const [q, setQ] = useState("");
   const [pick, setPick] = useState(0);
   const [checking, setChecking] = useState(false);
@@ -56,21 +68,29 @@ export function LandingHero() {
   };
 
   const filteredModules = q.trim()
-    ? ALL_MODULES.filter((m) => m.title.toLowerCase().includes(q.toLowerCase())).slice(0, 4)
+    ? allModules.filter((m) => m.title.toLowerCase().includes(q.toLowerCase())).slice(0, 4)
     : [];
 
   return (
     <div>
       {/* Hero */}
       <section className="relative overflow-hidden gradient-hero text-white">
-        <div className="absolute inset-0 opacity-50 pointer-events-none"
+        {/* Panning technical grid under the filing scene. */}
+        <div className="hero-grid" />
+        <HeroBackdrop />
+        {/* Light scrim directly behind the copy only — strong enough to keep text
+            readable, weak enough that the scene still reads through it. */}
+        <div
+          className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage:
-              "radial-gradient(circle at 12% 18%, oklch(0.58 0.22 27 / 0.45), transparent 42%), radial-gradient(circle at 88% 20%, oklch(0.62 0.16 152 / 0.45), transparent 45%), radial-gradient(circle at 50% 95%, oklch(0.55 0.20 255 / 0.55), transparent 50%)",
+            background:
+              "radial-gradient(ellipse 46% 34% at 50% 42%, oklch(0.21 0.05 258 / 0.55), transparent 72%)",
           }}
         />
         <div className="relative max-w-5xl mx-auto px-8 pt-14 pb-20 text-center">
-          <div className="mx-auto mb-6 inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-white/95 shadow-elev">
+          {/* `flex w-fit` (not inline-flex) so the status pill below starts a new
+              line instead of flowing alongside it. */}
+          <div className="mx-auto mb-6 flex w-fit items-center gap-3 px-4 py-2 rounded-xl bg-white/95 shadow-elev">
             <img src={logo} alt="Cloudcrest" className="h-7 w-auto object-contain" />
             <span className="text-[11px] mono uppercase tracking-widest text-muted-foreground">
               Business Management
@@ -80,26 +100,30 @@ export function LandingHero() {
             <span className="size-1.5 rounded-full bg-destructive live-dot" />
             <span className="size-1.5 rounded-full bg-success" />
             <span className="size-1.5 rounded-full bg-primary" />
-            India's compliance workspace · 22 registration modules
+            India's compliance workspace · {allModules.length} registration modules
           </div>
-          <h1 className="mt-6 text-4xl md:text-6xl font-display font-semibold tracking-tight leading-[1.02]">
-            Start your business.<br />
-            <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg, oklch(0.58 0.22 27), oklch(0.62 0.16 152) 50%, oklch(0.65 0.20 255))" }}>
-              Get it registered in days.
+          <h1 className="mt-7 text-5xl md:text-7xl lg:text-[5.5rem] font-display font-semibold tracking-[-0.03em] leading-[0.92]">
+            Start your{" "}
+            <span className="italic font-normal">business.</span>
+            <br />
+            <span className="bg-clip-text text-transparent animated-gradient" style={{ backgroundImage: "linear-gradient(90deg, oklch(0.68 0.22 27), oklch(0.72 0.16 152) 50%, oklch(0.7 0.20 255), oklch(0.68 0.22 27))" }}>
+              Registered in days.
             </span>
           </h1>
-          <p className="mt-5 text-white/70 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-            Search your company name, upload documents, and let Cloudcrest BM associates handle the
-            filings — MCA, GST, MSME, Trademark and more.
+          <p className="mt-6 text-white/70 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
+            Search your name, upload documents once, and let Cloudcrest associates handle every
+            filing — MCA, GST, MSME, Trademark and more.
           </p>
 
           {/* Search */}
-          <div className="mt-9 mx-auto max-w-2xl">
+          <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
             <form
               onSubmit={(e) => { e.preventDefault(); checkAndGo(`${q.trim()} ${SUFFIXES[pick]}`); }}
-              className="flex items-stretch rounded-xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-primary/40 transition-shadow"
+              className="relative flex items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
             >
-              <div className="pl-4 pr-2 grid place-items-center">
+              {/* Sweeping highlight — hidden once the field is in use. */}
+              {!q && !checking && <span className="search-beam" />}
+              <div className="relative pl-5 pr-3 grid place-items-center shrink-0">
                 <Search className="size-5 text-muted-foreground" />
               </div>
               <input
@@ -108,22 +132,32 @@ export function LandingHero() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Enter your business name — e.g. Acme Tech"
-                className="flex-1 py-4 text-foreground text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
+                className="relative flex-1 min-w-0 py-4 pr-3 text-foreground text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
               />
               <select
                 disabled={checking}
                 value={pick}
                 onChange={(e) => setPick(Number(e.target.value))}
-                className="hidden md:block border-l border-border bg-white text-foreground text-sm px-3 focus:outline-none"
+                className="relative hidden md:block shrink-0 border-l border-border bg-white text-foreground text-sm px-4 cursor-pointer focus:outline-none focus:bg-muted/40 transition-colors"
               >
                 {SUFFIXES.map((s, i) => <option key={s} value={i}>{s}</option>)}
               </select>
               <button
                 type="submit"
                 disabled={checking}
-                className="flex items-center gap-2 px-6 gradient-brand text-white font-semibold text-sm hover:brightness-110 transition-all disabled:opacity-50"
+                className="group relative flex shrink-0 items-center justify-center gap-2 px-5 sm:px-7 min-w-[7.5rem] sm:min-w-[10rem] gradient-brand text-white font-semibold text-sm whitespace-nowrap hover:brightness-110 transition-all disabled:opacity-50"
               >
-                {checking ? "Checking..." : "Check & Start"} <ArrowRight className="size-4" />
+                {checking ? (
+                  <>
+                    <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  <>
+                    Check &amp; Start
+                    <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+                  </>
+                )}
               </button>
             </form>
 
@@ -170,7 +204,7 @@ export function LandingHero() {
                         return (
                           <li key={m.slug}>
                             <button
-                              onClick={() => navigate({ to: "/m/$slug", params: { slug: m.slug } })}
+                              onClick={() => openService(m.slug)}
                               className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-muted transition-colors"
                             >
                               <Icon className="size-4 text-primary" />
@@ -187,56 +221,104 @@ export function LandingHero() {
             )}
           </div>
 
-          {/* Trust bar */}
-          <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-[13px] text-white/80">
-            <span className="flex items-center gap-2"><Users className="size-4 text-primary" /> 12,400+ businesses served</span>
-            <span className="flex items-center gap-2"><Star className="size-4 text-primary" /> 4.8 / 5 client rating</span>
-            <span className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /> ISO 27001 · Secure filings</span>
-            <span className="flex items-center gap-2"><Clock className="size-4 text-primary" /> Same-day advisor call</span>
+          {/* Oversized stat band */}
+          <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 border-t border-white/10 pt-10">
+            {[
+              { n: "12,400+", l: "Businesses served" },
+              { n: "4.8/5", l: "Client rating" },
+              { n: `${allModules.length}+`, l: "Registration modules" },
+              { n: "ISO 27001", l: "Secure filings" },
+            ].map((s) => (
+              <div key={s.l}>
+                <div className="text-3xl md:text-4xl font-display font-semibold tracking-tight">{s.n}</div>
+                <div className="mt-1 text-[11px] mono uppercase tracking-widest text-white/50">{s.l}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* Kinetic marquee band */}
+      <section className="bg-navy text-navy-foreground border-y border-white/5 overflow-hidden py-5">
+        <div className="marquee-track flex w-max items-center gap-8 whitespace-nowrap">
+          {Array.from({ length: 2 }).flatMap((_, dup) =>
+            [
+              "Company", "LLP", "GST", "MSME", "IEC", "Trademark", "Patent",
+              "FSSAI", "EPF", "ESI", "Trade Licence", "Copyright", "Startup India",
+            ].map((word) => (
+              <span key={`${dup}-${word}`} className="flex items-center gap-8 text-2xl md:text-3xl font-display font-medium tracking-tight">
+                <span className="text-navy-foreground/80 hover:text-primary transition-colors">{word}</span>
+                <span className="text-primary/60 text-lg">✦</span>
+              </span>
+            )),
+          )}
+        </div>
+      </section>
+
       {/* Services grid */}
-      <section className="max-w-6xl mx-auto px-8 py-16">
-        <div className="flex items-end justify-between mb-8">
+      <section className="max-w-[1600px] mx-auto px-6 md:px-12 py-20 md:py-28">
+        <div className="flex items-end justify-between gap-6 mb-12 border-b border-border pb-8">
           <div>
             <div className="label-eyebrow text-primary mb-2">Services</div>
-            <h2 className="text-3xl font-display font-semibold tracking-tight">
-              Everything you need to run a compliant business
+            <h2 className="text-3xl md:text-5xl font-display font-semibold tracking-[-0.02em] leading-[1.02] max-w-xl">
+              Everything you need to run a{" "}
+              <span className="italic font-normal">compliant</span> business
             </h2>
           </div>
+          <span className="hidden md:block mono text-[11px] text-muted-foreground whitespace-nowrap pb-1">
+            {allModules.length} services →
+          </span>
         </div>
 
         <div className="space-y-10">
-          {MODULE_GROUPS.map((g) => (
+          {groups.map((g) => (
             <div key={g.label}>
               <div className="flex items-baseline justify-between mb-4">
-                <h3 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
                   {g.label}
                 </h3>
                 <span className="mono text-[10px] text-muted-foreground">
                   {g.items.length.toString().padStart(2, "0")} services
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {g.items.map((m) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                {g.items.map((m, ci) => {
                   const Icon = m.icon;
                   return (
                     <button
                       key={m.slug}
-                      onClick={() => navigate({ to: "/m/$slug", params: { slug: m.slug } })}
-                      className="group text-left rounded-xl border border-border bg-surface p-5 hover-lift shadow-card transition-all"
+                      onClick={() => openService(m.slug)}
+                      style={{ "--i": ci } as React.CSSProperties}
+                      className="card-in group relative overflow-hidden text-left border border-border bg-surface p-5 shadow-[0_4px_10px_-2px_oklch(0.2_0.04_260_/_0.1),0_18px_44px_-12px_oklch(0.2_0.04_260_/_0.18)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary hover:bg-navy hover:shadow-[0_28px_64px_-14px_oklch(0.24_0.08_260_/_0.75)]"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="size-10 rounded-lg bg-primary/10 grid place-items-center text-primary">
+                      {/* Soft highlight that blooms on hover over the dark fill. */}
+                      <span
+                        className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{
+                          background:
+                            "radial-gradient(120% 90% at 0% 0%, oklch(0.55 0.20 255 / 0.4), transparent 55%)",
+                        }}
+                      />
+                      <div className="relative flex items-start justify-between gap-3">
+                        <div className="size-11 rounded-xl bg-primary/10 grid place-items-center text-primary transition-all duration-300 group-hover:gradient-brand group-hover:text-white group-hover:shadow-brand group-hover:scale-110">
                           <Icon className="size-5" />
                         </div>
-                        <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                        <ArrowRight className="size-4 text-muted-foreground transition-all duration-300 group-hover:text-white group-hover:translate-x-0.5" />
                       </div>
-                      <div className="mt-4 text-sm font-semibold">{m.title}</div>
-                      <div className="text-[11px] mono text-muted-foreground mt-1">
+                      <div className="relative mt-4 text-sm font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
+                        {m.title}
+                      </div>
+                      <div className="relative text-[11px] mono text-muted-foreground mt-1 transition-colors duration-300 group-hover:text-white/55">
                         {m.authority} · {m.form ?? "—"}
+                      </div>
+
+                      {/* Start Application CTA — slides up into view on hover. */}
+                      <div className="relative grid transition-all duration-300 grid-rows-[0fr] opacity-0 group-hover:grid-rows-[1fr] group-hover:opacity-100 group-hover:mt-4">
+                        <div className="overflow-hidden">
+                          <span className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand">
+                            Start Application <ArrowRight className="size-3.5" />
+                          </span>
+                        </div>
                       </div>
                     </button>
                   );
@@ -253,7 +335,7 @@ export function LandingHero() {
           {[
             { i: ShieldCheck, t: "Backed by compliance experts", d: "Every filing is reviewed by CA/CS professionals before submission." },
             { i: Clock, t: "Transparent turnaround", d: "Track your application status in real time from application to certificate." },
-            { i: Sparkles, t: "One dashboard for everything", d: "Manage 22+ registrations, renewals and post-approval compliance in a single place." },
+            { i: Sparkles, t: "One dashboard for everything", d: `Manage ${allModules.length}+ registrations, renewals and post-approval compliance in a single place.` },
           ].map((f) => (
             <div key={f.t} className="flex items-start gap-3">
               <div className="size-9 rounded-lg bg-white/10 grid place-items-center text-primary shrink-0">

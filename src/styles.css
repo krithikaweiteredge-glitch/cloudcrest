@@ -37,16 +37,26 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-navy: var(--navy);
   --color-navy-foreground: var(--navy-foreground);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Inter", ui-monospace, monospace;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Plus Jakarta Sans", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  --shadow-card: 0 1px 2px oklch(0.2 0.04 260 / 0.04), 0 4px 12px oklch(0.2 0.04 260 / 0.04);
-  --shadow-elev: 0 2px 4px oklch(0.2 0.04 260 / 0.05), 0 12px 32px oklch(0.2 0.04 260 / 0.08);
-  --shadow-brand: 0 8px 24px oklch(0.55 0.20 255 / 0.28);
+  /* Layered soft shadows (Stripe/Linear style): a tight contact shadow plus a
+     wide, diffuse ambient one so surfaces float rather than sit on a hard edge. */
+  --shadow-card:
+    0 1px 2px oklch(0.2 0.04 260 / 0.05),
+    0 2px 6px -1px oklch(0.2 0.04 260 / 0.05),
+    0 8px 20px -6px oklch(0.2 0.04 260 / 0.07);
+  --shadow-elev:
+    0 1px 2px oklch(0.2 0.04 260 / 0.06),
+    0 6px 16px -4px oklch(0.2 0.04 260 / 0.09),
+    0 22px 44px -12px oklch(0.2 0.04 260 / 0.14);
+  --shadow-brand:
+    0 4px 12px -2px oklch(0.55 0.20 255 / 0.32),
+    0 14px 34px -10px oklch(0.55 0.20 255 / 0.28);
 
-  --gradient-hero: linear-gradient(135deg, oklch(0.24 0.06 260) 0%, oklch(0.32 0.12 255) 55%, oklch(0.48 0.18 245) 100%);
-  --gradient-brand: linear-gradient(135deg, oklch(0.58 0.20 255) 0%, oklch(0.46 0.18 260) 100%);
+  --gradient-hero: linear-gradient(135deg, oklch(0.22 0.06 262) 0%, oklch(0.30 0.13 258) 48%, oklch(0.48 0.18 246) 100%);
+  --gradient-brand: linear-gradient(135deg, oklch(0.62 0.20 255) 0%, oklch(0.52 0.20 262) 52%, oklch(0.46 0.19 268) 100%);
 }
 
 :root {
@@ -90,12 +100,37 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Atmospheric base: soft off-axis colour washes so no page is ever a flat
+     white slab. Fixed so it doesn't scroll or cause layout shift. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 55% at 12% 0%, oklch(0.55 0.20 255 / 0.06), transparent 60%),
+      radial-gradient(50% 50% at 92% 8%, oklch(0.62 0.16 152 / 0.05), transparent 60%),
+      radial-gradient(70% 60% at 50% 108%, oklch(0.58 0.22 27 / 0.045), transparent 60%);
+  }
+  /* Fine noise so the gradients read as texture, not banding. The SVG is a
+     tiny inline turbulence tile at very low opacity. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
   }
   ::selection {
     background-color: color-mix(in oklab, var(--brand) 35%, transparent);
@@ -136,9 +171,9 @@
 }
 
 @utility hover-lift {
-  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 200ms;
+  transition: transform 240ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 240ms;
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-elev);
   }
 }
@@ -151,6 +186,46 @@
   }
 }
 
+/* --- Premium primitives, opt-in per component --- */
+
+/* Frosted translucent panel — headers, popovers, sticky bars. */
+@utility glass {
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+/* Brand-gradient text for accents and headline spans. */
+@utility gradient-text {
+  background: var(--gradient-brand);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Soft brand glow on hover, for primary cards / CTAs. */
+@utility hover-glow {
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 260ms;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-brand);
+  }
+}
+
+/* A hairline top highlight, the classic SaaS "lit from above" card edge. */
+@utility edge-light {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.5), transparent);
+    pointer-events: none;
+  }
+}
+
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -158,6 +233,62 @@
 @keyframes shimmer {
   0% { background-position: -400px 0; }
   100% { background-position: 400px 0; }
+}
+
+/* Slow drifting colour orb for hero depth. */
+@keyframes float-orb {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(8%, -10%, 0) scale(1.14); }
+}
+@utility float-orb {
+  animation: float-orb 15s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Gentle bob for chips / badges. */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@utility float-soft {
+  animation: float-soft 4s ease-in-out infinite;
+}
+
+/* A slow conic shimmer for gradient text / accents. */
+@keyframes hue-drift {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(20deg); }
+}
+
+/* Staggered word/element reveal used in the hero. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@utility rise-in {
+  animation: rise-in 0.6s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* Animated gradient sweep for buttons / bars. */
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@utility animated-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* Infinite marquee — the track holds two copies, so -50% loops seamlessly. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@utility marquee-track {
+  animation: marquee 34s linear infinite;
+  &:hover { animation-play-state: paused; }
 }
 @keyframes soft-pulse {
   0%, 100% { opacity: 1; }
@@ -169,4 +300,147 @@
 }
 @utility live-dot {
   animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Hero motion. Stacked layers drift at different speeds to give the navy hero
+   depth without any JS. Transform/opacity only, so it stays on the compositor.
+   --------------------------------------------------------------------------- */
+
+@keyframes grid-pan {
+  from { background-position: 0 0; }
+  to   { background-position: 56px 56px; }
+}
+@keyframes beam-sweep {
+  0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  12%  { opacity: 0.5; }
+  60%  { opacity: 0; }
+  100% { transform: translateX(320%) skewX(-18deg); opacity: 0; }
+}
+
+/** Slow-panning technical grid, the base layer of the hero. */
+@utility hero-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.09) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 40%, #000 45%, transparent 100%);
+  animation: grid-pan 12s linear infinite;
+}
+
+/** Light sweeping across the search bar every few seconds. */
+@utility search-beam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.6), transparent);
+  animation: beam-sweep 5.5s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Ambient "filing" scene behind the hero: document cards drift upward and get
+   stamped, evoking paperwork moving through approval. Purely decorative.
+   --------------------------------------------------------------------------- */
+
+@keyframes doc-rise {
+  0%   { transform: translate3d(0, 60vh, 0) rotate(var(--tilt, -6deg)) scale(var(--s, 1)); opacity: 0; }
+  10%  { opacity: var(--peak, 0.7); }
+  85%  { opacity: var(--peak, 0.7); }
+  100% { transform: translate3d(var(--drift, 18px), -75vh, 0) rotate(calc(var(--tilt, -6deg) * -1.8)) scale(var(--s, 1)); opacity: 0; }
+}
+@keyframes seal-stamp {
+  0%, 58%  { transform: scale(0.4); opacity: 0; }
+  66%      { transform: scale(1.25); opacity: 1; }
+  72%, 88% { transform: scale(1); opacity: 1; }
+  100%     { transform: scale(1); opacity: 0; }
+}
+@keyframes scan-line {
+  0%   { transform: translateY(-10%); opacity: 0; }
+  20%  { opacity: 0.75; }
+  80%  { opacity: 0.75; }
+  100% { transform: translateY(1100%); opacity: 0; }
+}
+
+@utility doc-card {
+  position: absolute;
+  bottom: -8rem;
+  will-change: transform, opacity;
+  animation: doc-rise var(--dur, 26s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+@utility doc-seal {
+  animation: seal-stamp var(--dur, 26s) ease-out infinite;
+  animation-delay: var(--delay, 0s);
+  transform-origin: center;
+}
+@utility scan-line {
+  animation: scan-line 7s ease-in-out infinite;
+}
+
+/* Active service link: a glowing rail. */
+@keyframes rail-glow {
+  0%, 100% { opacity: 0.85; box-shadow: 0 0 6px 0 var(--primary); }
+  50%      { opacity: 1; box-shadow: 0 0 12px 1px var(--primary); }
+}
+@utility nav-rail-glow {
+  animation: rail-glow 2.4s ease-in-out infinite;
+}
+
+/* Staggered entrance for sidebar groups. Each group sets --i for its delay. */
+@keyframes nav-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@utility nav-in {
+  animation: nav-in 0.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+/* Slow gradient sheen for the advisor card. */
+@keyframes sheen {
+  0%   { background-position: -160% 0; }
+  100% { background-position: 260% 0; }
+}
+@utility card-sheen {
+  position: relative;
+  overflow: hidden;
+}
+@utility card-sheen-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 34%, oklch(0.55 0.20 255 / 0.12) 50%, transparent 66%);
+  background-size: 200% 100%;
+  animation: sheen 6.5s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Card interactions for the home services grid.
+   --------------------------------------------------------------------------- */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@utility card-in {
+  animation: card-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-grid, .search-beam, .live-dot,
+  .doc-card, .doc-seal, .scan-line,
+  .nav-rail-glow, .nav-in, .card-sheen-layer, .card-in,
+  .float-orb, .float-soft, .rise-in, .animated-gradient, .marquee-track {
+    animation: none !important;
+  }
+  .search-beam, .scan-line { opacity: 0; }
+  .doc-card { display: none; }
+  .card-in, .nav-in, .rise-in { opacity: 1; transform: none; }
 }
