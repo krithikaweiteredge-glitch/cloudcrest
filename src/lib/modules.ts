@@ -23,7 +23,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   {
     label: "Entity Registration",
     items: [
-      { slug: "company", title: "Company Registration", short: "Company", icon: Building2, authority: "MCA", form: "SPICe+ / INC-32" },
+      { slug: "company", title: "Company Registration", short: "Company", icon: Building2, authority: "MCA", form: "INC-32" },
       { slug: "llp", title: "LLP Registration", short: "LLP", icon: Handshake, authority: "MCA", form: "FiLLiP" },
       { slug: "partnership", title: "Partnership Firm", short: "Partnership", icon: Users, authority: "Registrar of Firms", form: "Form A" },
       { slug: "trust-society", title: "Trust & Societies", short: "Trust / Society", icon: Shield, authority: "Charity Commissioner", form: "Trust Deed / Form A" },

@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Phone, Mail, Search, Bell, ChevronRight, ChevronLeft, ChevronDown, Sparkles, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree } from "lucide-react";
+import { Phone, Mail, Search, Bell, ChevronRight, ChevronLeft, ChevronDown, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree } from "lucide-react";
 import { useCatalogGroups } from "@/lib/service-catalog";
 import { SupportFab } from "@/components/support-fab";
 import { useState, useRef, useEffect, type ReactNode } from "react";
@@ -239,12 +239,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.label)}
-                    className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-colors cursor-pointer select-none hover:bg-muted/50"
+                    className="group w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-colors cursor-pointer select-none hover:bg-primary/10"
                   >
                     <span
                       className={
                         "flex-1 min-w-0 truncate text-[11.5px] font-bold uppercase tracking-[0.12em] transition-colors " +
-                        (hasActiveChild ? "text-primary" : "text-foreground")
+                        (hasActiveChild ? "text-primary" : "text-foreground group-hover:text-primary")
                       }
                     >
                       {group.label}
@@ -277,7 +277,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                           "group relative flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-md text-[14.5px] transition-all duration-200 " +
                           (active
                             ? "text-primary font-semibold bg-primary/10 translate-x-0.5"
-                            : "text-foreground font-medium hover:bg-muted/70 hover:translate-x-0.5");
+                            : "text-foreground font-medium hover:text-primary hover:bg-primary/10 hover:translate-x-0.5");
                         const linkInner = (
                           <>
                             {active && (
@@ -325,7 +325,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
             <div className="card-sheen rounded-lg border border-primary/20 bg-gradient-to-br from-primary/8 to-accent/8 p-3.5">
               <span className="card-sheen-layer" />
               <div className="relative flex items-center gap-1.5 mb-1.5">
-                <Sparkles className="size-3 text-primary" />
+                <Phone className="size-3 text-primary" />
                 <div className="label-eyebrow text-primary">Advisor on Call</div>
               </div>
               <div className="relative text-sm font-semibold mono text-foreground">+91 89770 79433</div>
@@ -437,7 +437,7 @@ function NotificationMenu() {
             {
               id: "public-1",
               title: "📢 Official Announcement: MCA Filing Desk Active",
-              text: "SPICe+ Part A & B incorporation forms are now live for FY 2026-27.",
+              text: "MCA Part A & B incorporation forms are now live for FY 2026-27.",
               time: new Date().toISOString(),
               type: "broadcast",
               linkUrl: "/m/company",

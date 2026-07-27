@@ -25,9 +25,9 @@ const STEPS = [
 ];
 
 const ENTITY_TYPES = [
-  { key: "pvt", title: "Private Limited Company", suffix: "Private Limited", form: "SPICe+ INC-32", tags: ["FDI Friendly", "Min 2 Dir"], pop: true },
-  { key: "public", title: "Public Limited Company", suffix: "Limited", form: "SPICe+ INC-32", tags: ["Min 3 Dir · 7 Sh"] },
-  { key: "opc", title: "One Person Company (OPC)", suffix: "(OPC) Private Limited", form: "SPICe+ INC-32", tags: ["Single Member"] },
+  { key: "pvt", title: "Private Limited Company", suffix: "Private Limited", form: "INC-32", tags: ["FDI Friendly", "Min 2 Dir"], pop: true },
+  { key: "public", title: "Public Limited Company", suffix: "Limited", form: "INC-32", tags: ["Min 3 Dir · 7 Sh"] },
+  { key: "opc", title: "One Person Company (OPC)", suffix: "(OPC) Private Limited", form: "INC-32", tags: ["Single Member"] },
   { key: "sec8", title: "Section 8 Company (Non-Profit)", suffix: "Foundation / Trust / Association", form: "INC-12", tags: ["Tax Exempt"] },
   { key: "guarantee", title: "Company Limited by Guarantee", suffix: "Limited", form: "INC-32", tags: [] },
   { key: "nidhi", title: "Nidhi Company", suffix: "Nidhi Limited", form: "INC-32 · NDH-4", tags: ["Mutual Benefit"] },
@@ -165,7 +165,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     const bad = /(India|National|Bharat|President|Bank)/i.test(name1);
     if (len < 3) return { ok: false, msg: "Minimum 3 characters" };
     if (bad) return { ok: false, msg: "Contains restricted keyword — needs Central Govt. approval" };
-    return { ok: true, msg: "Preliminary check passed — reserve via RUN / SPICe+ Part A" };
+    return { ok: true, msg: "Preliminary check passed — reserve the name via RUN / Part A" };
   }, [name1]);
 
   const capitalCategory =
@@ -400,7 +400,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           <div className="max-w-3xl mx-auto px-10 py-8 animate-in-up">
             <div className="mb-6">
               <div className="label-eyebrow mb-2 text-primary">
-                Company Registration · MCA / SPICe+
+                Company Registration · MCA
               </div>
               <h2 className="text-2xl font-semibold tracking-tight">
                 Company Incorporation Wizard
@@ -986,7 +986,7 @@ function FeeBreakdown({
         <FeeStack fees={fees} />
       )}
       <div className="mt-6 text-[11px] text-muted-foreground border-t border-border pt-4 leading-relaxed">
-        This estimate covers name reservation, SPICe+ Part A &amp; B, DSC, PAN,
+        This estimate covers name reservation, Part A &amp; B, DSC, PAN,
         TAN and INC-33/34. Additional state-specific stamp duty may apply.
         {!fees.fromCatalog && !loading && (
           <>

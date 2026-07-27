@@ -109,6 +109,12 @@ export function RegisterDialog({
       return;
     }
 
+    // Require at least one document — either a fresh upload or a vault selection.
+    if (files.length === 0 && selectedVaultIds.length === 0) {
+      setError("Please upload at least one document to submit your application.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Fold the manually-entered partners / capital into the stored form data

@@ -1051,7 +1051,7 @@ function NotifyDialog({ request, onClose }: { request: AdminRequest; onClose: ()
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
               className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
-              placeholder="e.g. Your DSC has been approved. Please upload the signed MoA to proceed with SPICe+ filing."
+              placeholder="e.g. Your DSC has been approved. Please upload the signed MoA to proceed with MCA filing."
             />
           </div>
 

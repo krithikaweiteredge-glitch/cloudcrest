@@ -4,11 +4,72 @@ import { useCatalogGroups } from "@/lib/service-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import {
-  Search, ArrowRight, ShieldCheck, Sparkles, Clock,
+  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText,
 } from "lucide-react";
 import logo from "@/assets/cloudcrest-logo.png";
 
+// Typical turnaround + document count per service, shown as chips on each card.
+const TIMELINE: Record<string, { days: string; docs: number }> = {
+  company: { days: "7–10 Days", docs: 15 },
+  llp: { days: "5–7 Days", docs: 10 },
+  partnership: { days: "5–7 Days", docs: 7 },
+  "trust-society": { days: "7–12 Days", docs: 12 },
+  huf: { days: "2–3 Days", docs: 5 },
+  gst: { days: "3–7 Days", docs: 6 },
+  "pan-tan": { days: "2–5 Days", docs: 4 },
+  msme: { days: "1–3 Days", docs: 4 },
+  iec: { days: "3–5 Days", docs: 5 },
+  dpiit: { days: "7–14 Days", docs: 6 },
+  "labour-licence": { days: "7–15 Days", docs: 6 },
+  epf: { days: "3–7 Days", docs: 5 },
+  esi: { days: "3–7 Days", docs: 5 },
+  "shop-establishment": { days: "5–10 Days", docs: 5 },
+  "trade-licence": { days: "7–15 Days", docs: 6 },
+  "fire-noc": { days: "10–20 Days", docs: 6 },
+  fssai: { days: "7–15 Days", docs: 6 },
+  "pollution-ncb": { days: "15–30 Days", docs: 7 },
+  "drug-licence": { days: "10–20 Days", docs: 8 },
+  trademark: { days: "2–4 Days", docs: 4 },
+  patent: { days: "5–10 Days", docs: 6 },
+  copyright: { days: "3–7 Days", docs: 4 },
+  design: { days: "5–10 Days", docs: 5 },
+};
+
+const timelineFor = (slug: string) => TIMELINE[slug] ?? { days: "7–14 Days", docs: 6 };
+
 const SUFFIXES = ["Private Limited", "LLP", "Foundation", "Producer Company"];
+
+// Short, customer-facing one-liners per service. Keyed by slug; anything not
+// listed falls back to a sensible template so new catalog services still read
+// well.
+const DESCRIPTIONS: Record<string, string> = {
+  company: "Register your Private Limited Company end to end — from name approval to your incorporation certificate.",
+  llp: "Set up your Limited Liability Partnership with drafting, DIN/DSC and all MCA filings handled for you.",
+  partnership: "Register your Partnership Firm with a professionally drafted partnership deed and registration.",
+  "trust-society": "Register your Trust, Society or NGO with deed drafting, filing and post-approval support.",
+  huf: "Create your Hindu Undivided Family entity with deed drafting and PAN, ready for tax benefits.",
+  gst: "Get your GST registration and GSTIN filed and followed up by our experts, start to finish.",
+  "pan-tan": "Apply for your business PAN and TAN together in a single, guided application flow.",
+  msme: "Get your MSME / Udyam registration certificate quickly for subsidies, tenders and easy credit.",
+  iec: "Get your Import-Export Code (IEC) from DGFT so your business can trade across borders.",
+  dpiit: "Get recognised under Startup India (DPIIT) to unlock tax exemptions and funding benefits.",
+  "labour-licence": "Obtain your CLRA labour licence with complete documentation and liaison support.",
+  epf: "Register your business for Provident Fund (EPF) and stay compliant with EPFO from day one.",
+  esi: "Register your business under ESI so your employees get medical and insurance benefits.",
+  "shop-establishment": "Get your Shop & Establishment licence for your premises, handled with your local authority.",
+  "trade-licence": "Get your municipal trade licence to operate your business legally and without penalties.",
+  "fire-noc": "Obtain your Fire Department NOC for your premises with drawings and inspection support.",
+  fssai: "Get your FSSAI food business licence — basic, state or central — filed correctly the first time.",
+  "pollution-ncb": "Get your Pollution Control Board consent (NOC) to establish and operate compliantly.",
+  "drug-licence": "Apply for your State FDA drug licence for retail or wholesale pharmacy operations.",
+  trademark: "Protect your brand with a registered trademark, from search to filing across classes.",
+  patent: "File and protect your invention with a drafted and filed patent application.",
+  copyright: "Register copyright for your original creative, literary or software work.",
+  design: "Register your industrial design to protect the unique look of your product.",
+};
+
+const describe = (slug: string, title: string, short: string) =>
+  DESCRIPTIONS[slug] ?? `Register your ${short || title} with Cloudcrest's compliance experts, filed end to end.`;
 
 export function LandingHero() {
   const navigate = useNavigate();
@@ -255,9 +316,15 @@ export function LandingHero() {
         </div>
       </section>
 
-      {/* Services grid — cards float on a brand mesh backdrop. */}
-      <section className="relative py-20 md:py-28">
-        <div className="cards-backdrop" />
+      {/* Services grid — cards float on a slowly flowing blue glow. */}
+      <section className="relative pt-8 md:pt-10 pb-20 md:pb-28">
+        <div className="cards-blue-glow">
+          <span className="cloud-1" />
+          <span className="cloud-2" />
+          <span className="cloud-3" />
+          <span className="cloud-4" />
+          <span className="cards-sheen" />
+        </div>
         <div className="relative z-[1] max-w-[1600px] mx-auto px-6 md:px-12">
         <div className="flex items-end justify-between gap-6 mb-12 border-b border-border pb-8">
           <div>
@@ -266,9 +333,24 @@ export function LandingHero() {
               Everything you need to run a{" "}
               <span className="italic font-normal">compliant</span> business
             </h2>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {[
+                { i: ShieldCheck, t: "CA Verified", c: "text-primary" },
+                { i: Users, t: "Expert Advisors", c: "text-success" },
+                { i: Clock, t: "Timely Delivery", c: "text-[#7c3aed]" },
+              ].map((b) => (
+                <div
+                  key={b.t}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm"
+                >
+                  <b.i className={"size-4 " + b.c} />
+                  {b.t}
+                </div>
+              ))}
+            </div>
           </div>
           <span className="hidden md:block mono text-[11px] text-muted-foreground whitespace-nowrap pb-1">
-            {allModules.length} services →
+            {allModules.length} services
           </span>
         </div>
 
@@ -291,7 +373,7 @@ export function LandingHero() {
                       key={m.slug}
                       onClick={() => openService(m.slug)}
                       style={{ "--i": ci } as React.CSSProperties}
-                      className="card-in group relative flex flex-col min-h-[13rem] overflow-hidden text-left border border-border bg-surface p-6 shadow-[0_4px_10px_-2px_oklch(0.2_0.04_260_/_0.1),0_18px_44px_-12px_oklch(0.2_0.04_260_/_0.18)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary hover:bg-navy hover:shadow-[0_28px_64px_-14px_oklch(0.24_0.08_260_/_0.75)]"
+                      className="card-in group relative flex flex-col min-h-[14.5rem] overflow-hidden text-left border border-border bg-surface p-6 shadow-[0_4px_10px_-2px_oklch(0.2_0.04_260_/_0.1),0_18px_44px_-12px_oklch(0.2_0.04_260_/_0.18)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary hover:bg-navy hover:shadow-[0_28px_64px_-14px_oklch(0.24_0.08_260_/_0.75)]"
                     >
                       {/* Soft highlight that blooms on hover over the dark fill. */}
                       <span
@@ -310,8 +392,24 @@ export function LandingHero() {
                       <div className="relative mt-5 text-[15px] font-display font-semibold tracking-[-0.01em] text-foreground transition-colors duration-300 group-hover:text-white">
                         {m.title}
                       </div>
-                      <div className="relative mt-1.5 text-[12.5px] font-sans font-medium text-muted-foreground transition-colors duration-300 group-hover:text-white/55">
-                        {m.authority} · {m.form ?? "—"}
+                      <div className="relative flex-1 mt-2 text-[13px] font-sans leading-relaxed text-muted-foreground transition-colors duration-300 group-hover:text-white/75">
+                        {describe(m.slug, m.title, m.short)}
+                      </div>
+                      {/* Turnaround + document count. */}
+                      <div className="relative mt-3 flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const tl = timelineFor(m.slug);
+                          return (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
+                                <Clock className="size-3.5" /> {tl.days}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
+                                <FileText className="size-3.5" /> {tl.docs} Documents
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Start Application CTA — slides up into view on hover. */}

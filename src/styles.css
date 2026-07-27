@@ -473,27 +473,105 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Home services backdrop: the same brand mesh + engineering grid, as an
-   absolutely-positioned layer behind the cards so they float on it. Every edge
-   is masked to transparent so it dissolves into the page (no hard rectangle).
-   Stays within its own box — never bleeds over the sidebar.
+   Home services backdrop: a soft, slowly flowing BLUE glow behind the cards.
+   An absolutely-positioned layer whose blue gradients drift so the area gently
+   shifts. Edges are masked to transparent so it dissolves into the page and it
+   stays strictly within its own box (never bleeds over the sidebar).
    --------------------------------------------------------------------------- */
-@utility cards-backdrop {
+/* Drifting blue clouds behind the home cards. Real moving shapes (transform-
+   animated, so the motion is clearly visible) floating over a soft blue base
+   wash. The container clips them and fades its top/bottom into the page. */
+@keyframes cloud-a {
+  0%, 100% { transform: translate3d(-8%, 0, 0) scale(1); }
+  50%      { transform: translate3d(18%, -10%, 0) scale(1.18); }
+}
+@keyframes cloud-b {
+  0%, 100% { transform: translate3d(10%, 6%, 0) scale(1.12); }
+  50%      { transform: translate3d(-16%, -8%, 0) scale(0.94); }
+}
+@keyframes cloud-c {
+  0%, 100% { transform: translate3d(0, 8%, 0) scale(1.05); }
+  50%      { transform: translate3d(14%, -6%, 0) scale(1.25); }
+}
+@utility cards-blue-glow {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  /* Faint dot grid + a very light blue wash — the clean SaaS base. */
   background:
-    radial-gradient(52% 48% at 4% 2%, oklch(0.60 0.21 262 / 0.15), transparent 60%),
-    radial-gradient(50% 48% at 100% 0%, oklch(0.66 0.16 168 / 0.12), transparent 60%),
-    radial-gradient(58% 55% at 96% 100%, oklch(0.62 0.20 300 / 0.11), transparent 62%),
-    radial-gradient(55% 55% at 0% 100%, oklch(0.60 0.20 32 / 0.07), transparent 62%),
-    linear-gradient(to right, oklch(0.55 0.20 255 / 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(0.55 0.20 255 / 0.04) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
-  -webkit-mask: radial-gradient(110% 92% at 50% 45%, #000 45%, transparent 92%);
-  mask: radial-gradient(110% 92% at 50% 45%, #000 45%, transparent 92%);
+    radial-gradient(oklch(0.55 0.18 258 / 0.09) 1px, transparent 1.6px) 0 0 / 22px 22px,
+    linear-gradient(180deg, oklch(0.94 0.025 255 / 0.40), oklch(0.975 0.012 255 / 0.15));
+  -webkit-mask: linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
+  mask: linear-gradient(180deg, transparent, #000 8%, #000 92%, transparent);
+}
+/* Soft, pale-blue blobs that gently float behind the (white) cards. */
+@utility cloud-1 {
+  position: absolute;
+  top: -14%;
+  right: -6%;
+  width: 40rem;
+  height: 30rem;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, oklch(0.90 0.055 255 / 0.65), transparent 72%);
+  filter: blur(30px);
+  will-change: transform;
+  animation: cloud-a 26s ease-in-out infinite;
+}
+@utility cloud-2 {
+  position: absolute;
+  bottom: -16%;
+  right: 6%;
+  width: 44rem;
+  height: 32rem;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, oklch(0.91 0.05 262 / 0.60), transparent 72%);
+  filter: blur(32px);
+  will-change: transform;
+  animation: cloud-b 32s ease-in-out infinite;
+  animation-delay: -8s;
+}
+@utility cloud-3 {
+  position: absolute;
+  top: -10%;
+  left: -8%;
+  width: 36rem;
+  height: 26rem;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, oklch(0.90 0.06 250 / 0.55), transparent 72%);
+  filter: blur(30px);
+  will-change: transform;
+  animation: cloud-c 29s ease-in-out infinite;
+  animation-delay: -14s;
+}
+@utility cloud-4 {
+  position: absolute;
+  bottom: -14%;
+  left: 24%;
+  width: 34rem;
+  height: 26rem;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, oklch(0.92 0.045 268 / 0.50), transparent 72%);
+  filter: blur(32px);
+  will-change: transform;
+  animation: cloud-b 35s ease-in-out infinite;
+  animation-delay: -20s;
+}
+
+/* A slow diagonal light sheen sweeping across the whole area — the same "cool"
+   shine used on the Advisor on Call card, scaled up to the section. */
+@utility cards-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 42%, oklch(0.62 0.20 255 / 0.13) 50%, transparent 58%);
+  background-size: 220% 100%;
+  animation: sheen 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cloud-1, .cloud-2, .cloud-3, .cloud-4, .cards-sheen { animation: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
