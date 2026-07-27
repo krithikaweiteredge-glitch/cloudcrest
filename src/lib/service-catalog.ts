@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MODULE_GROUPS, catalogToGroups, type ModuleGroup } from "@/lib/modules";
 
 /**
@@ -133,27 +134,29 @@ function toCatalogService(data: ServiceBySlugResponse, slug: string): CatalogSer
  * API is unreachable, so the page never renders an empty catalog.
  */
 export function useCatalogGroups() {
-  const [groups, setGroups] = useState<ModuleGroup[]>(MODULE_GROUPS);
-  const [loaded, setLoaded] = useState(false);
+  // Cached via React Query with a shared client, so the catalog is fetched once
+  // and reused across every screen instead of being re-fetched on each
+  // navigation (the AppShell mounts on every route, and the home page uses this
+  // too — previously that meant a serverless + DB round-trip per screen).
+  const { data, isLoading } = useQuery({
+    queryKey: ["catalog-groups"],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND()}/api/services/catalog`);
+      if (!res.ok) return [] as unknown[];
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${BACKEND()}/api/services/catalog`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        if (cancelled) return;
-        if (Array.isArray(data) && data.length > 0) setGroups(catalogToGroups(data));
-        setLoaded(true);
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const groups = useMemo<ModuleGroup[]>(
+    () => (data && data.length > 0 ? catalogToGroups(data) : MODULE_GROUPS),
+    [data],
+  );
 
-  return { groups, loaded };
+  return { groups, loaded: !isLoading };
 }
 
 export async function fetchService(slug: string): Promise<CatalogService | null> {
@@ -177,33 +180,24 @@ export async function fetchService(slug: string): Promise<CatalogService | null>
  */
 export function useCatalogService(slugs: string[]) {
   const key = slugs.join("|");
+  // Cached per slug set so revisiting a wizard doesn't re-hit the backend.
   // `undefined` = still loading, `null` = not in the catalog.
-  const [service, setService] = useState<CatalogService | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    setService(undefined);
-
-    (async () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ["catalog-service", key],
+    queryFn: async () => {
       for (const slug of slugs) {
         if (!slug) continue;
         const found = await fetchService(slug);
-        if (cancelled) return;
-        if (found) {
-          setService(found);
-          return;
-        }
+        if (found) return found;
       }
-      if (!cancelled) setService(null);
-    })();
+      return null;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-
-  return { service, loading: service === undefined };
+  return { service: isLoading ? undefined : data ?? null, loading: isLoading };
 }
 
 export type FeeLine = { label: string; amount: number };
