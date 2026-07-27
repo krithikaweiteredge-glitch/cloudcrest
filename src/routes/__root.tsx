@@ -4,13 +4,15 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { BrandLoader } from "../components/brand-loader";
 
 function NotFoundComponent() {
   return (
@@ -121,8 +123,27 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <GlobalRouteLoader />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );
+}
+
+/**
+ * Shows the company-branded loader on first load and briefly on every route
+ * change, so navigating to any page always surfaces the logo loader.
+ */
+function GlobalRouteLoader() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    setVisible(true);
+    const t = setTimeout(() => setVisible(false), 600);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  if (!visible) return null;
+  return <BrandLoader fullscreen />;
 }

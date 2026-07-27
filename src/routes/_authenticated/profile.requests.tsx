@@ -5,6 +5,7 @@ import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FileText, Download, UploadCloud, X, Loader2, Info, User, Mail, Phone, Building2, Coins, Calendar, CheckCircle2, ChevronRight, Clock } from "lucide-react";
 import { StatusPill, EmptyState } from "./profile.index";
+import { BrandLoader } from "@/components/brand-loader";
 
 export const Route = createFileRoute("/_authenticated/profile/requests")({
   validateSearch: (s: Record<string, unknown>): { ref?: string } => ({
@@ -97,7 +98,7 @@ function RequestsPage() {
 
       <div className="rounded-xl border border-border bg-surface shadow-card overflow-x-auto">
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
+          <BrandLoader />
         ) : data && data.length > 0 ? (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-[10px] mono uppercase tracking-wider text-muted-foreground border-b border-border">

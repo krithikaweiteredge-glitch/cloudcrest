@@ -86,6 +86,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
 
   const [step, setStep] = useState(initialName ? 1 : 0);
   const [entity, setEntity] = useState("pvt");
+  // Some entity types offer a choice of legal suffix (e.g. Section 8 →
+  // "Foundation / Trust / Association"). This holds the one the user picked.
+  const [suffixChoice, setSuffixChoice] = useState("");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [state, setState] = useState("Maharashtra");
@@ -124,6 +127,24 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
 
   const selected = ENTITY_TYPES.find((e) => e.key === entity)!;
 
+  // A "/"-separated suffix means the entity permits several legal endings and
+  // the applicant must pick exactly one (e.g. Foundation OR Trust OR
+  // Association). A single suffix is used as-is.
+  const suffixOptions = selected.suffix
+    .split("/")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const hasSuffixChoice = suffixOptions.length > 1;
+  const effectiveSuffix =
+    hasSuffixChoice && suffixChoice ? suffixChoice : hasSuffixChoice ? suffixOptions[0] : selected.suffix;
+
+  // Reset the picked suffix to the first valid option whenever the entity (and
+  // therefore its allowed suffixes) changes.
+  useEffect(() => {
+    setSuffixChoice(suffixOptions.length > 1 ? suffixOptions[0] : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity]);
+
   // Pricing & checklist come from the admin catalog. A per-entity row
   // (`company-pvt`) wins over the base `company` service when one exists.
   const { service, loading: catalogLoading } = useCatalogService([`company-${entity}`, "company"]);
@@ -135,7 +156,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   // holds the full company name (e.g. "ACME TECH SOLUTIONS Private Limited").
   const withSuffix = (n: string) => {
     const t = n.trim();
-    return t ? `${t} ${selected.suffix}` : "";
+    return t ? `${t} ${effectiveSuffix}` : "";
   };
 
   const nameOk = useMemo(() => {
@@ -298,7 +319,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           title: selected.title,
           name1,
           name2,
-          suffix: selected.suffix,
+          suffix: effectiveSuffix,
           form: selected.form,
           directors,
           shareholders,
@@ -342,6 +363,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               "radial-gradient(circle at 20% 20%, oklch(0.7 0.19 45 / 0.4), transparent 40%), radial-gradient(circle at 80% 80%, oklch(0.6 0.18 240 / 0.5), transparent 45%)",
           }}
         />
+        {/* Panning technical grid — the same mesh the home hero uses. */}
+        <div className="hero-grid" />
         <div className="relative px-10 py-10 max-w-5xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
             <span className="size-1.5 rounded-full bg-primary live-dot" />
@@ -476,10 +499,28 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           placeholder="e.g. ACME TECH SOLUTIONS"
                           error={errors.name1}
                         />
-                        <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
-                          {selected.suffix}
-                        </span>
+                        {hasSuffixChoice ? (
+                          <select
+                            value={suffixChoice}
+                            onChange={(e) => setSuffixChoice(e.target.value)}
+                            title="Choose the legal suffix"
+                            className="mono self-stretch shrink-0 rounded-lg border border-border bg-input text-foreground text-xs px-2 cursor-pointer focus:outline-none focus:border-primary/60 transition-colors"
+                          >
+                            {suffixOptions.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
+                            {selected.suffix}
+                          </span>
+                        )}
                       </div>
+                      {hasSuffixChoice && (
+                        <div className="mt-1.5 text-[11px] text-muted-foreground">
+                          This entity allows {suffixOptions.length} suffixes — pick the one you want; it applies to both names.
+                        </div>
+                      )}
                       {nameOk && (
                         <div
                           className={
@@ -500,7 +541,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       <div className="flex gap-2">
                         <Input value={name2} onChange={setName2} placeholder="Optional alternate name" />
                         <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
-                          {selected.suffix}
+                          {effectiveSuffix}
                         </span>
                       </div>
                     </Field>
@@ -692,6 +733,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 6 && (
                 <SummaryPreview
                   selected={selected}
+                  suffix={effectiveSuffix}
                   name1={name1}
                   state={state}
                   directors={directors}
@@ -797,7 +839,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         formData={{
           name1: withSuffix(name1),
           name2: withSuffix(name2),
-          suffix: selected.suffix,
+          suffix: effectiveSuffix,
           objects,
           address,
           city,
@@ -960,15 +1002,16 @@ function FeeBreakdown({
 }
 
 function SummaryPreview({
-  selected, name1, state, directors, shareholders, capital, total,
+  selected, suffix, name1, state, directors, shareholders, capital, total,
 }: {
   selected: { title: string; suffix: string; form: string };
+  suffix: string;
   name1: string; state: string; directors: number; shareholders: number;
   capital: number; total: number;
 }) {
   const rows = [
     ["Entity", selected.title],
-    ["Proposed Name", name1 ? `${name1} ${selected.suffix}` : "—"],
+    ["Proposed Name", name1 ? `${name1} ${suffix}` : "—"],
     ["Filing Form", selected.form],
     ["Directors", String(directors)],
     ["Shareholders", String(shareholders)],

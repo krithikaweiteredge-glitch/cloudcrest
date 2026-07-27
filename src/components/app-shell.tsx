@@ -4,6 +4,7 @@ import { useCatalogGroups } from "@/lib/service-catalog";
 import { SupportFab } from "@/components/support-fab";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import logo from "@/assets/cloudcrest-logo.png";
 
 export default function AppShell({ children }: { children?: ReactNode }) {
@@ -207,7 +208,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               <Search className="size-3.5 text-muted-foreground" />
               <input
                 className="bg-transparent text-xs placeholder:text-muted-foreground focus:outline-none flex-1"
-                placeholder="Search 22 modules…"
+                placeholder="Search modules…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -596,6 +597,7 @@ function AccountMenu() {
   const { user, signOut, loading } = useAuth();
   const isAdmin = useIsAdmin();
   const [open, setOpen] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -697,9 +699,9 @@ function AccountMenu() {
           </div>
           <div className="border-t border-border p-1.5">
             <button
-              onClick={async () => {
-                await signOut();
+              onClick={() => {
                 setOpen(false);
+                setConfirmSignOut(true);
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] text-destructive hover:bg-destructive/10"
             >
@@ -708,6 +710,20 @@ function AccountMenu() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Sign out of Cloudcrest?"
+        message="You'll need to sign in again to access your dashboard, applications and documents."
+        confirmLabel="Sign out"
+        cancelLabel="Stay signed in"
+        destructive
+        onConfirm={async () => {
+          setConfirmSignOut(false);
+          await signOut();
+        }}
+        onCancel={() => setConfirmSignOut(false)}
+      />
     </div>
   );
 }

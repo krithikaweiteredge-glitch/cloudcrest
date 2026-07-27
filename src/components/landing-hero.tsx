@@ -255,8 +255,10 @@ export function LandingHero() {
         </div>
       </section>
 
-      {/* Services grid */}
-      <section className="max-w-[1600px] mx-auto px-6 md:px-12 py-20 md:py-28">
+      {/* Services grid — cards float on a brand mesh backdrop. */}
+      <section className="relative py-20 md:py-28">
+        <div className="cards-backdrop" />
+        <div className="relative z-[1] max-w-[1600px] mx-auto px-6 md:px-12">
         <div className="flex items-end justify-between gap-6 mb-12 border-b border-border pb-8">
           <div>
             <div className="label-eyebrow text-primary mb-2">Services</div>
@@ -289,7 +291,7 @@ export function LandingHero() {
                       key={m.slug}
                       onClick={() => openService(m.slug)}
                       style={{ "--i": ci } as React.CSSProperties}
-                      className="card-in group relative overflow-hidden text-left border border-border bg-surface p-5 shadow-[0_4px_10px_-2px_oklch(0.2_0.04_260_/_0.1),0_18px_44px_-12px_oklch(0.2_0.04_260_/_0.18)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary hover:bg-navy hover:shadow-[0_28px_64px_-14px_oklch(0.24_0.08_260_/_0.75)]"
+                      className="card-in group relative flex flex-col min-h-[13rem] overflow-hidden text-left border border-border bg-surface p-6 shadow-[0_4px_10px_-2px_oklch(0.2_0.04_260_/_0.1),0_18px_44px_-12px_oklch(0.2_0.04_260_/_0.18)] transition-all duration-300 hover:-translate-y-1.5 hover:border-primary hover:bg-navy hover:shadow-[0_28px_64px_-14px_oklch(0.24_0.08_260_/_0.75)]"
                     >
                       {/* Soft highlight that blooms on hover over the dark fill. */}
                       <span
@@ -305,10 +307,10 @@ export function LandingHero() {
                         </div>
                         <ArrowRight className="size-4 text-muted-foreground transition-all duration-300 group-hover:text-white group-hover:translate-x-0.5" />
                       </div>
-                      <div className="relative mt-4 text-sm font-semibold text-foreground transition-colors duration-300 group-hover:text-white">
+                      <div className="relative mt-5 text-[15px] font-display font-semibold tracking-[-0.01em] text-foreground transition-colors duration-300 group-hover:text-white">
                         {m.title}
                       </div>
-                      <div className="relative text-[11px] mono text-muted-foreground mt-1 transition-colors duration-300 group-hover:text-white/55">
+                      <div className="relative mt-1.5 text-[12.5px] font-sans font-medium text-muted-foreground transition-colors duration-300 group-hover:text-white/55">
                         {m.authority} · {m.form ?? "—"}
                       </div>
 
@@ -326,6 +328,7 @@ export function LandingHero() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </section>
 

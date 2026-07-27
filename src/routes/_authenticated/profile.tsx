@@ -1,9 +1,11 @@
 import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import AppShell from "@/components/app-shell";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { User, FileText, Receipt, FolderLock, Settings, LogOut } from "lucide-react";
 import { ProfileBanner } from "@/components/profile-banner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "My Account — Cloudcrest BM" }] }),
@@ -21,6 +23,7 @@ const NAV: { to: string; label: string; icon: typeof User; exact?: boolean }[] =
 function ProfileLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   const { data: profile } = useQuery({
@@ -80,7 +83,7 @@ function ProfileLayout() {
               );
             })}
             <button
-              onClick={handleSignOut}
+              onClick={() => setConfirmSignOut(true)}
               className="mt-2 flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] text-destructive hover:bg-destructive/10 transition-colors border border-transparent"
             >
               <LogOut className="size-4" /> Sign out
@@ -92,6 +95,20 @@ function ProfileLayout() {
           </section>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Sign out of Cloudcrest?"
+        message="You'll need to sign in again to access your dashboard, applications and documents."
+        confirmLabel="Sign out"
+        cancelLabel="Stay signed in"
+        destructive
+        onConfirm={async () => {
+          setConfirmSignOut(false);
+          await handleSignOut();
+        }}
+        onCancel={() => setConfirmSignOut(false)}
+      />
     </AppShell>
   );
 }

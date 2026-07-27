@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { FolderLock, FileText, Download, UploadCloud, Loader2 } from "lucide-react";
 import { EmptyState } from "./profile.index";
+import { BrandLoader } from "@/components/brand-loader";
 
 export const Route = createFileRoute("/_authenticated/profile/documents")({
   component: DocsPage,
@@ -111,7 +112,7 @@ function DocsPage() {
       )}
       <div className="rounded-xl border border-border bg-surface shadow-card overflow-hidden">
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
+          <BrandLoader />
         ) : data && data.length > 0 ? (
           <ul className="divide-y divide-border">
             {data.map((d: any) => (

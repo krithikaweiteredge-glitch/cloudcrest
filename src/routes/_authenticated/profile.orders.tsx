@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Receipt, Download, FileText } from "lucide-react";
 import { StatusPill, EmptyState } from "./profile.index";
+import { BrandLoader } from "@/components/brand-loader";
 
 export const Route = createFileRoute("/_authenticated/profile/orders")({
   component: OrdersPage,
@@ -95,7 +96,7 @@ function OrdersPage() {
 
       <div className="rounded-xl border border-border bg-surface shadow-card overflow-x-auto">
         {isLoading ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
+          <BrandLoader />
         ) : data && data.length > 0 ? (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-[10px] mono uppercase tracking-wider text-muted-foreground border-b border-border">

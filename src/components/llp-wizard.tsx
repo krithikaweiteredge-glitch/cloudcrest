@@ -242,6 +242,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
               "radial-gradient(circle at 20% 20%, oklch(0.7 0.19 45 / 0.4), transparent 40%), radial-gradient(circle at 80% 80%, oklch(0.6 0.18 240 / 0.5), transparent 45%)",
           }}
         />
+        {/* Panning technical grid — the same mesh the home hero uses. */}
+        <div className="hero-grid" />
         <div className="relative px-10 py-10 max-w-5xl">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
             <span className="size-1.5 rounded-full bg-primary live-dot" />

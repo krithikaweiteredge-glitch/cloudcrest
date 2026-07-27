@@ -136,6 +136,10 @@ export function RegisterDialog({
           authorisedCapital: capital ?? (totalCapital ? Number(totalCapital) : null),
           paidCapital: paidCapital ?? null,
           formData: Object.keys(mergedFormData).length ? mergedFormData : null,
+          // Snapshot the exact fee breakdown so the order summary PDF reprints
+          // the real fees the customer saw, not a placeholder estimate.
+          fees: fees ?? [],
+          total: feeTotal ?? null,
         }),
       });
 
