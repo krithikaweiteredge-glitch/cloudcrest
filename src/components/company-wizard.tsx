@@ -366,7 +366,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         {/* Panning technical grid — the same mesh the home hero uses. */}
         <div className="hero-grid" />
         <div className="relative px-10 py-10 max-w-5xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
             <span className="size-1.5 rounded-full bg-primary live-dot" />
             MCA · Tax · Labour · Municipal · IP Registration Desk
           </span>
@@ -383,7 +383,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             {HIGHLIGHTS.map((h) => (
               <span
                 key={h.label}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/8 border border-white/15 backdrop-blur text-[12px] text-white/90 hover:bg-white/12 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/12 border border-white/15 text-[12px] text-white/90 hover:bg-white/20 transition-colors"
               >
                 <h.icon className="size-3.5 text-primary" />
                 {h.label}

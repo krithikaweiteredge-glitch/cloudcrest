@@ -380,7 +380,7 @@ function AdminDetailDialog({
 
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
 
       <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl flex flex-col z-10 animate-in zoom-in-95 duration-200 my-auto">
         {/* Header */}
@@ -689,7 +689,7 @@ function AdminTicketDialog({ id, onClose }: { id: number; onClose: () => void })
 
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
       <div className="relative w-full max-w-lg max-h-[85vh] overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl flex flex-col z-10 animate-in zoom-in-95 duration-200 my-auto">
         <div className="bg-gradient-to-r from-slate-900 via-navy/95 to-slate-900 text-white px-6 py-5 flex items-center justify-between border-b border-white/10 shrink-0">
           <div className="min-w-0 pr-4">
@@ -1007,7 +1007,7 @@ function NotifyDialog({ request, onClose }: { request: AdminRequest; onClose: ()
 
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
 
       <div className="relative w-full max-w-lg rounded-2xl border border-border/80 bg-surface shadow-2xl z-10 animate-in zoom-in-95 duration-200 overflow-hidden">
         <div className="bg-gradient-to-r from-slate-900 via-navy/95 to-slate-900 text-white px-6 py-5 flex items-center justify-between border-b border-white/10">

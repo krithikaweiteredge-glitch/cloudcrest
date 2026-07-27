@@ -28,7 +28,7 @@ export function ConfirmDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 animate-in-up">
-      <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={onCancel} />
+      <div className="absolute inset-0 bg-navy/85" onClick={onCancel} />
       <div className="relative w-full max-w-sm rounded-2xl border border-border bg-surface shadow-elev p-6">
         <h3 className="text-base font-display font-semibold">{title}</h3>
         {message && <p className="mt-1.5 text-sm text-muted-foreground">{message}</p>}

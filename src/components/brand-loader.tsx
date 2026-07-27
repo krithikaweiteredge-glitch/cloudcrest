@@ -13,7 +13,7 @@ export function BrandLoader({
   fullscreen?: boolean;
 }) {
   const wrapper = fullscreen
-    ? "fixed inset-0 z-[100] grid place-items-center bg-background/70 backdrop-blur-sm"
+    ? "fixed inset-0 z-[100] grid place-items-center bg-background/90"
     : "grid place-items-center py-20";
 
   return (

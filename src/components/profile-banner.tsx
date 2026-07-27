@@ -50,7 +50,7 @@ export function ProfileBanner({
       <div className="absolute inset-0 bg-gradient-to-br from-accent/25 via-primary/15 to-primary/25" />
       <Skyline />
       <div className="relative p-6 md:p-8 flex items-start gap-4">
-        <div className="size-16 shrink-0 rounded-2xl bg-white/70 backdrop-blur border border-white/60 grid place-items-center text-primary shadow-card">
+        <div className="size-16 shrink-0 rounded-2xl bg-white/90 border border-white/60 grid place-items-center text-primary shadow-card">
           <Building2 className="size-8" />
         </div>
         <div className="min-w-0 flex-1">

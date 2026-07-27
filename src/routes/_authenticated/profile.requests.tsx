@@ -246,7 +246,7 @@ function RegistrationDetailDialog({
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
       {/* 100% Viewport Dark Backdrop Blur */}
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
 
       {/* Modal Dialog Card */}
       <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl flex flex-col z-10 animate-in zoom-in-95 duration-200 my-auto">

@@ -113,7 +113,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       </div>
 
       {/* Top header — the brand block lives here so it stays put when the sidebar collapses */}
-      <header className="h-16 border-b border-border bg-surface/80 backdrop-blur-xl sticky top-0 z-20 flex items-center justify-between pl-4 pr-8 gap-4">
+      <header className="h-16 border-b border-border bg-surface/98 sticky top-0 z-20 flex items-center justify-between pl-4 pr-8 gap-4">
         <div className="flex items-center gap-6 min-w-0">
           <Link to="/" className="flex items-center gap-2 group shrink-0">
             <img

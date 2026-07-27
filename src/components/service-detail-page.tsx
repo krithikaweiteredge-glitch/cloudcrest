@@ -177,7 +177,7 @@ function ServiceDetail({ service }: { service: CatalogService }) {
                 top-16 clears the app's sticky header. */}
             <div
               role="tablist"
-              className="sticky top-16 z-10 flex flex-wrap gap-1 border-b border-border bg-surface/95 backdrop-blur px-2 md:px-4 rounded-t-xl"
+              className="sticky top-16 z-10 flex flex-wrap gap-1 border-b border-border bg-surface/98 px-2 md:px-4 rounded-t-xl"
             >
               {tabs.map((tab) => {
                 const Icon = TAB_ICONS[tab.id] ?? FileText;
@@ -557,7 +557,7 @@ function HeroChip({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[12px] font-medium text-white/90 hover:bg-white/15 transition-colors">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/20 text-[12px] font-medium text-white/90 hover:bg-white/20 transition-colors">
       <Icon className="size-3.5 text-primary" />
       {children}
     </span>

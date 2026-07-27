@@ -96,7 +96,7 @@ export function LandingHero() {
               Business Management
             </span>
           </div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur text-[11px] mono uppercase tracking-widest text-white/90">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
             <span className="size-1.5 rounded-full bg-destructive live-dot" />
             <span className="size-1.5 rounded-full bg-success" />
             <span className="size-1.5 rounded-full bg-primary" />

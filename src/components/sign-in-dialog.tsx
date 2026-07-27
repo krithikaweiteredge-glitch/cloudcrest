@@ -31,7 +31,7 @@ export function SignInDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in-up">
-      <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-navy/85" onClick={onClose} />
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-elev">
         <div className="gradient-hero text-white px-6 py-5 flex items-start justify-between">
           <div>

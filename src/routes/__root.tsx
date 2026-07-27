@@ -131,19 +131,18 @@ function RootComponent() {
 }
 
 /**
- * Shows the company-branded loader on first load and briefly on every route
- * change, so navigating to any page always surfaces the logo loader.
+ * Shows the company-branded loader when a route transition is actively pending.
+ * Removes artificial 600ms navigation delays for instant route transitions.
  */
 function GlobalRouteLoader() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [visible, setVisible] = useState(true);
+  const isNavigating = useRouterState({ select: (s) => s.status === "pending" });
+  const [initialBoot, setInitialBoot] = useState(true);
 
   useEffect(() => {
-    setVisible(true);
-    const t = setTimeout(() => setVisible(false), 600);
+    const t = setTimeout(() => setInitialBoot(false), 150);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, []);
 
-  if (!visible) return null;
+  if (!initialBoot && !isNavigating) return null;
   return <BrandLoader fullscreen />;
 }
