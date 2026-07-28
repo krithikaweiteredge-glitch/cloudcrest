@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { assetUrl } from "@/lib/file-url";
+import { resolveWizardRules } from "@/lib/company-types";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,6 +8,11 @@ import {
 } from "lucide-react";
 
 const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+
+// Slugs rendered by a bespoke multi-step wizard (see module-page.tsx) instead of
+// the tabbed ServiceDetailPage. For these, the About/Who/Acts page tabs are never
+// shown to customers, so the tab editor is hidden to avoid a misleading control.
+const WIZARD_SLUGS = new Set(["company", "llp"]);
 
 async function call(path: string, method: string, body?: any) {
   const res = await fetch(`${BACKEND}/api/admin/catalog${path}`, {
@@ -169,22 +175,65 @@ export function AdminCatalogPanel() {
                             {sub.services.length === 0 ? (
                               <li className="text-[12px] text-muted-foreground py-1">No services.</li>
                             ) : (
-                              sub.services.map((svc: any) => (
+                              sub.services.map((svc: any) => {
+                                // A "launcher" is a service whose per-type variants live
+                                // alongside it (slug `company` with `company-*` siblings).
+                                // It opens the wizard where the customer picks a type, so
+                                // its OWN fee is never shown — hide it, and count the types
+                                // so the nested rows below read as one service, not many.
+                                const variantCount = svc.slug
+                                  ? sub.services.filter(
+                                      (o: any) => o.id !== svc.id && o.slug && o.slug.startsWith(svc.slug + "-"),
+                                    ).length
+                                  : 0;
+                                const isLauncher = variantCount > 0;
+                                // A "variant" is a per-type price row under a launcher
+                                // (e.g. `company-pvt` under `company`). It's inactive by
+                                // design — that's not a disabled service, so don't strike
+                                // it out or badge it "inactive"; label it as a type.
+                                const isVariant =
+                                  svc.slug &&
+                                  sub.services.some(
+                                    (o: any) => o.id !== svc.id && o.slug && svc.slug.startsWith(o.slug + "-"),
+                                  );
+                                return (
                                 <li
                                   key={svc.id}
-                                  className="flex items-center gap-2 py-1.5 text-[13px] group border-b border-border/40 last:border-0"
+                                  className={
+                                    "flex items-center gap-2 py-1.5 text-[13px] group border-b border-border/40 last:border-0 " +
+                                    (isVariant ? "pl-5 ml-2 border-l-2 border-l-primary/20" : "")
+                                  }
                                 >
                                   <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                                  <span className={"flex-1 truncate " + (svc.active ? "" : "line-through text-muted-foreground")}>
+                                  <span className={"flex-1 truncate " + (svc.active || isVariant ? "" : "line-through text-muted-foreground")}>
                                     {svc.name}
                                   </span>
-                                  <span className="mono text-[11px] text-muted-foreground shrink-0">
-                                    ₹{Number(svc.professionalFee).toLocaleString("en-IN")} + {Number(svc.gstPercent)}% GST
-                                  </span>
-                                  {!svc.active && (
-                                    <span className="text-[9px] mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                      inactive
+                                  {isLauncher ? (
+                                    <span
+                                      title="Opens the wizard — priced per type by the nested rows below, so this row has no fee of its own."
+                                      className="mono text-[11px] text-muted-foreground shrink-0 italic"
+                                    >
+                                      {variantCount} types, priced below ↓
                                     </span>
+                                  ) : (
+                                    <span className="mono text-[11px] text-muted-foreground shrink-0">
+                                      ₹{Number(svc.professionalFee).toLocaleString("en-IN")}
+                                      {Number(svc.gstPercent) > 0 ? ` + ${Number(svc.gstPercent)}% GST` : ""}
+                                    </span>
+                                  )}
+                                  {isVariant ? (
+                                    <span
+                                      title="A per-type price used inside the wizard, not a separately listed service."
+                                      className="text-[9px] mono uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0"
+                                    >
+                                      wizard type
+                                    </span>
+                                  ) : (
+                                    !svc.active && (
+                                      <span className="text-[9px] mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                        inactive
+                                      </span>
+                                    )
                                   )}
                                   {svc.active && !svc.slug && (
                                     <span
@@ -209,7 +258,8 @@ export function AdminCatalogPanel() {
                                     </IconBtn>
                                   </div>
                                 </li>
-                              ))
+                                );
+                              })
                             )}
                           </ul>
                         )}
@@ -379,10 +429,23 @@ function ServiceDialog({
   onSaved: () => void;
 }) {
   const svc = state.mode === "edit" ? state.service : null;
+  // Entity key of a variant slug for seeding its rule defaults (company-pvt -> pvt).
+  const initialWizardKey = (() => {
+    const s = (svc?.slug || "").trim();
+    const w = [...WIZARD_SLUGS].find((x) => s.startsWith(x + "-"));
+    return w ? s.slice(w.length + 1) : "";
+  })();
+  const initialRules = resolveWizardRules(initialWizardKey, svc?.wizardRules);
   const [name, setName] = useState(svc?.name || "");
   const [description, setDescription] = useState(svc?.description || "");
   const [active, setActive] = useState(svc ? !!svc.active : true);
   const [slug, setSlug] = useState(svc?.slug || "");
+  // Wizard-type incorporation rules (variants only). Seeded from the service's
+  // saved rules, falling back to the built-in defaults for its entity key.
+  const [wizSuffix, setWizSuffix] = useState(initialRules.suffix);
+  const [wizMinDir, setWizMinDir] = useState(String(initialRules.minDirectors));
+  const [wizMinShr, setWizMinShr] = useState(String(initialRules.minShareholders));
+  const [wizNominee, setWizNominee] = useState(initialRules.requiresNominee);
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
@@ -497,6 +560,16 @@ function ServiceDialog({
         actsRulesPdfs: JSON.stringify(actsRulesPdfs),
         tabs: JSON.stringify(tabsList),
         feeLines: JSON.stringify(cleanedFeeLines),
+        // Only variants carry rules; undefined is dropped by JSON.stringify so the
+        // column is left untouched for every other service.
+        wizardRules: isWizardVariant
+          ? JSON.stringify({
+              suffix: wizSuffix.trim(),
+              minDirectors: Number(wizMinDir) || 0,
+              minShareholders: Number(wizMinShr) || 0,
+              requiresNominee: wizNominee,
+            })
+          : undefined,
       };
       if (state.mode === "create") {
         await call("/services", "POST", { ...payload, subcategoryId: state.subcategoryId });
@@ -511,6 +584,13 @@ function ServiceDialog({
     }
   };
 
+  // Wizard-ness is derived from the live slug so the right sections show/hide as
+  // the admin types a `company-…` slug on a new service, not just on reopen.
+  const currentSlug = (slug || "").trim();
+  const isWizardLauncher = WIZARD_SLUGS.has(currentSlug);
+  const isWizardVariant = [...WIZARD_SLUGS].some((w) => currentSlug.startsWith(w + "-"));
+  const isWizardService = isWizardLauncher || isWizardVariant;
+
   return (
     <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose}>
       <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
@@ -521,6 +601,18 @@ function ServiceDialog({
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
         </Field>
         {/* Fee breakdown — the single place fees are managed */}
+        {isWizardLauncher ? (
+          <div className="pt-3 mt-1 border-t border-border">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
+              Fees
+            </div>
+            <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 p-3 leading-relaxed">
+              This is the wizard launcher — each entity type is priced on its own row
+              (Private Limited, OPC, …), so there&apos;s no fee to set here. Edit a
+              type below to change its price.
+            </p>
+          </div>
+        ) : (
         <div className="pt-3 mt-1 border-t border-border space-y-3">
           <div className="flex items-center justify-between border-b border-border pb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
@@ -589,6 +681,56 @@ function ServiceDialog({
             </div>
           )}
         </div>
+        )}
+
+        {isWizardVariant && (
+          <div className="pt-3 mt-1 border-t border-border space-y-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-border pb-2">
+              Wizard type rules
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              How this type behaves in the incorporation wizard. Leave blank to use the built-in default.
+            </p>
+            <Field label="Legal name suffix — appended to the proposed name (use “/” for a choice)">
+              <input
+                value={wizSuffix}
+                onChange={(e) => setWizSuffix(e.target.value)}
+                placeholder="e.g. Private Limited"
+                className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Min. directors">
+                <input
+                  value={wizMinDir}
+                  onChange={(e) => setWizMinDir(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="2"
+                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
+                />
+              </Field>
+              <Field label="Min. shareholders">
+                <input
+                  value={wizMinShr}
+                  onChange={(e) => setWizMinShr(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="2"
+                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
+                />
+              </Field>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={wizNominee}
+                onChange={(e) => setWizNominee(e.target.checked)}
+                className="size-4"
+              />
+              Requires a nominee (like OPC)
+            </label>
+          </div>
+        )}
+
         <div className="pt-3 mt-1 border-t border-border space-y-3">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-primary">Customer listing</div>
           <Field label="URL slug — required to show in the customer sidebar">
@@ -620,6 +762,20 @@ function ServiceDialog({
           </Field>
         </div>
 
+        {isWizardService ? (
+          <div className="pt-3 mt-1 border-t border-border">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
+              Service Page Tabs
+            </div>
+            <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 p-3 leading-relaxed">
+              This is a <span className="font-medium text-foreground">wizard-driven registration</span> (the Company / LLP
+              incorporation wizard), not the standard tabbed page — so About / Who can Apply / Acts &amp; Rules tabs
+              aren&apos;t shown to customers and aren&apos;t editable here. The
+              {" "}<span className="font-medium text-foreground">fees</span> and
+              {" "}<span className="font-medium text-foreground">document checklist</span> above are what the wizard uses.
+            </p>
+          </div>
+        ) : (
         <div className="pt-3 mt-1 border-t border-border space-y-4">
           <div className="flex items-center justify-between border-b border-border pb-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">Service Page Tabs Configuration</span>
@@ -755,6 +911,7 @@ function ServiceDialog({
             })}
           </div>
         </div>
+        )}
 
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="size-4" />

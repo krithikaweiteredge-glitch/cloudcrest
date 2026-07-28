@@ -115,27 +115,43 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       {/* Top header — the brand block lives here so it stays put when the sidebar collapses */}
       <header className="h-16 border-b border-border bg-surface/98 sticky top-0 z-20 flex items-center justify-between pl-4 pr-8 gap-4">
         <div className="flex items-center gap-6 min-w-0">
-          <Link to="/" className="flex items-center gap-2 group shrink-0">
-            <img
-              src={logo}
-              alt="Cloudcrest BM"
-              className="h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
-            />
-            <div className="leading-tight ml-1">
-              <div className="text-[11px] mono text-muted-foreground tracking-widest uppercase">
-                Registration Desk
-              </div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="size-1.5 rounded-full bg-success live-dot" />
-                <span className="text-[10px] mono text-success">Live · advisors online</span>
-              </div>
-            </div>
-          </Link>
+          {/* The brand is a Home link for customers, but inert for admins — admins
+              have no customer home page, so clicking it must not navigate (or sign
+              them out). Rendered as a plain block, not a Link, when isAdmin. */}
+          {(() => {
+            const brandInner = (
+              <>
+                <img
+                  src={logo}
+                  alt="Cloudcrest BM"
+                  className="h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
+                />
+                <div className="leading-tight ml-1">
+                  <div className="text-[11px] mono text-muted-foreground tracking-widest uppercase">
+                    Registration Desk
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="size-1.5 rounded-full bg-success live-dot" />
+                    <span className="text-[10px] mono text-success">Live · advisors online</span>
+                  </div>
+                </div>
+              </>
+            );
+            return isAdmin ? (
+              <div className="flex items-center gap-2 shrink-0 cursor-default select-none">{brandInner}</div>
+            ) : (
+              <Link to="/" className="flex items-center gap-2 group shrink-0">{brandInner}</Link>
+            );
+          })()}
 
           <nav className="hidden md:flex items-center text-[13px] gap-1.5 min-w-0">
-            <Link to="/" className="text-muted-foreground hover:text-primary transition-colors shrink-0">
-              Workspace
-            </Link>
+            {isAdmin ? (
+              <span className="text-muted-foreground shrink-0 cursor-default select-none">Workspace</span>
+            ) : (
+              <Link to="/" className="text-muted-foreground hover:text-primary transition-colors shrink-0">
+                Workspace
+              </Link>
+            )}
             <ChevronRight className="size-3 text-muted-foreground/60 shrink-0" />
             <span className="text-foreground font-medium truncate">
               {(() => {

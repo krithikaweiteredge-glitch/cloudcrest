@@ -200,6 +200,41 @@ export function useCatalogService(slugs: string[]) {
   return { service: isLoading ? undefined : data ?? null, loading: isLoading };
 }
 
+/** One sibling service returned by `GET /api/services/family/:slug`. */
+export type CatalogVariant = {
+  slug: string;
+  name: string;
+  shortTitle: string | null;
+  formNo: string | null;
+  icon: string | null;
+  active: boolean;
+  /** JSON blob of per-type incorporation rules; see lib/company-types.ts. */
+  wizardRules: string | null;
+};
+
+/**
+ * The sibling variants of a base service (e.g. every `company-*` row under the
+ * `company` service's subcategory), in catalog order. The Company wizard builds
+ * its entity-type picker from this so admins control which types appear, their
+ * titles and their forms. `undefined` while loading; `[]` means "use the local
+ * fallback list" so the wizard never renders an empty picker.
+ */
+export function useCatalogFamily(baseSlug: string) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["catalog-family", baseSlug],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND()}/api/services/family/${encodeURIComponent(baseSlug)}`);
+      if (!res.ok) return [] as CatalogVariant[];
+      const json = await res.json();
+      return Array.isArray(json?.variants) ? (json.variants as CatalogVariant[]) : [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  return { variants: isLoading ? undefined : data ?? [], loading: isLoading };
+}
+
 export type FeeLine = { label: string; amount: number };
 
 export type ResolvedFees = {
@@ -216,8 +251,13 @@ export type ResolvedFees = {
 export function resolveFees(
   service: CatalogService | null | undefined,
   authority: string,
-  fallback: { professional: number; govt: number; gstPercent: number }
+  fallback?: { professional: number; govt: number; gstPercent: number }
 ): ResolvedFees {
+  // A missing fallback (e.g. an admin-added entity type with no hardcoded default)
+  // must not crash the caller — treat it as zero so the fee shows as "not priced"
+  // rather than throwing while the catalog price is still loading / withheld.
+  const safeFallback = fallback ?? { professional: 0, govt: 0, gstPercent: 0 };
+
   // Admin-authored fee lines win outright — they're the explicit pricing for
   // this service, so they replace the standard professional/govt/GST split.
   const custom = (service?.feeLines ?? []).filter((l) => l.label?.trim());
@@ -233,9 +273,9 @@ export function resolveFees(
   const fromCatalog =
     !!service && typeof service.professionalFee === "number" && typeof service.govtFee === "number";
 
-  const professional = fromCatalog ? Number(service!.professionalFee) : fallback.professional;
-  const govt = fromCatalog ? Number(service!.govtFee) : fallback.govt;
-  const gstPercent = fromCatalog ? Number(service!.gstPercent ?? 0) : fallback.gstPercent;
+  const professional = fromCatalog ? Number(service!.professionalFee) : safeFallback.professional;
+  const govt = fromCatalog ? Number(service!.govtFee) : safeFallback.govt;
+  const gstPercent = fromCatalog ? Number(service!.gstPercent ?? 0) : safeFallback.gstPercent;
   const gst = Math.round((professional * gstPercent) / 100);
 
   return {

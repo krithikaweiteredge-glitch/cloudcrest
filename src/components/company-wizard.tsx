@@ -5,10 +5,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import {
   useCatalogService,
+  useCatalogFamily,
   resolveFees,
   resolveDocuments,
   type ResolvedFees,
 } from "@/lib/service-catalog";
+import { resolveWizardRules } from "@/lib/company-types";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
@@ -24,16 +26,54 @@ const STEPS = [
   { key: "summary", label: "Summary" },
 ];
 
-const ENTITY_TYPES = [
-  { key: "pvt", title: "Private Limited Company", suffix: "Private Limited", form: "INC-32", tags: ["FDI Friendly", "Min 2 Dir"], pop: true },
-  { key: "public", title: "Public Limited Company", suffix: "Limited", form: "INC-32", tags: ["Min 3 Dir · 7 Sh"] },
-  { key: "opc", title: "One Person Company (OPC)", suffix: "(OPC) Private Limited", form: "INC-32", tags: ["Single Member"] },
-  { key: "sec8", title: "Section 8 Company (Non-Profit)", suffix: "Foundation / Trust / Association", form: "INC-12", tags: ["Tax Exempt"] },
-  { key: "guarantee", title: "Company Limited by Guarantee", suffix: "Limited", form: "INC-32", tags: [] },
-  { key: "nidhi", title: "Nidhi Company", suffix: "Nidhi Limited", form: "INC-32 · NDH-4", tags: ["Mutual Benefit"] },
-  { key: "producer", title: "Producer Company", suffix: "Producer Company Limited", form: "INC-32", tags: ["Agri / Producer"] },
-  { key: "foreign", title: "Foreign Company (Branch/Liaison)", suffix: "Branch / Liaison Office", form: "FC-1", tags: ["RBI Approval"] },
+type EntityType = {
+  key: string;
+  title: string;
+  form: string;
+  suffix: string;
+  tags: string[];
+  pop: boolean;
+  minDirectors: number;
+  minShareholders: number;
+  requiresNominee: boolean;
+};
+
+// The catalog (`company-*` rows) is the source of truth for which entity types
+// appear, their titles/forms and — via each row's `wizardRules` — their legal
+// suffix and incorporation rules (see lib/company-types). This static list is
+// only the fallback picker for when the family endpoint is unreachable; suffix
+// and rules for it come from resolveWizardRules too, so the two never diverge.
+const FALLBACK_TYPES: { key: string; title: string; form: string }[] = [
+  { key: "pvt", title: "Private Limited Company", form: "INC-32" },
+  { key: "public", title: "Public Limited Company", form: "INC-32" },
+  { key: "opc", title: "One Person Company (OPC)", form: "INC-32" },
+  { key: "sec8", title: "Section 8 Company (Non-Profit)", form: "INC-12" },
+  { key: "guarantee", title: "Company Limited by Guarantee", form: "INC-32" },
+  { key: "nidhi", title: "Nidhi Company", form: "INC-32 · NDH-4" },
+  { key: "producer", title: "Producer Company", form: "INC-32" },
+  { key: "foreign", title: "Foreign Company (Branch/Liaison)", form: "FC-1" },
 ];
+
+/** `company-pvt` -> `pvt`; the wizard keys everything off this short entity key. */
+const entityKeyFromSlug = (slug: string) => slug.replace(/^company-/, "");
+
+/** Build a full picker entry, layering saved catalog rules over the built-in defaults. */
+function buildEntityType(key: string, title: string, form: string, rawRules?: string | null): EntityType {
+  const r = resolveWizardRules(key, rawRules);
+  return {
+    key,
+    title: title || key,
+    form: form || "",
+    suffix: r.suffix,
+    tags: r.tags,
+    pop: r.popular,
+    minDirectors: r.minDirectors,
+    minShareholders: r.minShareholders,
+    requiresNominee: r.requiresNominee,
+  };
+}
+
+const DEFAULT_ENTITY = buildEntityType("pvt", "Private Limited Company", "INC-32");
 
 // Used only when the admin catalog has no row for this entity type — the
 // catalog (`services` table) is the source of truth for pricing.
@@ -125,7 +165,31 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stepError, setStepError] = useState<string | null>(null);
 
-  const selected = ENTITY_TYPES.find((e) => e.key === entity)!;
+  // Entity-type picker, driven by the catalog. Each `company-*` sibling becomes
+  // a card; its title and form come from the catalog, while the legal suffix and
+  // incorporation rules come from its saved wizardRules layered over the built-in
+  // defaults (resolveWizardRules). Falls back to FALLBACK_TYPES when the family
+  // endpoint returns nothing.
+  const { variants: companyVariants } = useCatalogFamily("company");
+  const entityTypes = useMemo<EntityType[]>(() => {
+    if (companyVariants && companyVariants.length > 0) {
+      return companyVariants.map((v) =>
+        buildEntityType(entityKeyFromSlug(v.slug), v.name, v.formNo ?? "", v.wizardRules),
+      );
+    }
+    return FALLBACK_TYPES.map((t) => buildEntityType(t.key, t.title, t.form));
+  }, [companyVariants]);
+
+  // If the catalog dropped the currently selected type (admin deleted/renamed a
+  // variant), fall back to the first available so `selected` is never missing.
+  useEffect(() => {
+    if (!entityTypes.some((e) => e.key === entity)) {
+      setEntity(entityTypes[0]?.key ?? "pvt");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityTypes]);
+
+  const selected = entityTypes.find((e) => e.key === entity) ?? entityTypes[0] ?? DEFAULT_ENTITY;
 
   // A "/"-separated suffix means the entity permits several legal endings and
   // the applicant must pick exactly one (e.g. Foundation OR Trust OR
@@ -195,8 +259,10 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         if (!globalMsg) globalMsg = "Please provide a more detailed main object description.";
       }
     } else if (currentStep === 2) {
-      const minDir = entity === "public" ? 3 : entity === "opc" ? 1 : 2;
-      const minShr = entity === "public" ? 7 : entity === "opc" ? 1 : 2;
+      // Per-type minimums come from the catalog (resolveWizardRules), so an admin
+      // can change them per entity type without touching this validation.
+      const minDir = selected.minDirectors;
+      const minShr = selected.minShareholders;
 
       if (directors < minDir) {
         newErrors.directors = `${selected.title} requires a minimum of ${minDir} director(s).`;
@@ -208,9 +274,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         if (!globalMsg) globalMsg = `Minimum required: ${minShr} shareholder(s).`;
       }
 
-      if (entity === "opc" && !nominee.trim()) {
-        newErrors.nominee = "Nominee name is mandatory for One Person Company (OPC).";
-        if (!globalMsg) globalMsg = "OPC Nominee name is required.";
+      if (selected.requiresNominee && !nominee.trim()) {
+        newErrors.nominee = `Nominee name is mandatory for ${selected.title}.`;
+        if (!globalMsg) globalMsg = "Nominee name is required.";
       }
 
       if (applicantEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail.trim())) {
@@ -434,7 +500,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             <div key={step} className="mt-8 animate-in-up">
               {step === 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {ENTITY_TYPES.map((t) => {
+                  {entityTypes.map((t) => {
                     const active = t.key === entity;
                     return (
                       <button
@@ -442,10 +508,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         type="button"
                         onClick={() => {
                           setEntity(t.key);
-                          const minD = t.key === "public" ? 3 : t.key === "opc" ? 1 : 2;
-                          const minS = t.key === "public" ? 7 : t.key === "opc" ? 1 : 2;
-                          setDirectors(minD);
-                          setShareholders(minS);
+                          setDirectors(t.minDirectors);
+                          setShareholders(t.minShareholders);
                           setErrors({});
                           setStepError(null);
                         }}
@@ -582,8 +646,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         error={errors.shareholders}
                       />
                     </Field>
-                    {entity === "opc" && (
-                      <Field label="OPC Nominee Name *" error={errors.nominee}>
+                    {selected.requiresNominee && (
+                      <Field label="Nominee Name *" error={errors.nominee}>
                         <Input
                           value={nominee}
                           onChange={(v) => { setNominee(v); setErrors((prev) => ({ ...prev, nominee: "" })); }}
