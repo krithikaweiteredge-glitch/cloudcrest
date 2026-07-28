@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import AppShell from "@/components/app-shell";
 import { LandingHero } from "@/components/landing-hero";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -13,10 +15,25 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => (
+  component: HomeRoute,
+});
+
+function HomeRoute() {
+  const { isAdmin, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Admins have no customer home page — send them to the admin console instead
+  // of ever showing the landing page.
+  useEffect(() => {
+    if (!loading && isAdmin) navigate({ to: "/admin", replace: true });
+  }, [loading, isAdmin, navigate]);
+
+  if (!loading && isAdmin) return null;
+
+  return (
     <AppShell>
       <LandingHero />
     </AppShell>
-  ),
-});
+  );
+}
 

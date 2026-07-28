@@ -344,11 +344,11 @@ function IconBtn({
   );
 }
 
-function Shell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Shell({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in-0 duration-200">
       <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-border/80 bg-surface shadow-2xl z-10 animate-in zoom-in-95 duration-200 overflow-hidden my-auto">
+      <div className={"relative w-full rounded-2xl border border-border/80 bg-surface shadow-2xl z-10 animate-in zoom-in-95 duration-200 overflow-hidden my-auto " + (wide ? "max-w-6xl" : "max-w-md")}>
         <div className="bg-gradient-to-r from-slate-900 via-navy/95 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-white/10">
           <h3 className="text-base font-display font-bold leading-snug truncate pr-4">{title}</h3>
           <button type="button" onClick={onClose} className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition-colors shrink-0">
@@ -592,7 +592,7 @@ function ServiceDialog({
   const isWizardService = isWizardLauncher || isWizardVariant;
 
   return (
-    <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose}>
+    <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose} wide>
       <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
         <Field label="Name">
           <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />

@@ -4,6 +4,7 @@ import { RegisterDialog } from "@/components/register-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import { useCatalogService, resolveFees, resolveDocuments } from "@/lib/service-catalog";
+import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock
@@ -70,11 +71,15 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const [entity] = useState("standard");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
-  const [state, setState] = useState("Maharashtra");
+  const [state, setState] = useState("Telangana");
   const [partners, setPartners] = useState(2);
   const [capital, setCapital] = useState(100000);
   const [paidCapital, setPaidCapital] = useState(100000);
   const [objects, setObjects] = useState("");
+  const [industryType, setIndustryType] = useState("");
+  const [industryOther, setIndustryOther] = useState("");
+  // The industry filed with the application — the free-text value when "Other".
+  const effectiveIndustry = industryType === "Other" ? industryOther.trim() : industryType;
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
@@ -358,6 +363,26 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                       </div>
                     </Field>
 
+                    <Field label="Industry Type">
+                      <select
+                        value={industryType}
+                        onChange={(e) => setIndustryType(e.target.value)}
+                        className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                      >
+                        <option value="">Select industry type…</option>
+                        {INDUSTRY_TYPES.map((i) => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                      </select>
+                      {industryType === "Other" && (
+                        <input
+                          value={industryOther}
+                          onChange={(e) => setIndustryOther(e.target.value)}
+                          placeholder="Please specify your industry"
+                          className="mt-2 w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                        />
+                      )}
+                    </Field>
                     <Field label="Main Objects / Business Activity *" error={errors.objects}>
                       <textarea
                         value={objects}
@@ -399,11 +424,22 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                       />
                     </Field>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Field label="State *" error={errors.state}>
+                        <select
+                          value={state}
+                          onChange={(e) => { setState(e.target.value); setErrors((prev) => ({ ...prev, state: "" })); }}
+                          className={
+                            "w-full bg-input border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow " +
+                            (errors.state ? "border-destructive focus:ring-destructive/25" : "border-border")
+                          }
+                        >
+                          {INDIAN_STATES.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </select>
+                      </Field>
                       <Field label="City *" error={errors.city}>
                         <Input value={city} onChange={(v) => setCity(v)} placeholder="e.g. Hyderabad" error={errors.city} />
-                      </Field>
-                      <Field label="State *" error={errors.state}>
-                        <Input value={state} onChange={(v) => setState(v)} placeholder="e.g. Telangana" error={errors.state} />
                       </Field>
                       <Field label="PIN Code *" error={errors.pincode}>
                         <Input value={pincode} onChange={(v) => setPincode(v)} placeholder="e.g. 500081" error={errors.pincode} />
@@ -625,6 +661,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
           name2,
           suffix: selected.suffix,
           objects,
+          ...(effectiveIndustry ? { industryType: effectiveIndustry } : {}),
           address,
           city,
           state,

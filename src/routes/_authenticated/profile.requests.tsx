@@ -229,14 +229,17 @@ function RegistrationDetailDialog({
     }
   };
 
-  const capitalVal = request.paidCapital || request.authorisedCapital || request.capital;
-
   let fd: any = {};
   if (request.formData) {
     try {
       fd = typeof request.formData === "string" ? JSON.parse(request.formData) : request.formData;
     } catch (_) {}
   }
+
+  const authorisedCapital = request.authorisedCapital ?? fd.capital ?? fd.totalCapital;
+  const paidCapital = request.paidCapital ?? fd.paidCapital;
+  const capitalVal = paidCapital ?? authorisedCapital;
+  const inr = (v: any) => `₹${Number(v).toLocaleString("en-IN")}`;
 
   const isCompanyReg =
     (request.serviceTitle && request.serviceTitle.toLowerCase().includes("company")) ||
@@ -331,40 +334,17 @@ function RegistrationDetailDialog({
                   <Building2 className="size-3.5" /> Entity & Filing Details
                 </div>
                 <div className="space-y-2 text-xs">
-                  <div className="flex items-start gap-2">
-                    <Building2 className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <span className="text-[11px] text-muted-foreground block">Proposed Name 1</span>
-                      <span className="font-semibold text-foreground">{fd.name1 || request.businessName || "—"}</span>
-                    </div>
-                  </div>
-                  {fd.name2 && (
-                    <div className="flex items-start gap-2">
-                      <Building2 className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <span className="text-[11px] text-muted-foreground block">Proposed Name 2</span>
-                        <span className="font-medium text-foreground">{fd.name2}</span>
-                      </div>
-                    </div>
-                  )}
-                  {capitalVal && (
-                    <div className="flex items-start gap-2">
-                      <Coins className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <span className="text-[11px] text-muted-foreground block">Proposed Capital</span>
-                        <span className="font-semibold text-foreground">₹{Number(capitalVal).toLocaleString("en-IN")}</span>
-                      </div>
-                    </div>
-                  )}
-                  {(fd.directors || fd.partners) && (
-                    <div className="flex items-start gap-2">
-                      <User className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <span className="text-[11px] text-muted-foreground block">Directors / Partners</span>
-                        <span className="font-medium text-foreground">{fd.directors || fd.partners}</span>
-                      </div>
-                    </div>
-                  )}
+                  <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
+                  {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={fd.name2} />}
+                  {fd.suffix && <DetailLine icon={Building2} label="Entity Suffix" value={fd.suffix} />}
+                  {fd.industryType && <DetailLine icon={Building2} label="Industry Type" value={fd.industryType} />}
+                  {request.form && <DetailLine icon={FileText} label="Filing Form" value={request.form} />}
+                  <DetailLine icon={Coins} label="Authorised Capital" value={authorisedCapital != null ? inr(authorisedCapital) : "—"} />
+                  <DetailLine icon={Coins} label="Paid-up Capital" value={paidCapital != null ? inr(paidCapital) : "—"} />
+                  {fd.directors != null && <DetailLine icon={User} label="Directors" value={String(fd.directors)} />}
+                  {fd.shareholders != null && <DetailLine icon={User} label="Shareholders" value={String(fd.shareholders)} />}
+                  {fd.partners != null && <DetailLine icon={User} label="Partners" value={String(fd.partners)} />}
+                  {fd.nominee && <DetailLine icon={User} label="Nominee" value={fd.nominee} />}
                 </div>
               </div>
             )}
@@ -391,11 +371,21 @@ function RegistrationDetailDialog({
             </div>
           )}
 
-          {/* Admin Remarks / Notes */}
+          {/* Object / nature of business */}
+          {fd.objects && (
+            <div className="p-4 rounded-xl border border-border/70 bg-card space-y-1.5 shadow-sm">
+              <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                <Building2 className="size-3.5" /> Object / Nature of Business
+              </div>
+              <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/85 pt-1">{fd.objects}</p>
+            </div>
+          )}
+
+          {/* The applicant's own note captured at submission */}
           {request.notes && (
             <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
               <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
-                <Info className="size-4 shrink-0" /> Advisor Notes & Instructions
+                <Info className="size-4 shrink-0" /> Your Note
               </div>
               <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">
                 {request.notes}
@@ -488,4 +478,16 @@ function RegistrationDetailDialog({
 
   if (typeof document === "undefined") return null;
   return createPortal(content, document.body);
+}
+
+function DetailLine({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <span className="text-[11px] text-muted-foreground block">{label}</span>
+        <span className="font-medium text-foreground break-words">{value}</span>
+      </div>
+    </div>
+  );
 }

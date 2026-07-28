@@ -585,3 +585,23 @@
   .doc-card { display: none; }
   .card-in, .nav-in, .rise-in { opacity: 1; transform: none; }
 }
+
+/* Tailwind v4 Preflight no longer sets cursor:pointer on buttons — restore it
+   for every interactive element. Kept in `base` so explicit `cursor-*`
+   utilities still override it where a component needs a different cursor. */
+@layer base {
+  button:not(:disabled),
+  [role="button"],
+  a[href],
+  select:not(:disabled),
+  summary,
+  label[for],
+  [type="checkbox"]:not(:disabled),
+  [type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}

@@ -375,7 +375,9 @@ function AdminDetailDialog({
     }
   }
 
-  const capitalVal = r?.paidCapital || r?.authorisedCapital || fd.capital;
+  const authorisedCapital = r?.authorisedCapital ?? fd.capital ?? fd.totalCapital;
+  const paidCapital = r?.paidCapital ?? fd.paidCapital;
+  const inr = (v: any) => `₹${Number(v).toLocaleString("en-IN")}`;
   const docs: any[] = r?.documents || [];
 
   const content = (
@@ -449,10 +451,15 @@ function AdminDetailDialog({
                   <div className="space-y-2 text-xs">
                     <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
                     {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={fd.name2} />}
-                    {capitalVal && <DetailRow icon={Coins} label="Capital" value={`₹${Number(capitalVal).toLocaleString("en-IN")}`} />}
-                    {(fd.directors || fd.partners) && (
-                      <DetailRow icon={User} label="Directors / Partners" value={String(fd.directors || fd.partners)} />
-                    )}
+                    {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={fd.suffix} />}
+                    {fd.industryType && <DetailRow icon={Building2} label="Industry Type" value={fd.industryType} />}
+                    {r.form && <DetailRow icon={FileText} label="Filing Form" value={r.form} />}
+                    <DetailRow icon={Coins} label="Authorised Capital" value={authorisedCapital != null ? inr(authorisedCapital) : "—"} />
+                    <DetailRow icon={Coins} label="Paid-up Capital" value={paidCapital != null ? inr(paidCapital) : "—"} />
+                    {fd.directors != null && <DetailRow icon={User} label="Directors" value={String(fd.directors)} />}
+                    {fd.shareholders != null && <DetailRow icon={User} label="Shareholders" value={String(fd.shareholders)} />}
+                    {fd.partners != null && <DetailRow icon={User} label="Partners" value={String(fd.partners)} />}
+                    {fd.nominee && <DetailRow icon={User} label="Nominee" value={fd.nominee} />}
                   </div>
                 </div>
               </div>
@@ -478,11 +485,21 @@ function AdminDetailDialog({
                 </div>
               )}
 
+              {/* Object / nature of business */}
+              {fd.objects && (
+                <div className="p-4 rounded-xl border border-border/70 bg-card space-y-1.5 shadow-sm">
+                  <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                    <Building2 className="size-3.5" /> Object / Nature of Business
+                  </div>
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/85 pt-1">{fd.objects}</p>
+                </div>
+              )}
+
               {/* Notes */}
               {r.notes && (
                 <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
                   <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
-                    <Info className="size-4 shrink-0" /> Advisor Notes
+                    <Info className="size-4 shrink-0" /> Note from Applicant
                   </div>
                   <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">{r.notes}</p>
                 </div>

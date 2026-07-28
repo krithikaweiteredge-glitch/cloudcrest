@@ -11,6 +11,7 @@ import {
   type ResolvedFees,
 } from "@/lib/service-catalog";
 import { resolveWizardRules } from "@/lib/company-types";
+import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
@@ -131,12 +132,16 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const [suffixChoice, setSuffixChoice] = useState("");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
-  const [state, setState] = useState("Maharashtra");
+  const [state, setState] = useState("Telangana");
   const [directors, setDirectors] = useState(2);
   const [shareholders, setShareholders] = useState(2);
   const [capital, setCapital] = useState(100000);
   const [paidCapital, setPaidCapital] = useState(100000);
   const [objects, setObjects] = useState("");
+  const [industryType, setIndustryType] = useState("");
+  const [industryOther, setIndustryOther] = useState("");
+  // The industry filed with the application — the free-text value when "Other".
+  const effectiveIndustry = industryType === "Other" ? industryOther.trim() : industryType;
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
@@ -609,6 +614,26 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         </span>
                       </div>
                     </Field>
+                    <Field label="Industry Type">
+                      <select
+                        value={industryType}
+                        onChange={(e) => setIndustryType(e.target.value)}
+                        className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+                      >
+                        <option value="">Select industry type…</option>
+                        {INDUSTRY_TYPES.map((i) => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                      </select>
+                      {industryType === "Other" && (
+                        <input
+                          value={industryOther}
+                          onChange={(e) => setIndustryOther(e.target.value)}
+                          placeholder="Please specify your industry"
+                          className="mt-2 w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus transition-shadow"
+                        />
+                      )}
+                    </Field>
                     <Field label="Object / Industry *" error={errors.objects}>
                       <textarea
                         value={objects}
@@ -705,7 +730,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                             (errors.state ? "border-destructive focus:ring-destructive/25" : "border-border")
                           }
                         >
-                          {["Maharashtra","Karnataka","Delhi","Tamil Nadu","Gujarat","Telangana","West Bengal","Uttar Pradesh"].map((s) => (
+                          {INDIAN_STATES.map((s) => (
                             <option key={s}>{s}</option>
                           ))}
                         </select>
@@ -714,7 +739,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         <Input
                           value={city}
                           onChange={(v) => { setCity(v); setErrors((prev) => ({ ...prev, city: "" })); }}
-                          placeholder="Mumbai"
+                          placeholder="Hyderabad"
                           error={errors.city}
                         />
                       </Field>
@@ -905,6 +930,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           name2: withSuffix(name2),
           suffix: effectiveSuffix,
           objects,
+          ...(effectiveIndustry ? { industryType: effectiveIndustry } : {}),
           address,
           city,
           state,
@@ -913,6 +939,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           shareholders,
           capital,
           paidCapital,
+          ...(selected.requiresNominee && nominee.trim() ? { nominee: nominee.trim() } : {}),
         }}
         documents={documents}
         fees={fees.lines}

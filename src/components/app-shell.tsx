@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Phone, Mail, Search, Bell, ChevronRight, ChevronLeft, ChevronDown, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree } from "lucide-react";
+import { Phone, Mail, Search, Bell, ChevronRight, ChevronDown, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree, Menu, X } from "lucide-react";
 import { useCatalogGroups } from "@/lib/service-catalog";
 import { SupportFab } from "@/components/support-fab";
 import { useState, useRef, useEffect, type ReactNode } from "react";
@@ -26,7 +26,17 @@ export default function AppShell({ children }: { children?: ReactNode }) {
     : "";
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Sidebar is hidden by default, but opens automatically on a service page
+  // (`/m/*`) — so clicking a service from the home page lands with it open.
+  // The hamburger button toggles it from there.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => !pathname.startsWith("/m/"));
+
+  // On phones the sidebar overlays the page, so hide it once a service is picked.
+  const closeSidebarOnMobile = () => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setSidebarCollapsed(true);
+    }
+  };
 
   // Services come from the backend catalog; the built-in list is only a fallback
   // so the sidebar still renders if the API is unreachable. Shared with the home
@@ -72,21 +82,6 @@ export default function AppShell({ children }: { children?: ReactNode }) {
     return { ...g, items: filteredItems };
   }).filter((g) => g.items.length > 0);
 
-  /**
-   * The collapsed rail shows a fixed five icons rather than the whole catalog —
-   * 25+ stacked icons is an unreadable strip. The active service is always one
-   * of them, swapped into the last slot when it isn't already in the top five,
-   * so the rail still shows where you are.
-   */
-  const RAIL_LIMIT = 5;
-  const railItems = (() => {
-    const all = groups.flatMap((g) => g.items);
-    const top = all.slice(0, RAIL_LIMIT);
-    if (!activeSlug || top.some((m) => m.slug === activeSlug)) return top;
-    const active = all.find((m) => m.slug === activeSlug);
-    return active ? [...top.slice(0, RAIL_LIMIT - 1), active] : top;
-  })();
-
   return (
     <div className="min-h-screen w-full text-foreground flex flex-col">
       {/* Top utility strip (navy) */}
@@ -113,8 +108,19 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       </div>
 
       {/* Top header — the brand block lives here so it stays put when the sidebar collapses */}
-      <header className="h-16 border-b border-border bg-surface/98 sticky top-0 z-20 flex items-center justify-between pl-4 pr-8 gap-4">
-        <div className="flex items-center gap-6 min-w-0">
+      <header className="h-16 border-b border-border bg-surface/98 sticky top-0 z-20 flex items-center justify-between pl-3 pr-3 md:pl-4 md:pr-8 gap-2 md:gap-4">
+        <div className="flex items-center gap-3 md:gap-6 min-w-0">
+          {/* Hamburger — toggles the sidebar between the icon rail and full catalog. */}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? "Open sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Open sidebar" : "Collapse sidebar"}
+            aria-expanded={!sidebarCollapsed}
+            className="size-9 rounded-lg grid place-items-center text-muted-foreground hover:text-primary hover:bg-muted transition-colors shrink-0 cursor-pointer"
+          >
+            <Menu className="size-5" />
+          </button>
           {/* The brand is a Home link for customers, but inert for admins — admins
               have no customer home page, so clicking it must not navigate (or sign
               them out). Rendered as a plain block, not a Link, when isAdmin. */}
@@ -126,7 +132,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                   alt="Cloudcrest BM"
                   className="h-9 w-auto object-contain transition-transform group-hover:scale-[1.02]"
                 />
-                <div className="leading-tight ml-1">
+                <div className="leading-tight ml-1 hidden sm:block">
                   <div className="text-[11px] mono text-muted-foreground tracking-widest uppercase">
                     Registration Desk
                   </div>
@@ -172,53 +178,37 @@ export default function AppShell({ children }: { children?: ReactNode }) {
 
       {/* Main app row */}
       <div className="flex flex-1 min-h-0">
-        {/* Sidebar */}
+        {/* On phones the open sidebar overlays the page (with a backdrop) instead
+            of squeezing it; from tablet up it's the usual sticky push-sidebar. */}
+        {!sidebarCollapsed && (
+          <div
+            className="md:hidden fixed inset-0 bg-slate-950/60 z-40"
+            onClick={() => setSidebarCollapsed(true)}
+            aria-hidden="true"
+          />
+        )}
+        {/* Sidebar — full-height drawer over the page on phones, sticky push-panel
+            from tablet up. */}
         <aside
           className={
-            "relative z-30 flex-shrink-0 bg-surface border-r border-border flex flex-col sticky top-16 h-[calc(100vh-4rem)] self-start transition-[width] duration-200 " +
-            (sidebarCollapsed ? "w-16" : "w-72")
+            "flex-shrink-0 bg-surface flex flex-col fixed md:sticky top-0 md:top-16 left-0 h-screen md:h-[calc(100vh-4rem)] self-start transition-[width] duration-200 overflow-hidden z-50 md:z-30 " +
+            (sidebarCollapsed ? "w-0 border-r-0" : "w-72 max-w-[85vw] border-r border-border")
           }
         >
-          {/* Collapse / expand handle — a tab attached to the sidebar's right edge */}
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="absolute top-0 right-0 translate-x-full z-40 h-11 w-4 rounded-br-md border border-l-0 border-t-0 border-border bg-surface shadow-card grid place-items-center text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="size-3" />
-            ) : (
-              <ChevronLeft className="size-3" />
-            )}
-          </button>
-
-          {sidebarCollapsed ? (
-            /* Collapsed rail — a short icon-only shortcut list. Expanding the
-               sidebar is the way to reach the full catalog. */
-            <nav className="flex-1 overflow-y-auto py-3 flex flex-col items-center gap-1">
-              {railItems.map((m) => {
-                const active = m.slug === activeSlug;
-                const Icon = m.icon;
-                const railClass =
-                  "size-9 rounded-lg grid place-items-center transition-all duration-200 " +
-                  (active
-                    ? "bg-primary/20 text-primary shadow-[0_0_12px_-2px_var(--primary)] scale-105"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-105");
-                return linkToAdmin ? (
-                  <Link key={m.slug} to="/admin" search={{ service: m.slug }} className={railClass} title={m.title}>
-                    <Icon className="size-4" />
-                  </Link>
-                ) : (
-                  <Link key={m.slug} to="/m/$slug" params={{ slug: m.slug }} className={railClass} title={m.title}>
-                    <Icon className="size-4" />
-                  </Link>
-                );
-              })}
-            </nav>
-          ) : (
+          {!sidebarCollapsed && (
           <>
+          {/* Mobile-only drawer header with a close button. */}
+          <div className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border shrink-0">
+            <span className="text-sm font-semibold text-foreground">Menu</span>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label="Close menu"
+              className="size-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
           <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-muted/70 border border-border focus-within:ring-2 focus-within:ring-primary/25 focus-within:border-primary transition-all">
               <Search className="size-3.5 text-muted-foreground" />
@@ -319,11 +309,11 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                         return (
                           <li key={m.slug}>
                             {linkToAdmin ? (
-                              <Link to="/admin" search={{ service: m.slug }} className={linkClass}>
+                              <Link to="/admin" search={{ service: m.slug }} onClick={closeSidebarOnMobile} className={linkClass}>
                                 {linkInner}
                               </Link>
                             ) : (
-                              <Link to="/m/$slug" params={{ slug: m.slug }} className={linkClass}>
+                              <Link to="/m/$slug" params={{ slug: m.slug }} onClick={closeSidebarOnMobile} className={linkClass}>
                                 {linkInner}
                               </Link>
                             )}
@@ -412,6 +402,8 @@ function NotificationMenu() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Which broadcast is expanded to show its full message (null = none).
+  const [expandedId, setExpandedId] = useState<string | number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -550,14 +542,27 @@ function NotificationMenu() {
               </div>
             ) : (
               notifications.map((n) => {
-                const targetUrl = n.linkUrl || (n.refNo ? `/profile/requests?ref=${n.refNo}` : "/profile/requests");
+                // Application updates carry a reference and open that request.
+                // Broadcasts have no request, so clicking expands the full message
+                // in place instead of navigating.
+                const isApplication = n.type === "user_update" || !!n.refNo;
+                const targetUrl = n.refNo
+                  ? `/profile/requests?ref=${n.refNo}`
+                  : n.linkUrl || "/profile/requests";
+                const expanded = expandedId === n.id;
                 return (
                   <a
                     key={n.id}
-                    href={targetUrl}
+                    href={isApplication ? targetUrl : undefined}
                     onClick={(e) => {
                       markOneRead(n);
-                      setOpen(false);
+                      if (isApplication) {
+                        setOpen(false);
+                      } else {
+                        // Broadcast: stay open and toggle the full message.
+                        e.preventDefault();
+                        setExpandedId((cur) => (cur === n.id ? null : n.id));
+                      }
                     }}
                     className={
                       "p-3.5 flex items-start gap-3 hover:bg-muted/50 transition-colors block group cursor-pointer " +
@@ -581,9 +586,14 @@ function NotificationMenu() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                      <p className={"text-[11px] text-muted-foreground leading-relaxed " + (expanded ? "whitespace-pre-wrap" : "line-clamp-2")}>
                         {n.text}
                       </p>
+                      {!isApplication && (
+                        <div className="text-[10px] font-medium text-primary/80 group-hover:text-primary">
+                          {expanded ? "Show less" : "Read full message"}
+                        </div>
+                      )}
                       <div className="text-[10px] text-muted-foreground/70 pt-0.5">
                         {n.time ? new Date(n.time).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "numeric" }) : ""}
                       </div>
