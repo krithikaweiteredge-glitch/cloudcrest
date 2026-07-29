@@ -105,7 +105,7 @@ function AdminPage() {
             <ShieldAlert className="size-5" />
           </div>
           <div className="min-w-0">
-            <div className="label-eyebrow text-primary">Admin Console</div>
+            <div className="label-eyebrow text-primary">{isAdmin ? "Admin Console" : "Employee Console"}</div>
             <h1 className="text-2xl font-display font-semibold">
               {view === "tickets"
                 ? "All Support Tickets"

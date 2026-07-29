@@ -11,8 +11,8 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
   // Coordinators share the console with admins, so console-vs-customer chrome
-  // keys off isStaff, not isAdmin.
-  const isStaff = useAuth().isStaff;
+  // keys off isStaff; isAdmin only distinguishes the console's own label/features.
+  const { isStaff, isAdmin } = useAuth();
   // In the admin console the sidebar filters registrations by service instead of
   // opening the customer wizard, and the active item comes from the `service` param.
   const isAdminView = pathname.startsWith("/admin");
@@ -166,7 +166,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 const item = groups.flatMap((g) => g.items).find((i) => i.slug === activeSlug);
                 if (item) return item.title;
                 if (pathname.startsWith("/profile")) return "My Account";
-                if (pathname.startsWith("/admin")) return "Admin Console";
+                if (pathname.startsWith("/admin")) return isAdmin ? "Admin Console" : "Employee Console";
                 return "Registration & Compliance";
               })()}
             </span>
