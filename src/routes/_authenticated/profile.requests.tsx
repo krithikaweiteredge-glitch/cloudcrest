@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { FileText, Download, UploadCloud, X, Loader2, Info, User, Mail, Phone, Building2, Coins, Calendar, CheckCircle2, ChevronRight, Clock } from "lucide-react";
 import { StatusPill, EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
+import { splitRequestNotes } from "@/lib/request-notes";
 
 export const Route = createFileRoute("/_authenticated/profile/requests")({
   validateSearch: (s: Record<string, unknown>): { ref?: string } => ({
@@ -381,17 +382,40 @@ function RegistrationDetailDialog({
             </div>
           )}
 
-          {/* The applicant's own note captured at submission */}
-          {request.notes && (
-            <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
-              <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
-                <Info className="size-4 shrink-0" /> Your Note
-              </div>
-              <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">
-                {request.notes}
-              </p>
-            </div>
-          )}
+          {/* The notes column mixes the applicant's own note with admin remarks —
+              split them so each is shown under the right heading. */}
+          {(() => {
+            const { applicantNote, adminRemarks } = splitRequestNotes(request.notes);
+            return (
+              <>
+                {applicantNote && (
+                  <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
+                    <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
+                      <Info className="size-4 shrink-0" /> Your Note
+                    </div>
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">
+                      {applicantNote}
+                    </p>
+                  </div>
+                )}
+                {adminRemarks.length > 0 && (
+                  <div className="p-4 rounded-xl border border-primary/30 bg-primary/[0.04] space-y-2.5 shadow-sm">
+                    <div className="text-xs font-bold flex items-center gap-2 text-primary">
+                      <Info className="size-4 shrink-0" /> Updates from Cloudcrest
+                    </div>
+                    <ul className="space-y-2 pl-6">
+                      {adminRemarks.map((rem, i) => (
+                        <li key={i} className="text-xs leading-relaxed">
+                          <span className="mono text-[10px] text-muted-foreground">{rem.stamp}</span>
+                          <p className="whitespace-pre-wrap text-foreground/90 mt-0.5">{rem.message}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* Documents Section */}
           <div className="space-y-3 pt-2 border-t border-border">

@@ -7,6 +7,7 @@ import { StatusPill } from "./profile.index";
 import { AdminCatalogPanel } from "@/components/admin-catalog";
 import { getModule } from "@/lib/modules";
 import { assetUrl } from "@/lib/file-url";
+import { splitRequestNotes } from "@/lib/request-notes";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Bell, Send, X, Loader2, ShieldAlert, FileText, User, CheckCircle2, ListFilter,
@@ -515,15 +516,38 @@ function AdminDetailDialog({
                 </div>
               )}
 
-              {/* Notes */}
-              {r.notes && (
-                <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
-                  <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
-                    <Info className="size-4 shrink-0" /> Note from Applicant
-                  </div>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">{r.notes}</p>
-                </div>
-              )}
+              {/* Notes — the applicant's own note and admin remarks are stored in
+                  the same column; split them so each is labelled correctly. */}
+              {(() => {
+                const { applicantNote, adminRemarks } = splitRequestNotes(r.notes);
+                return (
+                  <>
+                    {applicantNote && (
+                      <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 space-y-1.5 shadow-sm">
+                        <div className="text-xs font-bold flex items-center gap-2 text-sky-700 dark:text-sky-300">
+                          <Info className="size-4 shrink-0" /> Note from Applicant
+                        </div>
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap pl-6">{applicantNote}</p>
+                      </div>
+                    )}
+                    {adminRemarks.length > 0 && (
+                      <div className="p-4 rounded-xl border border-primary/30 bg-primary/[0.04] space-y-2.5 shadow-sm">
+                        <div className="text-xs font-bold flex items-center gap-2 text-primary">
+                          <ShieldAlert className="size-4 shrink-0" /> Admin Remarks (sent to applicant)
+                        </div>
+                        <ul className="space-y-2 pl-6">
+                          {adminRemarks.map((rem, i) => (
+                            <li key={i} className="text-xs leading-relaxed">
+                              <span className="mono text-[10px] text-muted-foreground">{rem.stamp}</span>
+                              <p className="whitespace-pre-wrap text-foreground/90 mt-0.5">{rem.message}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Documents */}
               <div className="space-y-3 pt-2 border-t border-border">
