@@ -253,12 +253,15 @@ function AuthPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Invalid email or password");
 
-      if (data.user?.roleName !== "Admin") {
+      // Both Admins and Coordinators sign in here; the console adapts to the
+      // role. Any other role (e.g. a customer) is rejected.
+      const staffRoles = ["Admin", "Coordinator"];
+      if (!staffRoles.includes(data.user?.roleName)) {
         await fetch(`${backendUrl}/api/auth/logout`, {
           method: "POST",
           credentials: "include",
         }).catch(() => {});
-        throw new Error("This account does not have administrator access.");
+        throw new Error("This account does not have staff access.");
       }
 
       await refreshAuth();
@@ -324,7 +327,7 @@ function AuthPage() {
           </h2>
           <p className="text-sm text-muted-foreground mt-1.5">
             {activeTab === "admin"
-              ? "Restricted access. Use your Cloudcrest BM admin email and password."
+              ? "Restricted access for staff. Admins and coordinators sign in with email and password."
               : "No passwords. Continue with Google, or receive a one-time code."}
           </p>
 

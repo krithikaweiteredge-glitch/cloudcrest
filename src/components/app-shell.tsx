@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Phone, Mail, Search, Bell, ChevronRight, ChevronDown, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree, Menu, X } from "lucide-react";
+import { Phone, Mail, Search, Bell, ChevronRight, ChevronDown, User, LogIn, LogOut, FileText, Receipt, Settings as SettingsIcon, ShieldAlert, LifeBuoy, FolderTree, Users, Menu, X } from "lucide-react";
 import { useCatalogGroups } from "@/lib/service-catalog";
 import { SupportFab } from "@/components/support-fab";
 import { useState, useRef, useEffect, type ReactNode } from "react";
@@ -10,13 +10,15 @@ import logo from "@/assets/cloudcrest-logo.png";
 export default function AppShell({ children }: { children?: ReactNode }) {
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
-  const isAdmin = useAuth().isAdmin;
+  // Coordinators share the console with admins, so console-vs-customer chrome
+  // keys off isStaff, not isAdmin.
+  const isStaff = useAuth().isStaff;
   // In the admin console the sidebar filters registrations by service instead of
   // opening the customer wizard, and the active item comes from the `service` param.
   const isAdminView = pathname.startsWith("/admin");
-  // An admin picking a service anywhere should land on that service's
+  // A staff member picking a service anywhere should land on that service's
   // registrations, not the customer-facing page.
-  const linkToAdmin = isAdminView || isAdmin;
+  const linkToAdmin = isAdminView || isStaff;
   // Empty on non-service pages (home, profile, …) so nothing in the sidebar is
   // highlighted and no group is auto-expanded there.
   const activeSlug = isAdminView
@@ -143,7 +145,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 </div>
               </>
             );
-            return isAdmin ? (
+            return isStaff ? (
               <div className="flex items-center gap-2 shrink-0 cursor-default select-none">{brandInner}</div>
             ) : (
               <Link to="/" className="flex items-center gap-2 group shrink-0">{brandInner}</Link>
@@ -151,7 +153,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           })()}
 
           <nav className="hidden md:flex items-center text-[13px] gap-1.5 min-w-0">
-            {isAdmin ? (
+            {isStaff ? (
               <span className="text-muted-foreground shrink-0 cursor-default select-none">Workspace</span>
             ) : (
               <Link to="/" className="text-muted-foreground hover:text-primary transition-colors shrink-0">
@@ -357,10 +359,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   );
 }
 
-// Shared admin-role check. The role comes straight from the session user, which
-// `useAuth` already resolves against the backend — no second /api/auth/me call.
-function useIsAdmin() {
-  return useAuth().isAdmin;
+// Shared role checks. Roles come straight from the session user, which `useAuth`
+// already resolves against the backend — no second /api/auth/me call.
+// isStaff → belongs in the console (Admin or Coordinator);
+// isAdmin → admin-exclusive features (catalog + employees).
+function useIsStaff() {
+  return useAuth().isStaff;
 }
 
 const READ_NOTIFS_KEY = "cc_read_notifications";
@@ -398,7 +402,8 @@ function extractRefFromLink(linkUrl?: string | null): string | null {
 
 function NotificationMenu() {
   const { user } = useAuth();
-  const isAdmin = useIsAdmin();
+  // Staff (admins + coordinators) don't use the customer notification bell.
+  const isAdmin = useIsStaff();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -620,8 +625,8 @@ function NotificationMenu() {
 }
 
 function AccountMenu() {
-  const { user, signOut, loading } = useAuth();
-  const isAdmin = useIsAdmin();
+  const { user, signOut, loading, isAdmin } = useAuth();
+  const isStaff = useIsStaff();
   const [open, setOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -666,7 +671,7 @@ function AccountMenu() {
             <div className="text-sm font-medium truncate">{user.email ?? user.phone}</div>
           </div>
           <div className="p-1.5">
-            {isAdmin ? (
+            {isStaff ? (
               <>
                 <Link
                   to="/admin"
@@ -692,14 +697,27 @@ function AccountMenu() {
                 >
                   <Bell className="size-3.5 text-muted-foreground" /> Notification
                 </Link>
-                <Link
-                  to="/admin"
-                  search={{ view: "catalog" }}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] hover:bg-muted"
-                >
-                  <FolderTree className="size-3.5 text-muted-foreground" /> Services
-                </Link>
+                {/* Catalog + employee management are Admin-only. */}
+                {isAdmin && (
+                  <>
+                    <Link
+                      to="/admin"
+                      search={{ view: "catalog" }}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] hover:bg-muted"
+                    >
+                      <FolderTree className="size-3.5 text-muted-foreground" /> Services
+                    </Link>
+                    <Link
+                      to="/admin"
+                      search={{ view: "employees" }}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] hover:bg-muted"
+                    >
+                      <Users className="size-3.5 text-muted-foreground" /> Employees
+                    </Link>
+                  </>
+                )}
               </>
             ) : (
               [

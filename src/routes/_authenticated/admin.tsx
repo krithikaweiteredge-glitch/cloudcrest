@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import AppShell from "@/components/app-shell";
 import { StatusPill } from "./profile.index";
 import { AdminCatalogPanel } from "@/components/admin-catalog";
 import { getModule } from "@/lib/modules";
 import { assetUrl } from "@/lib/file-url";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Bell, Send, X, Loader2, ShieldAlert, FileText, User, CheckCircle2, ListFilter,
   Download, Eye, Mail, Phone, Building2, Coins, Calendar, Info, Clock, ChevronRight, LifeBuoy,
+  Users, UserPlus, Lock, Unlock,
 } from "lucide-react";
 
-type AdminView = "registrations" | "tickets" | "notifications" | "catalog";
+type AdminView = "registrations" | "tickets" | "notifications" | "catalog" | "employees";
 type Search = { service?: string; view?: AdminView };
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     service: typeof s.service === "string" ? s.service : undefined,
     view:
-      s.view === "tickets" || s.view === "notifications" || s.view === "catalog"
+      s.view === "tickets" || s.view === "notifications" || s.view === "catalog" || s.view === "employees"
         ? s.view
         : undefined,
   }),
@@ -47,7 +49,14 @@ type AdminRequest = {
 
 function AdminPage() {
   const { service, view: viewParam } = Route.useSearch();
-  const view: AdminView = viewParam ?? "registrations";
+  const { isAdmin } = useAuth();
+  // Catalog + employee management are Admin-only. If a coordinator lands on one of
+  // those views (old link, manual URL), fall back to registrations instead.
+  const requestedView: AdminView = viewParam ?? "registrations";
+  const view: AdminView =
+    !isAdmin && (requestedView === "catalog" || requestedView === "employees")
+      ? "registrations"
+      : requestedView;
   const navigate = Route.useNavigate();
   const [target, setTarget] = useState<AdminRequest | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
@@ -104,6 +113,8 @@ function AdminPage() {
                 ? "Notifications"
                 : view === "catalog"
                 ? "Services Catalog"
+                : view === "employees"
+                ? "Employees"
                 : mod
                 ? `${mod.title} Registrations`
                 : "All Registrations"}
@@ -115,6 +126,8 @@ function AdminPage() {
                 ? "Broadcast an announcement to every user."
                 : view === "catalog"
                 ? "Create and manage services, fees, page tabs and document checklists."
+                : view === "employees"
+                ? "Add coordinator accounts and manage staff access to the console."
                 : mod
                 ? `Showing registrations submitted for ${mod.title}. Pick another service from the sidebar to switch.`
                 : "Pick a service from the sidebar to filter, or review every submitted registration below."}
@@ -122,14 +135,19 @@ function AdminPage() {
           </div>
         </div>
 
-        {/* View tabs */}
+        {/* View tabs — Services + Employees are Admin-only. */}
         <div className="mb-5 flex gap-1 p-1 rounded-lg bg-muted w-fit">
           {(
             [
               ["registrations", "All Registrations"],
               ["tickets", "All Support Tickets"],
               ["notifications", "Notification"],
-              ["catalog", "Services"],
+              ...(isAdmin
+                ? ([
+                    ["catalog", "Services"],
+                    ["employees", "Employees"],
+                  ] as const)
+                : []),
             ] as const
           ).map(([v, label]) => (
             <button
@@ -152,6 +170,8 @@ function AdminPage() {
           <AdminNotificationsPanel />
         ) : view === "catalog" ? (
           <AdminCatalogPanel />
+        ) : view === "employees" ? (
+          <EmployeesPanel />
         ) : (
         <>
         {service && (
@@ -966,6 +986,286 @@ function AdminNotificationsPanel() {
         <div className="p-8 text-center text-sm text-muted-foreground">No notifications sent yet.</div>
       )}
     </div>
+    </div>
+  );
+}
+
+type Employee = {
+  id: number;
+  firstName: string;
+  lastName: string | null;
+  email: string;
+  phone: string | null;
+  roleName: string | null;
+  status: string | null;
+  createdAt: string;
+};
+
+function EmployeesPanel() {
+  const queryClient = useQueryClient();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [blocked, setBlocked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-employees"],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND}/api/admin/employees`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load employees");
+      return (await res.json()) as Employee[];
+    },
+  });
+
+  const reset = () => {
+    setFirstName(""); setLastName(""); setEmail(""); setPhone("");
+    setPassword(""); setConfirm(""); setBlocked(false);
+  };
+
+  const create = async () => {
+    setErr(null); setOk(null);
+    if (!firstName.trim() || !email.trim() || !password) {
+      setErr("First name, email and password are required.");
+      return;
+    }
+    if (password.length < 6) {
+      setErr("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setErr("Passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`${BACKEND}/api/admin/employees`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          password,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to create coordinator");
+
+      // Honour the "block on creation" toggle with a follow-up status update.
+      if (blocked && body.employee?.id) {
+        await fetch(`${BACKEND}/api/admin/employees/${body.employee.id}/status`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "blocked" }),
+        }).catch(() => {});
+      }
+
+      setOk(`Coordinator ${email.trim()} created.`);
+      reset();
+      await queryClient.invalidateQueries({ queryKey: ["admin-employees"] });
+    } catch (e: any) {
+      setErr(e.message || "Failed to create coordinator");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const employees = data ?? [];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
+      {/* Create form */}
+      <div className="rounded-xl border border-border bg-surface shadow-card p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <UserPlus className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold">Add coordinator</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-5">
+          Coordinators sign in from the <span className="font-medium text-foreground">Admin</span> tab
+          with the email and password you set here. They can manage registrations, tickets and
+          notifications, but not services or employees.
+        </p>
+
+        <div className="space-y-3.5">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name">
+              <input value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="Asha" />
+            </Field>
+            <Field label="Last name">
+              <input value={lastName} onChange={(e) => setLastName(e.target.value)}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="Rao" />
+            </Field>
+          </div>
+          <Field label="Email">
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email"
+              className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="asha@cloudcrest.com" />
+          </Field>
+          <Field label="Mobile">
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel"
+              className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="90000 00000" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Create password">
+              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password"
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="••••••••" />
+            </Field>
+            <Field label="Confirm password">
+              <input value={confirm} onChange={(e) => setConfirm(e.target.value)} type="password"
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus" placeholder="••••••••" />
+            </Field>
+          </div>
+          <Field label="Role">
+            <div className="w-full bg-muted/60 border border-border rounded-lg px-3 py-2 text-sm text-foreground/80 flex items-center gap-2">
+              <ShieldAlert className="size-3.5 text-primary" /> Coordinator
+            </div>
+          </Field>
+
+          <label className="flex items-center gap-2.5 text-xs text-foreground/90 cursor-pointer select-none pt-0.5">
+            <input type="checkbox" checked={blocked} onChange={(e) => setBlocked(e.target.checked)}
+              className="size-4 rounded border-border accent-primary" />
+            Block this account (coordinator can't sign in until unblocked)
+          </label>
+
+          {err && (
+            <div className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2">{err}</div>
+          )}
+          {ok && (
+            <div className="text-xs text-success rounded-lg border border-success/30 bg-success/10 px-3.5 py-2 flex items-center gap-1.5 font-medium">
+              <CheckCircle2 className="size-3.5" /> {ok}
+            </div>
+          )}
+
+          <button type="button" onClick={create} disabled={busy}
+            className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all disabled:opacity-60">
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+            Create coordinator
+          </button>
+        </div>
+      </div>
+
+      {/* Coordinator list */}
+      <div className="rounded-xl border border-border bg-surface shadow-card overflow-x-auto">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Users className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold">Coordinators</h3>
+          {data && <span className="text-[11px] text-muted-foreground">({employees.length})</span>}
+        </div>
+        {isLoading ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : employees.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-[10px] mono uppercase tracking-wider text-muted-foreground border-b border-border">
+              <tr>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Name</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Contact</th>
+                <th className="text-left px-4 py-3 whitespace-nowrap">Status</th>
+                <th className="text-right px-4 py-3 whitespace-nowrap">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {employees.map((e) => (
+                <tr key={e.id} className="hover:bg-muted/30 transition-colors align-top">
+                  <td className="px-4 py-3.5">
+                    <div className="font-semibold text-foreground">
+                      {`${e.firstName} ${e.lastName ?? ""}`.trim()}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">Coordinator</div>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1.5 text-[12px] text-foreground">
+                      <Mail className="size-3 text-muted-foreground" /> {e.email}
+                    </div>
+                    {e.phone && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                        <Phone className="size-3" /> {e.phone}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    <StatusPill status={e.status || "active"} />
+                  </td>
+                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                    <EmployeeStatusButton employee={e} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            No coordinators yet. Add one using the form on the left.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmployeeStatusButton({ employee }: { employee: Employee }) {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const isBlocked = employee.status === "blocked";
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${BACKEND}/api/admin/employees/${employee.id}/status`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: isBlocked ? "active" : "blocked" }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to update status");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["admin-employees"] });
+    } catch (e: any) {
+      alert(e.message || "Failed to update coordinator status");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy}
+      className={
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-sm disabled:opacity-60 " +
+        (isBlocked
+          ? "bg-success/10 text-success hover:bg-success hover:text-white"
+          : "bg-destructive/10 text-destructive hover:bg-destructive hover:text-white")
+      }
+    >
+      {busy ? (
+        <Loader2 className="size-3.5 animate-spin" />
+      ) : isBlocked ? (
+        <Unlock className="size-3.5" />
+      ) : (
+        <Lock className="size-3.5" />
+      )}
+      {isBlocked ? "Unblock" : "Block"}
+    </button>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="text-[11px] font-medium text-foreground/90 block mb-1.5">{label}</label>
+      {children}
     </div>
   );
 }

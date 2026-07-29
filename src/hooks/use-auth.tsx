@@ -63,12 +63,21 @@ export function useAuth() {
     if (typeof window !== "undefined") window.location.href = "/";
   }, []);
 
+  const roleName = snapshot.user?.roleName;
+  const isAdmin = roleName === "Admin";
+  const isCoordinator = roleName === "Coordinator";
+
   return {
     user: snapshot.user,
     loading: snapshot.loading,
     signOut,
     refresh,
     isAuthenticated: !!snapshot.user,
-    isAdmin: snapshot.user?.roleName === "Admin",
+    isAdmin,
+    isCoordinator,
+    // Staff = anyone who belongs in the operations console (Admin or Coordinator).
+    // Use this for console-vs-customer UI decisions; use isAdmin only to gate
+    // admin-exclusive features (catalog + employee management).
+    isStaff: isAdmin || isCoordinator,
   };
 }
