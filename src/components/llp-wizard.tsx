@@ -288,10 +288,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
               <h2 className="text-2xl font-semibold tracking-tight">
                 LLP Incorporation Wizard
               </h2>
-              <p className="text-sm text-muted-foreground mt-1.5 max-w-[62ch]">
-                FiLLiP e-form validations, designated partner rules, and contribution allocation —
-                governed by the Limited Liability Partnership Act, 2008.
-              </p>
+              
             </div>
 
             <div className="rounded-xl border border-border bg-surface shadow-card p-4">

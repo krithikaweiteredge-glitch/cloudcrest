@@ -446,6 +446,11 @@ function ServiceDialog({
   const [wizMinDir, setWizMinDir] = useState(String(initialRules.minDirectors));
   const [wizMinShr, setWizMinShr] = useState(String(initialRules.minShareholders));
   const [wizNominee, setWizNominee] = useState(initialRules.requiresNominee);
+  // Company-type card tags (e.g. "Tax Exempt", "FDI Friendly") and the "Popular"
+  // badge — editable here for company variants only. Tags are comma-separated in
+  // the input and stored as a JSON array.
+  const [wizTags, setWizTags] = useState(initialRules.tags.join(", "));
+  const [wizPopular, setWizPopular] = useState(initialRules.popular);
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
@@ -568,6 +573,15 @@ function ServiceDialog({
               minDirectors: Number(wizMinDir) || 0,
               minShareholders: Number(wizMinShr) || 0,
               requiresNominee: wizNominee,
+              // Tags + the "Popular" badge are Company-Registration concepts, so
+              // they're only persisted for company variants. Both are always
+              // included here so re-saving a company type never drops them.
+              ...(isCompanyVariant
+                ? {
+                    tags: wizTags.split(",").map((t) => t.trim()).filter(Boolean),
+                    popular: wizPopular,
+                  }
+                : {}),
             })
           : undefined,
       };
@@ -590,6 +604,9 @@ function ServiceDialog({
   const isWizardLauncher = WIZARD_SLUGS.has(currentSlug);
   const isWizardVariant = [...WIZARD_SLUGS].some((w) => currentSlug.startsWith(w + "-"));
   const isWizardService = isWizardLauncher || isWizardVariant;
+  // Card tags are only surfaced (and displayed by the wizard) for Company
+  // Registration entity types, so the tags editor is scoped to `company-*`.
+  const isCompanyVariant = currentSlug.startsWith("company-");
 
   return (
     <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose} wide>
@@ -728,6 +745,48 @@ function ServiceDialog({
               />
               Requires a nominee (like OPC)
             </label>
+            {isCompanyVariant && (
+              <>
+                <Field label="Card tags — shown as badges on this company type (comma-separated)">
+                  <input
+                    value={wizTags}
+                    onChange={(e) => setWizTags(e.target.value)}
+                    placeholder="e.g. Tax Exempt, FDI Friendly"
+                    className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                  />
+                  {wizTags.split(",").map((t) => t.trim()).filter(Boolean).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {wizPopular && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-primary/12 text-primary text-[9px] mono uppercase tracking-wider">
+                          Popular
+                        </span>
+                      )}
+                      {wizTags
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                        .map((t, i) => (
+                          <span
+                            key={`${t}-${i}`}
+                            className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[9px] mono uppercase tracking-wider"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </Field>
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={wizPopular}
+                    onChange={(e) => setWizPopular(e.target.checked)}
+                    className="size-4"
+                  />
+                  Show a “Popular” badge on this company type
+                </label>
+              </>
+            )}
           </div>
         )}
 

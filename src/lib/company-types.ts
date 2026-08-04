@@ -1,11 +1,12 @@
 /**
  * Incorporation rules for the wizard-driven entity types (company / llp variants).
  *
- * These used to be hardcoded in the Company wizard. They now live in the catalog:
- * each variant service can carry a `wizardRules` JSON blob an admin edits in the
- * Services panel. This module holds the built-in DEFAULTS (so existing types keep
- * their exact current behaviour) and the resolver that layers a service's saved
- * overrides on top.
+ * The per-type values (suffix, min directors/shareholders, nominee, card tags,
+ * "popular") live in the catalog: each variant service carries a `wizardRules`
+ * JSON blob, seeded in the DB and editable in Admin → Services. Nothing about a
+ * specific entity type is hardcoded here — this module only holds a neutral
+ * GENERIC fallback (used when a row has no rules yet) and the resolver that reads
+ * a service's saved JSON.
  */
 export type WizardRules = {
   /** Legal name suffix appended to the proposed company name. "/"-separated = a choice. */
@@ -29,30 +30,15 @@ export const GENERIC_RULES: WizardRules = {
 };
 
 /**
- * Built-in per-type defaults, keyed by entity key (`company-pvt` -> `pvt`). Only
- * fields that differ from GENERIC_RULES are listed — importantly the min
- * directors/shareholders match exactly what the wizard enforced before this was
- * catalog-driven (only public and opc differ from 2/2), so behaviour is unchanged
- * until an admin overrides a type in the Services panel.
+ * Resolve the effective rules for a type from its saved `wizardRules` JSON,
+ * falling back field-by-field to the neutral GENERIC_RULES when a value is
+ * missing or the JSON is absent/malformed. The per-type values are seeded into
+ * the DB (see backend config/companyWizardDefaults) and edited in the catalog —
+ * `key` is retained only for call-site compatibility and no longer selects any
+ * hardcoded per-type defaults.
  */
-export const COMPANY_TYPE_DEFAULTS: Record<string, Partial<WizardRules>> = {
-  pvt: { suffix: "Private Limited", tags: ["FDI Friendly", "Min 2 Dir"], popular: true },
-  public: { suffix: "Limited", minDirectors: 3, minShareholders: 7, tags: ["Min 3 Dir · 7 Sh"] },
-  opc: { suffix: "(OPC) Private Limited", minDirectors: 1, minShareholders: 1, requiresNominee: true, tags: ["Single Member"] },
-  sec8: { suffix: "Foundation / Trust / Association", tags: ["Tax Exempt"] },
-  guarantee: { suffix: "Limited", tags: [] },
-  nidhi: { suffix: "Nidhi Limited", tags: ["Mutual Benefit"] },
-  producer: { suffix: "Producer Company Limited", tags: ["Agri / Producer"] },
-  foreign: { suffix: "Branch / Liaison Office", tags: ["RBI Approval"] },
-};
-
-/**
- * Resolve the effective rules for a type: built-in defaults for `key`, with the
- * service's saved `wizardRules` JSON (if any) layered on top. Tolerant of missing
- * or malformed JSON — falls back to the defaults field by field.
- */
-export function resolveWizardRules(key: string, rawJson?: string | null): WizardRules {
-  const base: WizardRules = { ...GENERIC_RULES, ...(COMPANY_TYPE_DEFAULTS[key] || {}) };
+export function resolveWizardRules(_key: string, rawJson?: string | null): WizardRules {
+  const base: WizardRules = { ...GENERIC_RULES };
   if (!rawJson) return base;
   try {
     const p = JSON.parse(rawJson);

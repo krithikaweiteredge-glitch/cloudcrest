@@ -41,19 +41,10 @@ type EntityType = {
 
 // The catalog (`company-*` rows) is the source of truth for which entity types
 // appear, their titles/forms and — via each row's `wizardRules` — their legal
-// suffix and incorporation rules (see lib/company-types). This static list is
-// only the fallback picker for when the family endpoint is unreachable; suffix
-// and rules for it come from resolveWizardRules too, so the two never diverge.
-const FALLBACK_TYPES: { key: string; title: string; form: string }[] = [
-  { key: "pvt", title: "Private Limited Company", form: "INC-32" },
-  { key: "public", title: "Public Limited Company", form: "INC-32" },
-  { key: "opc", title: "One Person Company (OPC)", form: "INC-32" },
-  { key: "sec8", title: "Section 8 Company (Non-Profit)", form: "INC-12" },
-  { key: "guarantee", title: "Company Limited by Guarantee", form: "INC-32" },
-  { key: "nidhi", title: "Nidhi Company", form: "INC-32 · NDH-4" },
-  { key: "producer", title: "Producer Company", form: "INC-32" },
-  { key: "foreign", title: "Foreign Company (Branch/Liaison)", form: "FC-1" },
-];
+// suffix and incorporation rules (see lib/company-types). There is deliberately
+// no static fallback list: the entity picker is only meaningful when the backend
+// is reachable (you can't submit a registration without it), so when the catalog
+// can't be loaded the wizard shows an "unavailable" state instead of a picker.
 
 /** `company-pvt` -> `pvt`; the wizard keys everything off this short entity key. */
 const entityKeyFromSlug = (slug: string) => slug.replace(/^company-/, "");
@@ -175,14 +166,16 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   // incorporation rules come from its saved wizardRules layered over the built-in
   // defaults (resolveWizardRules). Falls back to FALLBACK_TYPES when the family
   // endpoint returns nothing.
-  const { variants: companyVariants } = useCatalogFamily("company");
+  const { variants: companyVariants, loading: familyLoading } = useCatalogFamily("company");
   const entityTypes = useMemo<EntityType[]>(() => {
-    if (companyVariants && companyVariants.length > 0) {
-      return companyVariants.map((v) =>
-        buildEntityType(entityKeyFromSlug(v.slug), v.name, v.formNo ?? "", v.wizardRules),
-      );
-    }
-    return FALLBACK_TYPES.map((t) => buildEntityType(t.key, t.title, t.form));
+    // `undefined` while the family query is loading, `[]` if the catalog is
+    // unreachable or has no company variants. In both cases there's nothing to
+    // pick — the render below shows a loading skeleton or an "unavailable" state
+    // rather than any static fallback.
+    if (!companyVariants) return [];
+    return companyVariants.map((v) =>
+      buildEntityType(entityKeyFromSlug(v.slug), v.name, v.formNo ?? "", v.wizardRules),
+    );
   }, [companyVariants]);
 
   // If the catalog dropped the currently selected type (admin deleted/renamed a
@@ -476,10 +469,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               <h2 className="text-2xl font-semibold tracking-tight">
                 Company Incorporation Wizard
               </h2>
-              <p className="text-sm text-muted-foreground mt-1.5 max-w-[62ch]">
-                V4-style validations, suffix rules, capital preview and dynamic fee
-                logic — governed by the Companies Act, 2013 and MCA e-forms.
-              </p>
+              
             </div>
 
             <div className="rounded-xl border border-border bg-surface shadow-card p-4">
@@ -503,7 +493,41 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div key={step} className="mt-8 animate-in-up">
-              {step === 0 && (
+              {step === 0 && familyLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={`skeleton-${i}`}
+                      className="h-[104px] rounded-xl border border-border bg-muted/40 animate-pulse"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Catalog loaded but no entity types available (backend unreachable
+                  or none configured). Without it there's nothing to submit, so we
+                  show an explicit unavailable state instead of a fallback picker. */}
+              {step === 0 && !familyLoading && entityTypes.length === 0 && (
+                <div className="rounded-xl border border-border bg-surface p-8 text-center shadow-card">
+                  <div className="size-11 rounded-full bg-destructive/10 text-destructive grid place-items-center mx-auto mb-3">
+                    <ShieldCheck className="size-5" />
+                  </div>
+                  <h3 className="text-sm font-semibold">Registration is temporarily unavailable</h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 max-w-sm mx-auto">
+                    We couldn't load the list of company types. Please refresh the page or try again
+                    in a few minutes — our team has been notified.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {step === 0 && !familyLoading && entityTypes.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {entityTypes.map((t) => {
                     const active = t.key === entity;
