@@ -59,3 +59,98 @@ export function resolveWizardRules(_key: string, rawJson?: string | null): Wizar
     return base;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Private / Public class overlay.
+ *
+ * Some entity types exist in both a private and a public form, which the catalog
+ * model can't express (each variant has a single suffix + one set of minimums).
+ * This overlay adds that second dimension in the frontend: the wizard shows a
+ * Private/Public dropdown beside the proposed name for the classable types, and
+ * the choice sets the statutory minimums (and, where the legal ending differs,
+ * the suffix). Non-classable types keep their catalog rules unchanged.
+ * ------------------------------------------------------------------ */
+
+export type EntityClass = "private" | "public";
+
+/** Companies Act minimums: Private = 2 members / 2 directors,
+ *  Public = 7 members / 3 directors. */
+const PRIVATE_MINS = { minDirectors: 2, minShareholders: 2 };
+const PUBLIC_MINS = { minDirectors: 3, minShareholders: 7 };
+
+export type ClassOption = {
+  minDirectors: number;
+  minShareholders: number;
+  /** Overrides the type's suffix when the legal ending is class-specific. */
+  suffix?: string;
+};
+
+export type ClassSpec = {
+  /** Preselected class. */
+  default: EntityClass;
+  private: ClassOption;
+  public: ClassOption;
+};
+
+/**
+ * Entity types (keyed by short entity key) offered in both a private and public
+ * form. The wizard renders a Private/Public dropdown for these.
+ */
+export const CLASSABLE_TYPES: Record<string, ClassSpec> = {
+  // Section 8 (non-profit) — licensed as either a private or a public company.
+  sec8: { default: "private", private: { ...PRIVATE_MINS }, public: { ...PUBLIC_MINS } },
+  // Unlimited company (catalog slug company-guarantee): the legal ending IS the
+  // private/public distinction, so the class drives the suffix.
+  guarantee: {
+    default: "private",
+    private: { ...PRIVATE_MINS, suffix: "Private Limited" },
+    public: { ...PUBLIC_MINS, suffix: "Limited" },
+  },
+  // Nidhi is legally a public company (min 7 members / 3 directors); the private
+  // form is offered per the client's request and defaults to public.
+  nidhi: { default: "public", private: { ...PRIVATE_MINS }, public: { ...PUBLIC_MINS } },
+};
+
+/**
+ * Fixed statutory minimums that override the catalog for a type regardless of
+ * admin config. Currently only the Producer Company (min 10 members /
+ * 5 directors under Part IXA of the Companies Act, 1956).
+ */
+export const STATUTORY_MIN_OVERRIDES: Record<string, { minDirectors: number; minShareholders: number }> = {
+  producer: { minDirectors: 5, minShareholders: 10 },
+};
+
+export function isClassable(key: string): boolean {
+  return key in CLASSABLE_TYPES;
+}
+
+export type EffectiveRules = {
+  minDirectors: number;
+  minShareholders: number;
+  /** Set only when the chosen class dictates the suffix (e.g. Unlimited). */
+  suffixOverride?: string;
+};
+
+/**
+ * Effective incorporation minimums for a type, layering (in priority order) the
+ * chosen private/public class, then any fixed statutory override, then the
+ * catalog rules.
+ */
+export function resolveEffectiveRules(
+  key: string,
+  cls: EntityClass | null,
+  catalog: { minDirectors: number; minShareholders: number },
+): EffectiveRules {
+  const spec = CLASSABLE_TYPES[key];
+  if (spec) {
+    const opt = spec[cls ?? spec.default];
+    return {
+      minDirectors: opt.minDirectors,
+      minShareholders: opt.minShareholders,
+      suffixOverride: opt.suffix,
+    };
+  }
+  const override = STATUTORY_MIN_OVERRIDES[key];
+  if (override) return { ...override };
+  return { minDirectors: catalog.minDirectors, minShareholders: catalog.minShareholders };
+}

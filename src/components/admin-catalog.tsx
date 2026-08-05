@@ -38,7 +38,9 @@ export function AdminCatalogPanel() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [serviceDialog, setServiceDialog] = useState<
-    { mode: "create"; subcategoryId: number } | { mode: "edit"; service: any } | null
+    | { mode: "create"; subcategoryId: number }
+    | { mode: "edit"; service: any; hasVariants: boolean }
+    | null
   >(null);
   const [manageId, setManageId] = useState<number | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
@@ -250,7 +252,7 @@ export function AdminCatalogPanel() {
                                     <IconBtn title="Document checklist" onClick={() => setManageId(svc.id)}>
                                       <Settings2 className="size-3.5" />
                                     </IconBtn>
-                                    <IconBtn title="Edit service" onClick={() => setServiceDialog({ mode: "edit", service: svc })}>
+                                    <IconBtn title="Edit service" onClick={() => setServiceDialog({ mode: "edit", service: svc, hasVariants: variantCount > 0 })}>
                                       <Pencil className="size-3.5" />
                                     </IconBtn>
                                     <IconBtn title="Delete service" danger onClick={() => del(`/services/${svc.id}`, `Delete service "${svc.name}"?`)}>
@@ -424,7 +426,7 @@ function ServiceDialog({
   onClose,
   onSaved,
 }: {
-  state: { mode: "create"; subcategoryId: number } | { mode: "edit"; service: any };
+  state: { mode: "create"; subcategoryId: number } | { mode: "edit"; service: any; hasVariants?: boolean };
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -601,7 +603,8 @@ function ServiceDialog({
   // Wizard-ness is derived from the live slug so the right sections show/hide as
   // the admin types a `company-…` slug on a new service, not just on reopen.
   const currentSlug = (slug || "").trim();
-  const isWizardLauncher = WIZARD_SLUGS.has(currentSlug);
+  const hasVariants = state.mode === "edit" ? !!state.hasVariants : false;
+  const isWizardLauncher = WIZARD_SLUGS.has(currentSlug) && hasVariants;
   const isWizardVariant = [...WIZARD_SLUGS].some((w) => currentSlug.startsWith(w + "-"));
   const isWizardService = isWizardLauncher || isWizardVariant;
   // Card tags are only surfaced (and displayed by the wizard) for Company

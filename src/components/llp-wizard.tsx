@@ -3,7 +3,8 @@ import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { SignInDialog } from "@/components/sign-in-dialog";
-import { useCatalogService, resolveFees, resolveDocuments } from "@/lib/service-catalog";
+import { useCatalogService, resolveDocuments, type ResolvedFees } from "@/lib/service-catalog";
+import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
@@ -24,11 +25,6 @@ const STEPS = [
 const LLP_ENTITY_TYPES = [
   { key: "standard", title: "Limited Liability Partnership (LLP)", suffix: "LLP", form: "FiLLiP · Form 3", tags: ["Min 2 Partners", "Flexible Agreement"], pop: true },
 ];
-
-// Used only when the admin catalog has no `llp` row — the catalog (`services`
-// table) is the source of truth for pricing. Mirrors the client's original
-// figures: ₹1,999 professional + ₹1,500 DSC, ₹500 MCA + ₹500 stamp duty.
-const FALLBACK_FEES = { professional: 3499, govt: 1000, gstPercent: 0 };
 
 // Fallback checklist when the admin hasn't configured document types.
 const FALLBACK_DOCS = [
@@ -110,9 +106,19 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const selected = LLP_ENTITY_TYPES.find((e) => e.key === entity) || LLP_ENTITY_TYPES[0];
   // Pricing & checklist come from the admin catalog's `llp` service.
   const { service, loading: catalogLoading } = useCatalogService(["llp"]);
-  const fees = resolveFees(service, "MCA", FALLBACK_FEES);
-  const total = fees.total;
   const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
+
+  // Fees come from the backend fee engine (the single source of truth): the
+  // FiLLiP schedule (filing fee by contribution + name reservation + PAN/TAN) +
+  // professional fee + 18% GST. The same context is recomputed at submission.
+  const feeContext: FeeContext = { kind: "llp", contribution: capital };
+  const estimate = useFeeEstimate(feeContext, !!user);
+  const fees: ResolvedFees = {
+    lines: estimate.lines,
+    total: estimate.total,
+    fromCatalog: estimate.fromCatalog,
+  };
+  const total = estimate.total;
 
   const nameOk = useMemo(() => {
     if (!name1) return null;
@@ -502,7 +508,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                     <FileText className="size-4 text-primary" />
                     <h3 className="text-sm font-semibold">Estimated LLP Fee Breakdown</h3>
                   </div>
-                  {catalogLoading ? (
+                  {estimate.loading ? (
                     <div className="text-xs text-muted-foreground py-4">Loading current pricing…</div>
                   ) : (
                     <div className="space-y-2 text-xs">
@@ -671,6 +677,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
         documents={documents}
         fees={fees.lines}
         feeTotal={fees.total}
+        feeContext={feeContext}
       />
 
       <SignInDialog

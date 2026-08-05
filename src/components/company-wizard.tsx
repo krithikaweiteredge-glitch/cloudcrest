@@ -6,11 +6,17 @@ import { SignInDialog } from "@/components/sign-in-dialog";
 import {
   useCatalogService,
   useCatalogFamily,
-  resolveFees,
   resolveDocuments,
   type ResolvedFees,
 } from "@/lib/service-catalog";
-import { resolveWizardRules } from "@/lib/company-types";
+import {
+  resolveWizardRules,
+  resolveEffectiveRules,
+  isClassable,
+  CLASSABLE_TYPES,
+  type EntityClass,
+} from "@/lib/company-types";
+import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
@@ -67,19 +73,6 @@ function buildEntityType(key: string, title: string, form: string, rawRules?: st
 
 const DEFAULT_ENTITY = buildEntityType("pvt", "Private Limited Company", "INC-32");
 
-// Used only when the admin catalog has no row for this entity type — the
-// catalog (`services` table) is the source of truth for pricing.
-const FALLBACK_FEES: Record<string, { professional: number; govt: number; gstPercent: number }> = {
-  pvt: { professional: 2499, govt: 1500, gstPercent: 18 },
-  public: { professional: 6499, govt: 3500, gstPercent: 18 },
-  opc: { professional: 2499, govt: 1500, gstPercent: 18 },
-  sec8: { professional: 4499, govt: 2000, gstPercent: 18 },
-  guarantee: { professional: 3499, govt: 1700, gstPercent: 18 },
-  nidhi: { professional: 8499, govt: 4000, gstPercent: 18 },
-  producer: { professional: 6499, govt: 3500, gstPercent: 18 },
-  foreign: { professional: 14999, govt: 7000, gstPercent: 18 },
-};
-
 // Fallback checklist when the admin hasn't configured document types.
 const FALLBACK_DOCS = [
   "PAN & Aadhaar of all directors",
@@ -121,6 +114,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   // Some entity types offer a choice of legal suffix (e.g. Section 8 →
   // "Foundation / Trust / Association"). This holds the one the user picked.
   const [suffixChoice, setSuffixChoice] = useState("");
+  // Private vs Public form for the classable types (Section 8, Unlimited, Nidhi).
+  const [entityClass, setEntityClass] = useState<EntityClass>("private");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [state, setState] = useState("Telangana");
@@ -189,30 +184,67 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
 
   const selected = entityTypes.find((e) => e.key === entity) ?? entityTypes[0] ?? DEFAULT_ENTITY;
 
+  // Whether this type offers a Private/Public choice, and the resulting minimums
+  // + (for Unlimited) the class-driven suffix.
+  const classable = isClassable(entity);
+  const eff = resolveEffectiveRules(entity, classable ? entityClass : null, {
+    minDirectors: selected.minDirectors,
+    minShareholders: selected.minShareholders,
+  });
+
   // A "/"-separated suffix means the entity permits several legal endings and
   // the applicant must pick exactly one (e.g. Foundation OR Trust OR
-  // Association). A single suffix is used as-is.
-  const suffixOptions = selected.suffix
+  // Association). A single suffix is used as-is. When the class dictates the
+  // suffix (Unlimited: "Private Limited" vs "Limited") it wins outright.
+  const baseSuffix = eff.suffixOverride ?? selected.suffix;
+  const suffixOptions = baseSuffix
     .split("/")
     .map((s) => s.trim())
     .filter(Boolean);
   const hasSuffixChoice = suffixOptions.length > 1;
   const effectiveSuffix =
-    hasSuffixChoice && suffixChoice ? suffixChoice : hasSuffixChoice ? suffixOptions[0] : selected.suffix;
+    hasSuffixChoice && suffixChoice ? suffixChoice : hasSuffixChoice ? suffixOptions[0] : baseSuffix;
 
-  // Reset the picked suffix to the first valid option whenever the entity (and
-  // therefore its allowed suffixes) changes.
+  // Reset the picked suffix and the private/public class to their defaults
+  // whenever the entity (and therefore its allowed suffixes/classes) changes.
   useEffect(() => {
     setSuffixChoice(suffixOptions.length > 1 ? suffixOptions[0] : "");
+    setEntityClass(CLASSABLE_TYPES[entity]?.default ?? "private");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity]);
+
+  // Keep the director/shareholder counts pinned to the effective minimum for the
+  // selected type + class (so switching type or Private/Public resets them).
+  useEffect(() => {
+    setDirectors(eff.minDirectors);
+    setShareholders(eff.minShareholders);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity, entityClass]);
 
   // Pricing & checklist come from the admin catalog. A per-entity row
   // (`company-pvt`) wins over the base `company` service when one exists.
   const { service, loading: catalogLoading } = useCatalogService([`company-${entity}`, "company"]);
-  const fees = resolveFees(service, "MCA", FALLBACK_FEES[entity]);
-  const total = fees.total;
   const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
+
+  // Fees come from the backend fee engine (the single source of truth). We
+  // describe the incorporation with a fee context; the backend returns the
+  // itemised breakdown (professional + statutory + 18% GST) and recomputes it
+  // authoritatively at submission from the same context.
+  const feeContext: FeeContext = {
+    kind: "company",
+    entity,
+    entityClass: classable ? entityClass : null,
+    capital,
+    paidCapital,
+    state,
+  };
+  const estimate = useFeeEstimate(feeContext, !!user);
+  const fees: ResolvedFees = {
+    lines: estimate.lines,
+    total: estimate.total,
+    fromCatalog: estimate.fromCatalog,
+  };
+  const total = estimate.total;
 
   // The proposed names are stored with the entity suffix appended, so the record
   // holds the full company name (e.g. "ACME TECH SOLUTIONS Private Limited").
@@ -257,10 +289,10 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         if (!globalMsg) globalMsg = "Please provide a more detailed main object description.";
       }
     } else if (currentStep === 2) {
-      // Per-type minimums come from the catalog (resolveWizardRules), so an admin
-      // can change them per entity type without touching this validation.
-      const minDir = selected.minDirectors;
-      const minShr = selected.minShareholders;
+      // Minimums come from the effective rules (catalog rules layered with the
+      // Private/Public class and any fixed statutory override).
+      const minDir = eff.minDirectors;
+      const minShr = eff.minShareholders;
 
       if (directors < minDir) {
         newErrors.directors = `${selected.title} requires a minimum of ${minDir} director(s).`;
@@ -487,8 +519,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
               <div className="text-xs text-foreground/80">
                 <span className="font-semibold text-foreground">Minimum rules · </span>
-                Pvt Ltd 2 directors / 2 shareholders · Public 3 / 7 · OPC 1 / 1 +
-                nominee · Section 8 for non-profit objects.
+                {selected.title}
+                {classable ? ` (${entityClass === "public" ? "Public" : "Private"})` : ""} — minimum{" "}
+                {eff.minDirectors} director{eff.minDirectors === 1 ? "" : "s"} / {eff.minShareholders}{" "}
+                {eff.minShareholders === 1 ? "member" : "members"}
+                {selected.requiresNominee ? " + nominee" : ""}.
               </div>
             </div>
 
@@ -536,9 +571,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         key={t.key}
                         type="button"
                         onClick={() => {
+                          // Director/shareholder counts are reset to the effective
+                          // minimum by an effect keyed on entity + class.
                           setEntity(t.key);
-                          setDirectors(t.minDirectors);
-                          setShareholders(t.minShareholders);
                           setErrors({});
                           setStepError(null);
                         }}
@@ -592,6 +627,17 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           placeholder="e.g. ACME TECH SOLUTIONS"
                           error={errors.name1}
                         />
+                        {classable && (
+                          <select
+                            value={entityClass}
+                            onChange={(e) => setEntityClass(e.target.value as EntityClass)}
+                            title="Private or Public company"
+                            className="mono self-stretch shrink-0 rounded-lg border border-border bg-input text-foreground text-xs px-2 cursor-pointer focus:outline-none focus:border-primary/60 transition-colors"
+                          >
+                            <option value="private">Private</option>
+                            <option value="public">Public</option>
+                          </select>
+                        )}
                         {hasSuffixChoice ? (
                           <select
                             value={suffixChoice}
@@ -605,15 +651,10 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           </select>
                         ) : (
                           <span className="mono text-xs text-muted-foreground self-center whitespace-nowrap">
-                            {selected.suffix}
+                            {effectiveSuffix}
                           </span>
                         )}
                       </div>
-                      {hasSuffixChoice && (
-                        <div className="mt-1.5 text-[11px] text-muted-foreground">
-                          This entity allows {suffixOptions.length} suffixes — pick the one you want; it applies to both names.
-                        </div>
-                      )}
                       {nameOk && (
                         <div
                           className={
@@ -805,6 +846,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         step={10000}
                         error={errors.paidCapital}
                       />
+                      <div className="mt-1.5 text-[11px] text-muted-foreground">
+                        Must be ≤ Authorised Capital.
+                      </div>
                     </Field>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {[100000, 1000000, 10000000].map((c) => (
@@ -837,7 +881,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 5 && (
                 <FeeBreakdown
                   fees={fees}
-                  loading={catalogLoading}
+                  loading={estimate.loading}
                   signedIn={!!user}
                   onSignIn={() => setOpenSignIn(true)}
                 />
@@ -846,13 +890,18 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {step === 6 && (
                 <SummaryPreview
                   selected={selected}
+                  entityLabel={
+                    classable
+                      ? `${selected.title} (${entityClass === "public" ? "Public" : "Private"})`
+                      : selected.title
+                  }
                   suffix={effectiveSuffix}
                   name1={name1}
                   state={state}
                   directors={directors}
                   shareholders={shareholders}
                   capital={capital}
-                  total={total}
+                  fees={fees}
                 />
               )}
             </div>
@@ -963,11 +1012,13 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           shareholders,
           capital,
           paidCapital,
+          ...(classable ? { entityClass: entityClass === "public" ? "Public" : "Private" } : {}),
           ...(selected.requiresNominee && nominee.trim() ? { nominee: nominee.trim() } : {}),
         }}
         documents={documents}
         fees={fees.lines}
         feeTotal={fees.total}
+        feeContext={feeContext}
       />
 
       <SignInDialog
@@ -1100,39 +1151,27 @@ function FeeBreakdown({
       ) : (
         <FeeStack fees={fees} />
       )}
-      <div className="mt-6 text-[11px] text-muted-foreground border-t border-border pt-4 leading-relaxed">
-        This estimate covers name reservation, Part A &amp; B, DSC, PAN,
-        TAN and INC-33/34. Additional state-specific stamp duty may apply.
-        {!fees.fromCatalog && !loading && (
-          <>
-            {" "}
-            <span className="text-warning">
-              Indicative pricing — confirmed by your advisor before payment.
-            </span>
-          </>
-        )}
-      </div>
     </div>
   );
 }
 
 function SummaryPreview({
-  selected, suffix, name1, state, directors, shareholders, capital, total,
+  selected, entityLabel, suffix, name1, state, directors, shareholders, capital, fees,
 }: {
   selected: { title: string; suffix: string; form: string };
+  entityLabel: string;
   suffix: string;
   name1: string; state: string; directors: number; shareholders: number;
-  capital: number; total: number;
+  capital: number; fees: ResolvedFees;
 }) {
   const rows = [
-    ["Entity", selected.title],
+    ["Entity", entityLabel],
     ["Proposed Name", name1 ? `${name1} ${suffix}` : "—"],
     ["Filing Form", selected.form],
     ["Directors", String(directors)],
     ["Shareholders", String(shareholders)],
     ["Authorised Capital", `₹ ${capital.toLocaleString("en-IN")}`],
     ["Registered State", state],
-    ["Total Estimate", `₹ ${total.toLocaleString("en-IN")}`],
   ];
   return (
     <div className="rounded-xl border border-border bg-surface shadow-card p-6">
@@ -1150,6 +1189,13 @@ function SummaryPreview({
           </div>
         ))}
       </dl>
+
+      {/* Itemised fee breakdown so the draft shows exactly what the total is
+          made of (same lines carried into the PDF and the submission). */}
+      <div className="mt-6 pt-5 border-t border-border">
+        <div className="label-eyebrow mb-3 text-primary">Fee Breakdown</div>
+        <FeeStack fees={fees} />
+      </div>
     </div>
   );
 }

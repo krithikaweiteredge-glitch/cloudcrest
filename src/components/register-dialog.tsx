@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { X, UploadCloud, FileText, CheckCircle2, Trash2, ShieldCheck, Send, Loader2, LogIn, Download, Users, Coins, FolderLock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import type { FeeContext } from "@/lib/fees-api";
 
 type UploadedFile = { file: File; name: string; size: number };
 type VaultDoc = { id: number; name: string; sizeBytes?: number | null };
@@ -23,6 +24,7 @@ export function RegisterDialog({
   formData,
   fees,
   feeTotal,
+  feeContext,
 }: {
   open: boolean;
   onClose: () => void;
@@ -39,9 +41,12 @@ export function RegisterDialog({
   paidCapital?: number;
   /** Everything else the wizard collected, stored verbatim on the request. */
   formData?: Record<string, unknown>;
-  /** Resolved fee lines + total, printed on the summary PDF. */
+  /** Resolved fee lines + total, shown on the summary PDF. Display-only — the
+   *  backend recomputes the authoritative figure from `feeContext` at submit. */
   fees?: { label: string; amount: number }[];
   feeTotal?: number;
+  /** Authoritative fee inputs; the backend recomputes fees from these on submit. */
+  feeContext?: FeeContext;
 }) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -142,10 +147,11 @@ export function RegisterDialog({
           authorisedCapital: capital ?? (totalCapital ? Number(totalCapital) : null),
           paidCapital: paidCapital ?? null,
           formData: Object.keys(mergedFormData).length ? mergedFormData : null,
-          // Snapshot the exact fee breakdown so the order summary PDF reprints
-          // the real fees the customer saw, not a placeholder estimate.
+          // Fees are recomputed server-side from feeContext; these are sent only
+          // as a fallback for services that don't supply a context.
           fees: fees ?? [],
           total: feeTotal ?? null,
+          ...(feeContext ? { feeContext } : {}),
         }),
       });
 
