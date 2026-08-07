@@ -12,7 +12,34 @@ const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 // Slugs rendered by a bespoke multi-step wizard (see module-page.tsx) instead of
 // the tabbed ServiceDetailPage. For these, the About/Who/Acts page tabs are never
 // shown to customers, so the tab editor is hidden to avoid a misleading control.
-const WIZARD_SLUGS = new Set(["company", "llp"]);
+const WIZARD_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
+
+function organizeServicesWithVariants(list: any[]) {
+  if (!Array.isArray(list)) return [];
+  const launcherSlugs = [...WIZARD_SLUGS];
+  const variantsByLauncher: Record<string, any[]> = {};
+  const variantIdSet = new Set<number>();
+
+  for (const item of list) {
+    if (!item.slug) continue;
+    const parentSlug = launcherSlugs.find((l) => item.slug.startsWith(l + "-"));
+    if (parentSlug) {
+      if (!variantsByLauncher[parentSlug]) variantsByLauncher[parentSlug] = [];
+      variantsByLauncher[parentSlug].push(item);
+      variantIdSet.add(item.id);
+    }
+  }
+
+  const result: any[] = [];
+  for (const item of list) {
+    if (variantIdSet.has(item.id)) continue;
+    result.push(item);
+    if (item.slug && variantsByLauncher[item.slug]) {
+      result.push(...variantsByLauncher[item.slug]);
+    }
+  }
+  return result;
+}
 
 async function call(path: string, method: string, body?: any) {
   const res = await fetch(`${BACKEND}/api/admin/catalog${path}`, {
@@ -177,7 +204,7 @@ export function AdminCatalogPanel() {
                             {sub.services.length === 0 ? (
                               <li className="text-[12px] text-muted-foreground py-1">No services.</li>
                             ) : (
-                              sub.services.map((svc: any) => {
+                              organizeServicesWithVariants(sub.services).map((svc: any) => {
                                 // A "launcher" is a service whose per-type variants live
                                 // alongside it (slug `company` with `company-*` siblings).
                                 // It opens the wizard where the customer picks a type, so

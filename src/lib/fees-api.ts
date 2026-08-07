@@ -17,9 +17,17 @@ export type CompanyFeeContext = {
   /** Short entity key (pvt, opc, sec8, …). */
   entity: string;
   entityClass?: "private" | "public" | null;
+  /**
+   * "guarantee" = company limited by guarantee (no share capital) → the backend
+   * prices it off the number of members instead of authorised capital. Defaults
+   * to "shares" when absent.
+   */
+  liability?: "shares" | "guarantee" | null;
   capital: number;
   /** Paid-up capital — the backend derives the small-company concession from it. */
   paidCapital: number;
+  /** Number of members — sent only on the guarantee (no-share-capital) path. */
+  members?: number;
   state: string;
 };
 

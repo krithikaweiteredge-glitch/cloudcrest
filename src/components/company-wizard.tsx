@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,7 +14,10 @@ import {
   resolveEffectiveRules,
   isClassable,
   CLASSABLE_TYPES,
+  hasLiabilityChoice,
+  LIABILITY_LABEL,
   type EntityClass,
+  type Liability,
 } from "@/lib/company-types";
 import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
@@ -109,13 +112,18 @@ function format10DigitPhone(phoneStr?: string | null): string {
 export function CompanyWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
 
-  const [step, setStep] = useState(initialName ? 1 : 0);
+  const [step, setStep] = useState(0);
   const [entity, setEntity] = useState("pvt");
   // Some entity types offer a choice of legal suffix (e.g. Section 8 →
   // "Foundation / Trust / Association"). This holds the one the user picked.
   const [suffixChoice, setSuffixChoice] = useState("");
   // Private vs Public form for the classable types (Section 8, Unlimited, Nidhi).
   const [entityClass, setEntityClass] = useState<EntityClass>("private");
+  // Limited by Shares vs Limited by Guarantee for pvt / public / sec8. A
+  // guarantee company has no share capital — the wizard asks for a member count
+  // instead, and the backend prices it off that (see lib/company-types).
+  const [liability, setLiability] = useState<Liability>("shares");
+  const [members, setMembers] = useState(2);
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [state, setState] = useState("Telangana");
@@ -192,6 +200,13 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     minShareholders: selected.minShareholders,
   });
 
+  // Whether this type offers the Limited by Shares / Limited by Guarantee choice
+  // (Private, Public and Section 8), and whether the guarantee form is active —
+  // a guarantee company has no share capital, so the wizard asks for a member
+  // count and skips the capital step's share-capital inputs.
+  const liabilityChoice = hasLiabilityChoice(entity);
+  const isGuarantee = liabilityChoice && liability === "guarantee";
+
   // A "/"-separated suffix means the entity permits several legal endings and
   // the applicant must pick exactly one (e.g. Foundation OR Trust OR
   // Association). A single suffix is used as-is. When the class dictates the
@@ -205,19 +220,23 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const effectiveSuffix =
     hasSuffixChoice && suffixChoice ? suffixChoice : hasSuffixChoice ? suffixOptions[0] : baseSuffix;
 
-  // Reset the picked suffix and the private/public class to their defaults
-  // whenever the entity (and therefore its allowed suffixes/classes) changes.
+  // Reset the picked suffix, the private/public class and the liability form to
+  // their defaults whenever the entity (and therefore its allowed suffixes /
+  // classes / liability options) changes.
   useEffect(() => {
     setSuffixChoice(suffixOptions.length > 1 ? suffixOptions[0] : "");
     setEntityClass(CLASSABLE_TYPES[entity]?.default ?? "private");
+    setLiability("shares");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity]);
 
-  // Keep the director/shareholder counts pinned to the effective minimum for the
-  // selected type + class (so switching type or Private/Public resets them).
+  // Keep the director/shareholder/member counts pinned to the effective minimum
+  // for the selected type + class (so switching type or Private/Public resets
+  // them). Members mirror the shareholder minimum (2 private / 7 public).
   useEffect(() => {
     setDirectors(eff.minDirectors);
     setShareholders(eff.minShareholders);
+    setMembers(eff.minShareholders);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, entityClass]);
 
@@ -234,8 +253,12 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     kind: "company",
     entity,
     entityClass: classable ? entityClass : null,
-    capital,
-    paidCapital,
+    liability: liabilityChoice ? liability : null,
+    // A guarantee company has no share capital: send nil capital + the member
+    // count so the backend uses the members-based (Table I(II)) fee path.
+    capital: isGuarantee ? 0 : capital,
+    paidCapital: isGuarantee ? 0 : paidCapital,
+    members: isGuarantee ? members : undefined,
     state,
   };
   const estimate = useFeeEstimate(feeContext, !!user);
@@ -265,11 +288,39 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const capitalCategory =
     capital <= 100000 ? "Small" : capital <= 1000000 ? "Standard" : capital <= 10000000 ? "Growth" : "Large";
 
+  // The visible steps are keyed, not positional, so we can insert an extra
+  // "Structure" step (Private/Public + Limited by Shares/Guarantee) after Type
+  // for the entity types that offer that choice — the applicant reaches it by
+  // pressing Next from the type picker. A guarantee company has no share
+  // capital, so the "Capital" step is relabelled to "Members".
+  const steps = useMemo(() => {
+    const base = liabilityChoice
+      ? [STEPS[0], { key: "structure", label: "Structure" }, ...STEPS.slice(1)]
+      : STEPS;
+    return base.map((s) => (s.key === "capital" && isGuarantee ? { ...s, label: "Members" } : s));
+  }, [liabilityChoice, isGuarantee]);
+
+  const stepKey = steps[step]?.key ?? "type";
+
+  // When the wizard is opened with a proposed name already in hand (e.g. from the
+  // homepage search), skip straight to the Name step — whose index depends on
+  // whether a Structure step was inserted, so resolve it from the keyed list.
+  const jumpedToName = useRef(false);
+  useEffect(() => {
+    if (initialName && !jumpedToName.current) {
+      jumpedToName.current = true;
+      const idx = steps.findIndex((s) => s.key === "name");
+      if (idx > 0) setStep(idx);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialName, steps]);
+
   const validateStep = (currentStep: number): boolean => {
+    const key = steps[currentStep]?.key ?? "type";
     const newErrors: Record<string, string> = {};
     let globalMsg: string | null = null;
 
-    if (currentStep === 1) {
+    if (key === "name") {
       if (!name1.trim()) {
         newErrors.name1 = "Please enter Proposed Name 1.";
         globalMsg = "Proposed Name 1 is required.";
@@ -288,7 +339,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         newErrors.objects = "Main objects should be at least 10 characters long.";
         if (!globalMsg) globalMsg = "Please provide a more detailed main object description.";
       }
-    } else if (currentStep === 2) {
+    } else if (key === "details") {
       // Minimums come from the effective rules (catalog rules layered with the
       // Private/Public class and any fixed statutory override).
       const minDir = eff.minDirectors;
@@ -299,7 +350,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         globalMsg = `Minimum required: ${minDir} director(s).`;
       }
 
-      if (shareholders < minShr) {
+      // A company limited by guarantee has members, not shareholders — the member
+      // count is collected on the Capital step, so skip the shareholder check.
+      if (!isGuarantee && shareholders < minShr) {
         newErrors.shareholders = `${selected.title} requires a minimum of ${minShr} shareholder(s).`;
         if (!globalMsg) globalMsg = `Minimum required: ${minShr} shareholder(s).`;
       }
@@ -321,7 +374,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           if (!globalMsg) globalMsg = "Please enter a valid 10-digit phone number.";
         }
       }
-    } else if (currentStep === 3) {
+    } else if (key === "office") {
       if (!address.trim()) {
         newErrors.address = "Please enter the full registered office address.";
         globalMsg = "Registered office address is required.";
@@ -347,18 +400,28 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         newErrors.pincode = "Must be a valid 6-digit Indian PIN Code (e.g. 400001).";
         if (!globalMsg) globalMsg = "Invalid 6-digit PIN Code.";
       }
-    } else if (currentStep === 4) {
-      if (!capital || capital < 10000) {
-        newErrors.capital = "Authorised capital must be at least ₹10,000.";
-        globalMsg = "Authorised capital must be at least ₹10,000.";
-      }
+    } else if (key === "capital") {
+      if (isGuarantee) {
+        // Limited by guarantee: no share capital — validate the member count
+        // against the statutory minimum (2 private / 7 public) instead.
+        const minMem = eff.minShareholders;
+        if (!members || members < minMem) {
+          newErrors.members = `${selected.title} requires a minimum of ${minMem} member(s).`;
+          globalMsg = `Minimum required: ${minMem} member(s).`;
+        }
+      } else {
+        if (!capital || capital < 10000) {
+          newErrors.capital = "Authorised capital must be at least ₹10,000.";
+          globalMsg = "Authorised capital must be at least ₹10,000.";
+        }
 
-      if (!paidCapital || paidCapital < 10000) {
-        newErrors.paidCapital = "Paid-up capital must be at least ₹10,000.";
-        if (!globalMsg) globalMsg = "Paid-up capital must be at least ₹10,000.";
-      } else if (paidCapital > capital) {
-        newErrors.paidCapital = "Paid-up capital cannot exceed Authorised Capital.";
-        if (!globalMsg) globalMsg = "Paid-up capital cannot exceed Authorised Capital.";
+        if (!paidCapital || paidCapital < 10000) {
+          newErrors.paidCapital = "Paid-up capital must be at least ₹10,000.";
+          if (!globalMsg) globalMsg = "Paid-up capital must be at least ₹10,000.";
+        } else if (paidCapital > capital) {
+          newErrors.paidCapital = "Paid-up capital cannot exceed Authorised Capital.";
+          if (!globalMsg) globalMsg = "Paid-up capital cannot exceed Authorised Capital.";
+        }
       }
     }
 
@@ -375,7 +438,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
       return;
     }
     if (validateStep(step)) {
-      setStep((s) => Math.min(STEPS.length - 1, s + 1));
+      setStep((s) => Math.min(steps.length - 1, s + 1));
       setStepError(null);
       setErrors({});
     }
@@ -418,8 +481,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           suffix: effectiveSuffix,
           form: selected.form,
           directors,
-          shareholders,
-          capital,
+          ...(liabilityChoice ? { liability: isGuarantee ? LIABILITY_LABEL.guarantee : LIABILITY_LABEL.shares } : {}),
+          ...(isGuarantee ? { members } : { shareholders, capital }),
           objects,
           address,
           city,
@@ -505,7 +568,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div className="rounded-xl border border-border bg-surface shadow-card p-4">
-              <Stepper steps={STEPS} current={step} onGo={handleStepChange} />
+              <Stepper steps={steps} current={step} onGo={handleStepChange} />
             </div>
 
             {stepError && (
@@ -528,7 +591,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div key={step} className="mt-8 animate-in-up">
-              {step === 0 && familyLoading && (
+              {stepKey === "type" && familyLoading && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div
@@ -542,7 +605,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               {/* Catalog loaded but no entity types available (backend unreachable
                   or none configured). Without it there's nothing to submit, so we
                   show an explicit unavailable state instead of a fallback picker. */}
-              {step === 0 && !familyLoading && entityTypes.length === 0 && (
+              {stepKey === "type" && !familyLoading && entityTypes.length === 0 && (
                 <div className="rounded-xl border border-border bg-surface p-8 text-center shadow-card">
                   <div className="size-11 rounded-full bg-destructive/10 text-destructive grid place-items-center mx-auto mb-3">
                     <ShieldCheck className="size-5" />
@@ -562,7 +625,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </div>
               )}
 
-              {step === 0 && !familyLoading && entityTypes.length > 0 && (
+              {stepKey === "type" && !familyLoading && entityTypes.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {entityTypes.map((t) => {
                     const active = t.key === entity;
@@ -616,7 +679,56 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </div>
               )}
 
-              {step === 1 && (
+              {/* Structure step — reached by pressing Next from the type picker.
+                  It offers the Private/Public class (Section 8 only) and the
+                  Limited by Shares / Limited by Guarantee choice for the types
+                  that offer it (Private, Public, Section 8). The liability choice
+                  decides whether the wizard later asks for a Share Capital or a
+                  Number of Members. */}
+              {stepKey === "structure" && (
+                <Card>
+                  <div className="space-y-6">
+                    {classable && (
+                      <div>
+                        <div className="label-eyebrow mb-2.5">Company Class</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <OptionCard
+                            active={entityClass === "private"}
+                            onClick={() => setEntityClass("private")}
+                            title="Private Limited"
+                            subtitle="Minimum 2 members / 2 directors"
+                          />
+                          <OptionCard
+                            active={entityClass === "public"}
+                            onClick={() => setEntityClass("public")}
+                            title="Public Limited"
+                            subtitle="Minimum 7 members / 3 directors"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="label-eyebrow mb-2.5">Liability</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <OptionCard
+                          active={liability === "shares"}
+                          onClick={() => setLiability("shares")}
+                          title="Limited by Shares"
+                          subtitle="You'll state a share capital"
+                        />
+                        <OptionCard
+                          active={liability === "guarantee"}
+                          onClick={() => setLiability("guarantee")}
+                          title="Limited by Guarantee"
+                          subtitle="No share capital — you'll state a number of members"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {stepKey === "name" && (
                 <Card>
                   <div className="space-y-6">
                     <Field label="Proposed Name 1 *" error={errors.name1}>
@@ -627,7 +739,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           placeholder="e.g. ACME TECH SOLUTIONS"
                           error={errors.name1}
                         />
-                        {classable && (
+                        {classable && !liabilityChoice && (
                           <select
                             value={entityClass}
                             onChange={(e) => setEntityClass(e.target.value as EntityClass)}
@@ -715,7 +827,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 2 && (
+              {stepKey === "details" && (
                 <Card>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field label="Number of Directors *" error={errors.directors}>
@@ -727,15 +839,19 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                         error={errors.directors}
                       />
                     </Field>
-                    <Field label="Number of Shareholders *" error={errors.shareholders}>
-                      <NumberInput
-                        value={shareholders}
-                        onChange={(v) => { setShareholders(v); setErrors((prev) => ({ ...prev, shareholders: "" })); }}
-                        min={1}
-                        max={200}
-                        error={errors.shareholders}
-                      />
-                    </Field>
+                    {/* A guarantee company has members (collected on the Members
+                        step), not shareholders. */}
+                    {!isGuarantee && (
+                      <Field label="Number of Shareholders *" error={errors.shareholders}>
+                        <NumberInput
+                          value={shareholders}
+                          onChange={(v) => { setShareholders(v); setErrors((prev) => ({ ...prev, shareholders: "" })); }}
+                          min={1}
+                          max={200}
+                          error={errors.shareholders}
+                        />
+                      </Field>
+                    )}
                     {selected.requiresNominee && (
                       <Field label="Nominee Name *" error={errors.nominee}>
                         <Input
@@ -770,7 +886,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 3 && (
+              {stepKey === "office" && (
                 <Card>
                   <div className="space-y-4">
                     <Field label="Registered Office Address *" error={errors.address}>
@@ -821,7 +937,35 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 4 && (
+              {stepKey === "capital" && isGuarantee && (
+                <Card>
+                  <div className="space-y-6">
+                    <div className="rounded-lg border border-accent/25 bg-accent/6 p-3.5 flex gap-2.5 text-xs text-foreground/80">
+                      <Info className="size-4 text-accent shrink-0 mt-0.5" />
+                      <span>
+                        A company <span className="font-semibold text-foreground">limited by guarantee</span> has
+                        no share capital. Instead, its members undertake to contribute a guaranteed amount if the
+                        company is wound up. Tell us how many members it will have.
+                      </span>
+                    </div>
+                    <Field label="Number of Members *" error={errors.members}>
+                      <NumberInput
+                        value={members}
+                        onChange={(v) => { setMembers(v); setErrors((prev) => ({ ...prev, members: "" })); }}
+                        min={eff.minShareholders}
+                        max={200}
+                        error={errors.members}
+                      />
+                      <div className="mt-1.5 text-[11px] text-muted-foreground">
+                        Minimum {eff.minShareholders} member{eff.minShareholders === 1 ? "" : "s"} for a{" "}
+                        {entityClass === "public" ? "public" : "private"} company.
+                      </div>
+                    </Field>
+                  </div>
+                </Card>
+              )}
+
+              {stepKey === "capital" && !isGuarantee && (
                 <Card>
                   <div className="space-y-6">
                     <Field label="Authorised Capital (INR) *" error={errors.capital}>
@@ -878,7 +1022,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 5 && (
+              {stepKey === "fees" && (
                 <FeeBreakdown
                   fees={fees}
                   loading={estimate.loading}
@@ -887,20 +1031,26 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 />
               )}
 
-              {step === 6 && (
+              {stepKey === "summary" && (
                 <SummaryPreview
                   selected={selected}
-                  entityLabel={
-                    classable
-                      ? `${selected.title} (${entityClass === "public" ? "Public" : "Private"})`
-                      : selected.title
-                  }
+                  entityLabel={[
+                    selected.title,
+                    [
+                      classable ? (entityClass === "public" ? "Public" : "Private") : null,
+                      liabilityChoice ? LIABILITY_LABEL[liability] : null,
+                    ].filter(Boolean).join(" · "),
+                  ]
+                    .filter(Boolean)
+                    .join(" — ")}
                   suffix={effectiveSuffix}
                   name1={name1}
                   state={state}
                   directors={directors}
                   shareholders={shareholders}
                   capital={capital}
+                  isGuarantee={isGuarantee}
+                  members={members}
                   fees={fees}
                 />
               )}
@@ -916,7 +1066,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 <ArrowLeft className="size-3.5" /> Back
               </button>
               <div className="flex items-center gap-4">
-                {step === STEPS.length - 1 ? (
+                {step === steps.length - 1 ? (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={downloadSummaryPdf}
@@ -936,7 +1086,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                     onClick={next}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all"
                   >
-                    Next · {STEPS[step + 1].label}
+                    Next · {steps[step + 1].label}
                     <ArrowRight className="size-4" />
                   </button>
                 )}
@@ -996,8 +1146,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         form={selected.form}
         initialEmail={applicantEmail}
         initialPhone={applicantPhone}
-        capital={capital}
-        paidCapital={paidCapital}
+        capital={isGuarantee ? undefined : capital}
+        paidCapital={isGuarantee ? undefined : paidCapital}
         formData={{
           name1: withSuffix(name1),
           name2: withSuffix(name2),
@@ -1009,9 +1159,16 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           state,
           pincode,
           directors,
-          shareholders,
-          capital,
-          paidCapital,
+          // Guarantee companies file a member count and no share capital; share
+          // companies file shareholders + authorised/paid-up capital.
+          ...(isGuarantee
+            ? { members, liability: LIABILITY_LABEL.guarantee }
+            : {
+                shareholders,
+                capital,
+                paidCapital,
+                ...(liabilityChoice ? { liability: LIABILITY_LABEL.shares } : {}),
+              }),
           ...(classable ? { entityClass: entityClass === "public" ? "Public" : "Private" } : {}),
           ...(selected.requiresNominee && nominee.trim() ? { nominee: nominee.trim() } : {}),
         }}
@@ -1088,6 +1245,37 @@ function NumberInput({
   );
 }
 
+/** A selectable option tile used for the Class / Liability choices. */
+function OptionCard({
+  active, onClick, title, subtitle,
+}: { active: boolean; onClick: () => void; title: string; subtitle: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "text-left p-3.5 rounded-lg border transition-all hover-lift ring-focus " +
+        (active
+          ? "border-primary ring-2 ring-primary/25 bg-primary/[0.04]"
+          : "border-border hover:border-border-strong bg-surface")
+      }
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={
+            "size-3.5 rounded-full border-2 grid place-items-center shrink-0 " +
+            (active ? "border-primary" : "border-border-strong")
+          }
+        >
+          {active && <span className="size-1.5 rounded-full bg-primary" />}
+        </span>
+        <span className="text-sm font-semibold leading-tight">{title}</span>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-1.5 pl-[22px]">{subtitle}</div>
+    </button>
+  );
+}
+
 function FeeStack({ fees }: { fees: ResolvedFees }) {
   return (
     <div className="space-y-2.5">
@@ -1156,21 +1344,27 @@ function FeeBreakdown({
 }
 
 function SummaryPreview({
-  selected, entityLabel, suffix, name1, state, directors, shareholders, capital, fees,
+  selected, entityLabel, suffix, name1, state, directors, shareholders, capital, isGuarantee, members, fees,
 }: {
   selected: { title: string; suffix: string; form: string };
   entityLabel: string;
   suffix: string;
   name1: string; state: string; directors: number; shareholders: number;
-  capital: number; fees: ResolvedFees;
+  capital: number; isGuarantee: boolean; members: number; fees: ResolvedFees;
 }) {
   const rows = [
     ["Entity", entityLabel],
     ["Proposed Name", name1 ? `${name1} ${suffix}` : "—"],
     ["Filing Form", selected.form],
     ["Directors", String(directors)],
-    ["Shareholders", String(shareholders)],
-    ["Authorised Capital", `₹ ${capital.toLocaleString("en-IN")}`],
+    // A guarantee company has members and no share capital; a company limited by
+    // shares has shareholders and an authorised capital.
+    ...(isGuarantee
+      ? ([["Members", String(members)]] as [string, string][])
+      : ([
+          ["Shareholders", String(shareholders)],
+          ["Authorised Capital", `₹ ${capital.toLocaleString("en-IN")}`],
+        ] as [string, string][])),
     ["Registered State", state],
   ];
   return (

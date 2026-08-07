@@ -7,6 +7,7 @@ import { FileText, Download, UploadCloud, X, Loader2, Info, User, Mail, Phone, B
 import { StatusPill, EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
 import { splitRequestNotes } from "@/lib/request-notes";
+import { renderExtraFormFields } from "@/lib/request-fields";
 
 export const Route = createFileRoute("/_authenticated/profile/requests")({
   validateSearch: (s: Record<string, unknown>): { ref?: string } => ({
@@ -335,15 +336,23 @@ function RegistrationDetailDialog({
                   <Building2 className="size-3.5" /> Entity & Filing Details
                 </div>
                 <div className="space-y-2 text-xs">
+                  {fd.gstType && <DetailLine icon={FileText} label="GST Registration Type" value={fd.gstType} />}
+                  {fd.partnershipType && <DetailLine icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
                   <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
                   {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={fd.name2} />}
                   {fd.suffix && <DetailLine icon={Building2} label="Entity Suffix" value={fd.suffix} />}
+                  {fd.llpType && <DetailLine icon={Building2} label="LLP Type" value={fd.llpType} />}
+                  {fd.foreignCountry && <DetailLine icon={Building2} label="Country of Incorporation" value={fd.foreignCountry} />}
+                  {fd.entityClass && <DetailLine icon={Building2} label="Company Class" value={fd.entityClass} />}
+                  {fd.liability && <DetailLine icon={Building2} label="Liability" value={fd.liability} />}
                   {fd.industryType && <DetailLine icon={Building2} label="Industry Type" value={fd.industryType} />}
                   {request.form && <DetailLine icon={FileText} label="Filing Form" value={request.form} />}
-                  <DetailLine icon={Coins} label="Authorised Capital" value={authorisedCapital != null ? inr(authorisedCapital) : "—"} />
-                  <DetailLine icon={Coins} label="Paid-up Capital" value={paidCapital != null ? inr(paidCapital) : "—"} />
+                  {/* Guarantee companies have no share capital — show members instead. */}
+                  {authorisedCapital != null && <DetailLine icon={Coins} label="Authorised Capital" value={inr(authorisedCapital)} />}
+                  {paidCapital != null && <DetailLine icon={Coins} label="Paid-up Capital" value={inr(paidCapital)} />}
                   {fd.directors != null && <DetailLine icon={User} label="Directors" value={String(fd.directors)} />}
                   {fd.shareholders != null && <DetailLine icon={User} label="Shareholders" value={String(fd.shareholders)} />}
+                  {fd.members != null && <DetailLine icon={User} label="Members" value={String(fd.members)} />}
                   {fd.partners != null && <DetailLine icon={User} label="Partners" value={String(fd.partners)} />}
                   {fd.nominee && <DetailLine icon={User} label="Nominee" value={fd.nominee} />}
                 </div>
@@ -381,6 +390,11 @@ function RegistrationDetailDialog({
               <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/85 pt-1">{fd.objects}</p>
             </div>
           )}
+
+          {/* Any remaining details captured on the form that aren't shown in a
+              dedicated card above — so everything the applicant filled in is
+              visible here. */}
+          {renderExtraFormFields(fd)}
 
           {/* The notes column mixes the applicant's own note with admin remarks —
               split them so each is shown under the right heading. */}

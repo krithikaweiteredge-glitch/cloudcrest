@@ -8,6 +8,7 @@ import { AdminCatalogPanel } from "@/components/admin-catalog";
 import { getModule } from "@/lib/modules";
 import { assetUrl } from "@/lib/file-url";
 import { splitRequestNotes } from "@/lib/request-notes";
+import { renderExtraFormFields } from "@/lib/request-fields";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Bell, Send, X, Loader2, ShieldAlert, FileText, User, CheckCircle2, ListFilter,
@@ -470,15 +471,23 @@ function AdminDetailDialog({
                     <Building2 className="size-3.5" /> Entity & Filing
                   </div>
                   <div className="space-y-2 text-xs">
+                    {fd.gstType && <DetailRow icon={FileText} label="GST Registration Type" value={fd.gstType} />}
+                    {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
                     <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
                     {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={fd.name2} />}
                     {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={fd.suffix} />}
+                    {fd.llpType && <DetailRow icon={Building2} label="LLP Type" value={fd.llpType} />}
+                    {fd.foreignCountry && <DetailRow icon={Building2} label="Country of Incorporation" value={fd.foreignCountry} />}
+                    {fd.entityClass && <DetailRow icon={Building2} label="Company Class" value={fd.entityClass} />}
+                    {fd.liability && <DetailRow icon={Building2} label="Liability" value={fd.liability} />}
                     {fd.industryType && <DetailRow icon={Building2} label="Industry Type" value={fd.industryType} />}
                     {r.form && <DetailRow icon={FileText} label="Filing Form" value={r.form} />}
-                    <DetailRow icon={Coins} label="Authorised Capital" value={authorisedCapital != null ? inr(authorisedCapital) : "—"} />
-                    <DetailRow icon={Coins} label="Paid-up Capital" value={paidCapital != null ? inr(paidCapital) : "—"} />
+                    {/* Guarantee companies have no share capital — show members instead. */}
+                    {authorisedCapital != null && <DetailRow icon={Coins} label="Authorised Capital" value={inr(authorisedCapital)} />}
+                    {paidCapital != null && <DetailRow icon={Coins} label="Paid-up Capital" value={inr(paidCapital)} />}
                     {fd.directors != null && <DetailRow icon={User} label="Directors" value={String(fd.directors)} />}
                     {fd.shareholders != null && <DetailRow icon={User} label="Shareholders" value={String(fd.shareholders)} />}
+                    {fd.members != null && <DetailRow icon={User} label="Members" value={String(fd.members)} />}
                     {fd.partners != null && <DetailRow icon={User} label="Partners" value={String(fd.partners)} />}
                     {fd.nominee && <DetailRow icon={User} label="Nominee" value={fd.nominee} />}
                   </div>
@@ -515,6 +524,10 @@ function AdminDetailDialog({
                   <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground/85 pt-1">{fd.objects}</p>
                 </div>
               )}
+
+              {/* Any remaining captured fields not shown in a dedicated card, so
+                  the admin sees everything the applicant filled in. */}
+              {renderExtraFormFields(fd)}
 
               {/* Notes — the applicant's own note and admin remarks are stored in
                   the same column; split them so each is labelled correctly. */}

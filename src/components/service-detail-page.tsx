@@ -58,7 +58,24 @@ export function ServiceDetailPage({ slug }: { slug: string }) {
   return <ServiceDetail service={service} />;
 }
 
-function ServiceDetail({ service }: { service: CatalogService }) {
+/**
+ * The tabbed service page (hero + About / Who can apply / Documents / Acts &
+ * Rules + the Start Application flow). Reused by the GST wizard, which builds a
+ * per-type synthetic service and passes `extraFormData` so the chosen GST
+ * registration type is carried onto the submitted request, plus `onBack` to
+ * return to the type picker.
+ */
+export function ServiceDetail({
+  service,
+  extraFormData,
+  onBack,
+  backLabel = "Back",
+}: {
+  service: CatalogService;
+  extraFormData?: Record<string, unknown>;
+  onBack?: () => void;
+  backLabel?: string;
+}) {
   const { user } = useAuth();
   const tabs = service.tabs;
   const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "about");
@@ -139,6 +156,15 @@ function ServiceDetail({ service }: { service: CatalogService }) {
         <div className="hero-grid" />
 
         <div className="relative px-6 md:px-10 pt-12 pb-16 max-w-6xl mx-auto">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="rise-in mb-5 inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/25 px-4 py-2 text-[13px] font-semibold text-white hover:bg-white/20 hover:-translate-x-0.5 transition-all shadow-sm"
+              style={{ "--i": 0 } as React.CSSProperties}
+            >
+              <ArrowLeft className="size-4" /> {backLabel}
+            </button>
+          )}
           <div className="rise-in label-eyebrow text-white/60" style={{ "--i": 0 } as React.CSSProperties}>
             Registration Desk
           </div>
@@ -177,8 +203,16 @@ function ServiceDetail({ service }: { service: CatalogService }) {
                 top-16 clears the app's sticky header. */}
             <div
               role="tablist"
-              className="sticky top-16 z-10 flex flex-wrap gap-1 border-b border-border bg-surface/98 px-2 md:px-4 rounded-t-xl"
+              className="sticky top-16 z-10 flex flex-wrap items-center gap-1 border-b border-border bg-surface/98 px-2 md:px-4 rounded-t-xl"
             >
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="flex items-center gap-1.5 mr-1 pl-1 pr-3 py-4 text-sm font-medium whitespace-nowrap text-primary hover:text-primary/80 transition-colors"
+                >
+                  <ArrowLeft className="size-4" /> Change type
+                </button>
+              )}
               {tabs.map((tab) => {
                 const Icon = TAB_ICONS[tab.id] ?? FileText;
                 const active = tab.id === activeTab;
@@ -272,6 +306,7 @@ function ServiceDetail({ service }: { service: CatalogService }) {
         authority={service.authority}
         form={service.form}
         documents={service.documents}
+        formData={extraFormData}
         fees={fees.lines}
         feeTotal={fees.total}
       />

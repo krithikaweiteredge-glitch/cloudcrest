@@ -124,6 +124,31 @@ export function isClassable(key: string): boolean {
   return key in CLASSABLE_TYPES;
 }
 
+/* ------------------------------------------------------------------ *
+ * Limited by Shares vs Limited by Guarantee overlay.
+ *
+ * Private Limited, Public Limited and Section 8 companies can each be
+ * constituted either "limited by shares" (the applicant states a share capital)
+ * or "limited by guarantee" (no share capital — the applicant states a number of
+ * members instead). This drives BOTH the wizard question (Share Capital vs
+ * Number of Members) and the fee engine, which prices a guarantee company off
+ * the member count per Table I(II) of the Fee Rules.
+ * ------------------------------------------------------------------ */
+
+export type Liability = "shares" | "guarantee";
+
+/** Entity keys that offer the Limited by Shares / Limited by Guarantee choice. */
+export const LIABILITY_TYPES = new Set(["pvt", "public", "sec8"]);
+
+export function hasLiabilityChoice(key: string): boolean {
+  return LIABILITY_TYPES.has(key);
+}
+
+export const LIABILITY_LABEL: Record<Liability, string> = {
+  shares: "Limited by Shares",
+  guarantee: "Limited by Guarantee",
+};
+
 export type EffectiveRules = {
   minDirectors: number;
   minShareholders: number;

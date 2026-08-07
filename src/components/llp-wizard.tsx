@@ -20,8 +20,8 @@ const STEPS = [
   { key: "summary", label: "Summary" },
 ];
 
-// Only the standard LLP is offered — the entity-type step was removed, so any
-// other type would be unreachable.
+// Base LLP definition. The Name step offers an Indian / Foreign LLP choice
+// (`jurisdiction`) which overlays the title, form and tags at runtime.
 const LLP_ENTITY_TYPES = [
   { key: "standard", title: "Limited Liability Partnership (LLP)", suffix: "LLP", form: "FiLLiP · Form 3", tags: ["Min 2 Partners", "Flexible Agreement"], pop: true },
 ];
@@ -63,8 +63,12 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  // Entity type is fixed to the standard LLP — the selection step was removed.
-  const [entity] = useState("standard");
+  // An LLP is either an Indian LLP (incorporated in India via FiLLiP) or a
+  // Foreign LLP (a body incorporated outside India establishing a place of
+  // business in India via Form 27). The choice changes the filing form and adds
+  // a country-of-incorporation question.
+  const [jurisdiction, setJurisdiction] = useState<"indian" | "foreign">("indian");
+  const [foreignCountry, setForeignCountry] = useState("");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [state, setState] = useState("Telangana");
@@ -103,7 +107,20 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stepError, setStepError] = useState<string | null>(null);
 
-  const selected = LLP_ENTITY_TYPES.find((e) => e.key === entity) || LLP_ENTITY_TYPES[0];
+  const isForeign = jurisdiction === "foreign";
+  // The picker card's title / form / tags reflect the chosen jurisdiction.
+  const selected = useMemo(() => {
+    const base = LLP_ENTITY_TYPES[0];
+    return isForeign
+      ? {
+          ...base,
+          key: "foreign",
+          title: "Foreign LLP",
+          form: "Form 27 · FC",
+          tags: ["Foreign Body", "Place of Business in India"],
+        }
+      : { ...base, key: "indian", title: "Indian LLP" };
+  }, [isForeign]);
   // Pricing & checklist come from the admin catalog's `llp` service.
   const { service, loading: catalogLoading } = useCatalogService(["llp"]);
   const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
@@ -134,12 +151,17 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
     let globalMsg: string | null = null;
 
     if (currentStep === 0) {
+      if (isForeign && !foreignCountry.trim()) {
+        newErrors.foreignCountry = "Please enter the country of incorporation.";
+        globalMsg = "Country of incorporation is required for a Foreign LLP.";
+      }
+
       if (!name1.trim()) {
         newErrors.name1 = "Please enter Proposed Name 1.";
-        globalMsg = "Proposed Name 1 is required.";
+        if (!globalMsg) globalMsg = "Proposed Name 1 is required.";
       } else if (name1.trim().length < 3) {
         newErrors.name1 = "Proposed Name 1 must be at least 3 characters long.";
-        globalMsg = "Proposed Name 1 is too short.";
+        if (!globalMsg) globalMsg = "Proposed Name 1 is too short.";
       }
 
       if (!objects.trim()) {
@@ -324,6 +346,35 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
               {step === 0 && (
                 <Card>
                   <div className="space-y-6">
+                    <div>
+                      <div className="label-eyebrow mb-2.5">LLP Type</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <OptionCard
+                          active={!isForeign}
+                          onClick={() => setJurisdiction("indian")}
+                          title="Indian LLP"
+                          subtitle="Incorporated in India · FiLLiP (Form 3)"
+                        />
+                        <OptionCard
+                          active={isForeign}
+                          onClick={() => setJurisdiction("foreign")}
+                          title="Foreign LLP"
+                          subtitle="Body incorporated abroad · place of business in India (Form 27)"
+                        />
+                      </div>
+                    </div>
+
+                    {isForeign && (
+                      <Field label="Country of Incorporation *" error={errors.foreignCountry}>
+                        <Input
+                          value={foreignCountry}
+                          onChange={(v) => { setForeignCountry(v); setErrors((prev) => ({ ...prev, foreignCountry: "" })); }}
+                          placeholder="e.g. Singapore"
+                          error={errors.foreignCountry}
+                        />
+                      </Field>
+                    )}
+
                     <Field label="Proposed LLP Name 1 *" error={errors.name1}>
                       <div className="flex gap-2">
                         <Input
@@ -546,6 +597,12 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                       <dt className="text-muted-foreground">Entity Type</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{selected.title}</dd>
                     </div>
+                    {isForeign && (
+                      <div>
+                        <dt className="text-muted-foreground">Country of Incorporation</dt>
+                        <dd className="font-semibold text-foreground mt-0.5">{foreignCountry || "—"}</dd>
+                      </div>
+                    )}
                     <div>
                       <dt className="text-muted-foreground">Proposed Name 1</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{name1 ? `${name1} ${selected.suffix}` : "—"}</dd>
@@ -663,6 +720,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
           name1,
           name2,
           suffix: selected.suffix,
+          llpType: selected.title,
+          ...(isForeign && foreignCountry.trim() ? { foreignCountry: foreignCountry.trim() } : {}),
           objects,
           ...(effectiveIndustry ? { industryType: effectiveIndustry } : {}),
           address,
@@ -705,6 +764,37 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       {children}
       {error && <p className="text-[11px] text-destructive mt-1">{error}</p>}
     </div>
+  );
+}
+
+/** A selectable option tile used for the Indian / Foreign LLP choice. */
+function OptionCard({
+  active, onClick, title, subtitle,
+}: { active: boolean; onClick: () => void; title: string; subtitle: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        "text-left p-3.5 rounded-lg border transition-all hover-lift ring-focus " +
+        (active
+          ? "border-primary ring-2 ring-primary/25 bg-primary/[0.04]"
+          : "border-border hover:border-border-strong bg-surface")
+      }
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={
+            "size-3.5 rounded-full border-2 grid place-items-center shrink-0 " +
+            (active ? "border-primary" : "border-border-strong")
+          }
+        >
+          {active && <span className="size-1.5 rounded-full bg-primary" />}
+        </span>
+        <span className="text-sm font-semibold leading-tight">{title}</span>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-1.5 pl-[22px]">{subtitle}</div>
+    </button>
   );
 }
 
