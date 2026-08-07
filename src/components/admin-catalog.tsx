@@ -9,14 +9,16 @@ import {
 
 const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
-// Slugs rendered by a bespoke multi-step wizard (see module-page.tsx) instead of
-// the tabbed ServiceDetailPage. For these, the About/Who/Acts page tabs are never
-// shown to customers, so the tab editor is hidden to avoid a misleading control.
-const WIZARD_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
+// Slugs rendered by a bespoke multi-step incorporation wizard (Company / LLP).
+// For these, company-type incorporation rules apply, and the multi-step form handles fee/tab rendering.
+const WIZARD_SLUGS = new Set(["company", "llp"]);
+
+// Slugs that act as category launchers with sub-type variants in the catalog list.
+const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
 
 function organizeServicesWithVariants(list: any[]) {
   if (!Array.isArray(list)) return [];
-  const launcherSlugs = [...WIZARD_SLUGS];
+  const launcherSlugs = [...LAUNCHER_SLUGS];
   const variantsByLauncher: Record<string, any[]> = {};
   const variantIdSet = new Set<number>();
 
@@ -596,19 +598,16 @@ function ServiceDialog({
         feeLines: JSON.stringify(cleanedFeeLines),
         // Only variants carry rules; undefined is dropped by JSON.stringify so the
         // column is left untouched for every other service.
-        wizardRules: isWizardVariant
+        wizardRules: isLauncherVariant
           ? JSON.stringify({
-              suffix: wizSuffix.trim(),
-              minDirectors: Number(wizMinDir) || 0,
-              minShareholders: Number(wizMinShr) || 0,
-              requiresNominee: wizNominee,
-              // Tags + the "Popular" badge are Company-Registration concepts, so
-              // they're only persisted for company variants. Both are always
-              // included here so re-saving a company type never drops them.
+              tags: wizTags.split(",").map((t) => t.trim()).filter(Boolean),
+              popular: wizPopular,
               ...(isCompanyVariant
                 ? {
-                    tags: wizTags.split(",").map((t) => t.trim()).filter(Boolean),
-                    popular: wizPopular,
+                    suffix: wizSuffix.trim(),
+                    minDirectors: Number(wizMinDir) || 0,
+                    minShareholders: Number(wizMinShr) || 0,
+                    requiresNominee: wizNominee,
                   }
                 : {}),
             })
@@ -633,9 +632,8 @@ function ServiceDialog({
   const hasVariants = state.mode === "edit" ? !!state.hasVariants : false;
   const isWizardLauncher = WIZARD_SLUGS.has(currentSlug) && hasVariants;
   const isWizardVariant = [...WIZARD_SLUGS].some((w) => currentSlug.startsWith(w + "-"));
+  const isLauncherVariant = [...LAUNCHER_SLUGS].some((l) => currentSlug.startsWith(l + "-"));
   const isWizardService = isWizardLauncher || isWizardVariant;
-  // Card tags are only surfaced (and displayed by the wizard) for Company
-  // Registration entity types, so the tags editor is scoped to `company-*`.
   const isCompanyVariant = currentSlug.startsWith("company-");
 
   return (
@@ -730,92 +728,96 @@ function ServiceDialog({
         </div>
         )}
 
-        {isWizardVariant && (
+        {isLauncherVariant && (
           <div className="pt-3 mt-1 border-t border-border space-y-3">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-border pb-2">
-              Wizard type rules
+              Card Badges & Tags
             </div>
-            <p className="text-[11px] text-muted-foreground -mt-1">
-              How this type behaves in the incorporation wizard. Leave blank to use the built-in default.
-            </p>
-            <Field label="Legal name suffix — appended to the proposed name (use “/” for a choice)">
+            <Field label="Card tags — shown as badges on this card (comma-separated)">
               <input
-                value={wizSuffix}
-                onChange={(e) => setWizSuffix(e.target.value)}
-                placeholder="e.g. Private Limited"
+                value={wizTags}
+                onChange={(e) => setWizTags(e.target.value)}
+                placeholder="e.g. Most common, Full ITC"
                 className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
               />
+              {wizTags.split(",").map((t) => t.trim()).filter(Boolean).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {wizPopular && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-primary/12 text-primary text-[9px] mono uppercase tracking-wider">
+                      Popular
+                    </span>
+                  )}
+                  {wizTags
+                    .split(",")
+                    .map((t) => t.trim())
+                    .filter(Boolean)
+                    .map((t, i) => (
+                      <span
+                        key={`${t}-${i}`}
+                        className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[9px] mono uppercase tracking-wider"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                </div>
+              )}
             </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Min. directors">
-                <input
-                  value={wizMinDir}
-                  onChange={(e) => setWizMinDir(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="2"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
-                />
-              </Field>
-              <Field label="Min. shareholders">
-                <input
-                  value={wizMinShr}
-                  onChange={(e) => setWizMinShr(e.target.value)}
-                  inputMode="numeric"
-                  placeholder="2"
-                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
-                />
-              </Field>
-            </div>
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={wizNominee}
-                onChange={(e) => setWizNominee(e.target.checked)}
+                checked={wizPopular}
+                onChange={(e) => setWizPopular(e.target.checked)}
                 className="size-4"
               />
-              Requires a nominee (like OPC)
+              Show a “Popular” badge on this card
             </label>
+
             {isCompanyVariant && (
-              <>
-                <Field label="Card tags — shown as badges on this company type (comma-separated)">
+              <div className="pt-3 mt-1 border-t border-border space-y-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-border pb-2">
+                  Company Incorporation Rules
+                </div>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  How this type behaves in the incorporation wizard. Leave blank to use the built-in default.
+                </p>
+                <Field label="Legal name suffix — appended to the proposed name (use “/” for a choice)">
                   <input
-                    value={wizTags}
-                    onChange={(e) => setWizTags(e.target.value)}
-                    placeholder="e.g. Tax Exempt, FDI Friendly"
+                    value={wizSuffix}
+                    onChange={(e) => setWizSuffix(e.target.value)}
+                    placeholder="e.g. Private Limited"
                     className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
                   />
-                  {wizTags.split(",").map((t) => t.trim()).filter(Boolean).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {wizPopular && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-primary/12 text-primary text-[9px] mono uppercase tracking-wider">
-                          Popular
-                        </span>
-                      )}
-                      {wizTags
-                        .split(",")
-                        .map((t) => t.trim())
-                        .filter(Boolean)
-                        .map((t, i) => (
-                          <span
-                            key={`${t}-${i}`}
-                            className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[9px] mono uppercase tracking-wider"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                    </div>
-                  )}
                 </Field>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Min. directors">
+                    <input
+                      value={wizMinDir}
+                      onChange={(e) => setWizMinDir(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="2"
+                      className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
+                    />
+                  </Field>
+                  <Field label="Min. shareholders">
+                    <input
+                      value={wizMinShr}
+                      onChange={(e) => setWizMinShr(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="2"
+                      className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
+                    />
+                  </Field>
+                </div>
                 <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    checked={wizPopular}
-                    onChange={(e) => setWizPopular(e.target.checked)}
+                    checked={wizNominee}
+                    onChange={(e) => setWizNominee(e.target.checked)}
                     className="size-4"
                   />
-                  Show a “Popular” badge on this company type
+                  Requires a nominee (like OPC)
                 </label>
-              </>
+              </div>
             )}
           </div>
         )}
