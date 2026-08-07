@@ -71,29 +71,16 @@ export function TypePickerPage({
 
   const typeService: CatalogService | null = useMemo(() => {
     if (!selected) return null;
-    const targetSlug = `${catalogSlug}-${selected.key}`;
-    const isVariantLoaded = catalog?.slug === targetSlug;
-    const vCat = isVariantLoaded ? catalog : null;
 
-    const defaultWhoText = bulletsToText(selected.who);
-
-    // Backend admin catalog values take full precedence when populated
-    const descText =
-      vCat?.description !== undefined && vCat.description !== null && vCat.description !== ""
-        ? vCat.description
-        : selected.about;
-
-    const whoText =
-      vCat?.whoCanApply !== undefined && vCat.whoCanApply !== null && vCat.whoCanApply !== ""
-        ? vCat.whoCanApply
-        : defaultWhoText;
-
-    const docs = vCat?.documents && vCat.documents.length > 0 ? vCat.documents : selected.docs;
-    const actsRules = vCat?.actsRules ?? catalog?.actsRules ?? "";
+    // Everything comes 100% directly from the backend database catalog service
+    const descText = catalog?.description ?? "";
+    const whoText = catalog?.whoCanApply ?? "";
+    const docs = catalog?.documents ?? [];
+    const actsRules = catalog?.actsRules ?? "";
 
     const tabs =
-      vCat?.tabs && vCat.tabs.length > 0
-        ? vCat.tabs
+      catalog?.tabs && catalog.tabs.length > 0
+        ? catalog.tabs
         : [
             { id: "about", title: "About", content: descText, visible: true },
             { id: "who", title: "Who can Apply", content: whoText, visible: true },
@@ -102,21 +89,21 @@ export function TypePickerPage({
           ];
 
     return {
-      slug: vCat?.slug || targetSlug,
-      title: vCat?.title || `${titlePrefix}${selected.title}`,
-      short: vCat?.short || selected.short,
-      authority: vCat?.authority || catalog?.authority || "",
-      form: vCat?.form || selected.form,
+      slug: catalog?.slug || `${catalogSlug}-${selected.key}`,
+      title: catalog?.title || `${titlePrefix}${selected.title}`,
+      short: catalog?.short || selected.short,
+      authority: catalog?.authority || "",
+      form: catalog?.form || selected.form,
       description: descText,
       whoCanApply: whoText,
       actsRules,
       tabs,
-      actsRulesPdfs: vCat?.actsRulesPdfs || catalog?.actsRulesPdfs || [],
-      feeLines: vCat?.feeLines || catalog?.feeLines || [],
+      actsRulesPdfs: catalog?.actsRulesPdfs || [],
+      feeLines: catalog?.feeLines || [],
       documents: docs,
-      professionalFee: vCat?.professionalFee ?? catalog?.professionalFee,
-      govtFee: vCat?.govtFee ?? catalog?.govtFee,
-      gstPercent: vCat?.gstPercent ?? catalog?.gstPercent ?? 18,
+      professionalFee: catalog?.professionalFee,
+      govtFee: catalog?.govtFee,
+      gstPercent: catalog?.gstPercent ?? 18,
     };
   }, [selected, catalog, catalogSlug, titlePrefix]);
 
