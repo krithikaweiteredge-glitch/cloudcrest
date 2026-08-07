@@ -450,6 +450,21 @@ function NameDialog({
   );
 }
 
+const DEFAULT_TYPE_TAGS: Record<string, { tags: string[]; popular?: boolean }> = {
+  regular: { tags: ["Most common", "Full ITC"], popular: true },
+  composition: { tags: ["Flat rate", "Turnover ≤ ₹1.5 Cr"] },
+  voluntary: { tags: ["Optional", "Claim ITC"] },
+  casual: { tags: ["Occasional", "Advance tax"] },
+  nrtp: { tags: ["Foreign", "Advance tax"] },
+  isd: { tags: ["Credit distribution"] },
+  ecom: { tags: ["TCS", "Mandatory"] },
+  ecommerce: { tags: ["TCS", "Mandatory"] },
+  tds_tcs: { tags: ["Deduct / Collect", "TAN"] },
+  other: { tags: ["SEZ / Special"] },
+  registered: { tags: ["ROF Registered", "Legal Standing"], popular: true },
+  unregistered: { tags: ["Deed Only", "Quick Setup"] },
+};
+
 function ServiceDialog({
   state,
   onClose,
@@ -460,13 +475,20 @@ function ServiceDialog({
   onSaved: () => void;
 }) {
   const svc = state.mode === "edit" ? state.service : null;
-  // Entity key of a variant slug for seeding its rule defaults (company-pvt -> pvt).
+  // Entity key of a variant slug for seeding its rule defaults (company-pvt -> pvt, gst-regular -> regular).
   const initialWizardKey = (() => {
     const s = (svc?.slug || "").trim();
-    const w = [...WIZARD_SLUGS].find((x) => s.startsWith(x + "-"));
-    return w ? s.slice(w.length + 1) : "";
+    const launcher = [...LAUNCHER_SLUGS].find((x) => s.startsWith(x + "-"));
+    return launcher ? s.slice(launcher.length + 1) : "";
   })();
   const initialRules = resolveWizardRules(initialWizardKey, svc?.wizardRules);
+  const defaultTypeInfo = DEFAULT_TYPE_TAGS[initialWizardKey];
+
+  const effectiveTags =
+    initialRules.tags.length > 0 ? initialRules.tags : defaultTypeInfo?.tags ?? [];
+  const effectivePopular =
+    typeof initialRules.popular === "boolean" && svc?.wizardRules ? initialRules.popular : !!defaultTypeInfo?.popular;
+
   const [name, setName] = useState(svc?.name || "");
   const [description, setDescription] = useState(svc?.description || "");
   const [active, setActive] = useState(svc ? !!svc.active : true);
@@ -477,11 +499,9 @@ function ServiceDialog({
   const [wizMinDir, setWizMinDir] = useState(String(initialRules.minDirectors));
   const [wizMinShr, setWizMinShr] = useState(String(initialRules.minShareholders));
   const [wizNominee, setWizNominee] = useState(initialRules.requiresNominee);
-  // Company-type card tags (e.g. "Tax Exempt", "FDI Friendly") and the "Popular"
-  // badge — editable here for company variants only. Tags are comma-separated in
-  // the input and stored as a JSON array.
-  const [wizTags, setWizTags] = useState(initialRules.tags.join(", "));
-  const [wizPopular, setWizPopular] = useState(initialRules.popular);
+  // Variant card tags (e.g. "Most common", "Full ITC") and the "Popular" badge.
+  const [wizTags, setWizTags] = useState(effectiveTags.join(", "));
+  const [wizPopular, setWizPopular] = useState(effectivePopular);
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
