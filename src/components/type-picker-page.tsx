@@ -76,36 +76,40 @@ export function TypePickerPage({
     const vCat = isVariantLoaded ? catalog : null;
 
     const defaultWhoText = bulletsToText(selected.who);
-    const descText = vCat?.description?.trim() ? vCat.description : selected.about;
-    const whoText = vCat?.whoCanApply?.trim() ? vCat.whoCanApply : defaultWhoText;
-    const docs = vCat?.documents && vCat.documents.length > 0 ? vCat.documents : selected.docs;
 
-    const defaultTabs = [
-      { id: "about", title: "About", content: descText, visible: true },
-      { id: "who", title: "Who can Apply", content: whoText, visible: true },
-      { id: "documents", title: "Documents", content: "", visible: true },
-      { id: "acts", title: "Acts and Rules", content: vCat?.actsRules || catalog?.actsRules || "", visible: true },
-    ];
+    // Backend admin catalog values take full precedence when populated
+    const descText =
+      vCat?.description !== undefined && vCat.description !== null && vCat.description !== ""
+        ? vCat.description
+        : selected.about;
+
+    const whoText =
+      vCat?.whoCanApply !== undefined && vCat.whoCanApply !== null && vCat.whoCanApply !== ""
+        ? vCat.whoCanApply
+        : defaultWhoText;
+
+    const docs = vCat?.documents && vCat.documents.length > 0 ? vCat.documents : selected.docs;
+    const actsRules = vCat?.actsRules ?? catalog?.actsRules ?? "";
 
     const tabs =
       vCat?.tabs && vCat.tabs.length > 0
-        ? vCat.tabs.map((t) => {
-            if (t.id === "about" && !t.content?.trim()) return { ...t, content: descText };
-            if (t.id === "who" && !t.content?.trim()) return { ...t, content: whoText };
-            if (t.id === "acts" && !t.content?.trim()) return { ...t, content: catalog?.actsRules || "" };
-            return t;
-          })
-        : defaultTabs;
+        ? vCat.tabs
+        : [
+            { id: "about", title: "About", content: descText, visible: true },
+            { id: "who", title: "Who can Apply", content: whoText, visible: true },
+            { id: "documents", title: "Documents", content: "", visible: true },
+            { id: "acts", title: "Acts and Rules", content: actsRules, visible: true },
+          ];
 
     return {
       slug: vCat?.slug || targetSlug,
-      title: `${titlePrefix}${selected.title}`,
+      title: vCat?.title || `${titlePrefix}${selected.title}`,
       short: vCat?.short || selected.short,
       authority: vCat?.authority || catalog?.authority || "",
       form: vCat?.form || selected.form,
       description: descText,
       whoCanApply: whoText,
-      actsRules: vCat?.actsRules || catalog?.actsRules || "",
+      actsRules,
       tabs,
       actsRulesPdfs: vCat?.actsRulesPdfs || catalog?.actsRulesPdfs || [],
       feeLines: vCat?.feeLines || catalog?.feeLines || [],
