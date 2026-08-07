@@ -71,36 +71,48 @@ export function TypePickerPage({
 
   const typeService: CatalogService | null = useMemo(() => {
     if (!selected) return null;
+    const targetSlug = `${catalogSlug}-${selected.key}`;
+    const isVariantLoaded = catalog?.slug === targetSlug;
+    const vCat = isVariantLoaded ? catalog : null;
+
     const defaultWhoText = bulletsToText(selected.who);
-    const descText = catalog?.description || selected.about;
-    const whoText = catalog?.whoCanApply || defaultWhoText;
-    const docs = catalog?.documents && catalog.documents.length > 0 ? catalog.documents : selected.docs;
+    const descText = vCat?.description?.trim() ? vCat.description : selected.about;
+    const whoText = vCat?.whoCanApply?.trim() ? vCat.whoCanApply : defaultWhoText;
+    const docs = vCat?.documents && vCat.documents.length > 0 ? vCat.documents : selected.docs;
+
+    const defaultTabs = [
+      { id: "about", title: "About", content: descText, visible: true },
+      { id: "who", title: "Who can Apply", content: whoText, visible: true },
+      { id: "documents", title: "Documents", content: "", visible: true },
+      { id: "acts", title: "Acts and Rules", content: vCat?.actsRules || catalog?.actsRules || "", visible: true },
+    ];
+
     const tabs =
-      catalog?.tabs && catalog.tabs.length > 0
-        ? catalog.tabs
-        : [
-            { id: "about", title: "About", content: descText, visible: true },
-            { id: "who", title: "Who can Apply", content: whoText, visible: true },
-            { id: "documents", title: "Documents", content: "", visible: true },
-            { id: "acts", title: "Acts and Rules", content: catalog?.actsRules || "", visible: true },
-          ];
+      vCat?.tabs && vCat.tabs.length > 0
+        ? vCat.tabs.map((t) => {
+            if (t.id === "about" && !t.content?.trim()) return { ...t, content: descText };
+            if (t.id === "who" && !t.content?.trim()) return { ...t, content: whoText };
+            if (t.id === "acts" && !t.content?.trim()) return { ...t, content: catalog?.actsRules || "" };
+            return t;
+          })
+        : defaultTabs;
 
     return {
-      slug: catalog?.slug || `${catalogSlug}-${selected.key}`,
+      slug: vCat?.slug || targetSlug,
       title: `${titlePrefix}${selected.title}`,
-      short: catalog?.short || selected.short,
-      authority: catalog?.authority || "",
-      form: catalog?.form || selected.form,
+      short: vCat?.short || selected.short,
+      authority: vCat?.authority || catalog?.authority || "",
+      form: vCat?.form || selected.form,
       description: descText,
       whoCanApply: whoText,
-      actsRules: catalog?.actsRules || "",
+      actsRules: vCat?.actsRules || catalog?.actsRules || "",
       tabs,
-      actsRulesPdfs: catalog?.actsRulesPdfs || [],
-      feeLines: catalog?.feeLines || [],
+      actsRulesPdfs: vCat?.actsRulesPdfs || catalog?.actsRulesPdfs || [],
+      feeLines: vCat?.feeLines || catalog?.feeLines || [],
       documents: docs,
-      professionalFee: catalog?.professionalFee,
-      govtFee: catalog?.govtFee,
-      gstPercent: catalog?.gstPercent ?? 18,
+      professionalFee: vCat?.professionalFee ?? catalog?.professionalFee,
+      govtFee: vCat?.govtFee ?? catalog?.govtFee,
+      gstPercent: vCat?.gstPercent ?? catalog?.gstPercent ?? 18,
     };
   }, [selected, catalog, catalogSlug, titlePrefix]);
 
