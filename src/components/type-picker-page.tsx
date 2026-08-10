@@ -32,11 +32,6 @@ export type HeroHighlight = {
   label: string;
 };
 
-/** Convert a bullet array to the newline-delimited text expected by `<ServiceDetail>`. */
-function bulletsToText(bullets: string[]) {
-  return bullets.map((b) => (b.startsWith("•") ? b : `• ${b}`)).join("\n");
-}
-
 /**
  * Shared "pick a type, then see the full service page" flow. The applicant picks
  * a variant from the cards; selecting one opens the standard tabbed service page
@@ -78,11 +73,12 @@ export function TypePickerPage({
   const typeService: CatalogService | null = useMemo(() => {
     if (!selected) return null;
 
-    const defaultWhoText = bulletsToText(selected.who);
-
-    // Read catalog values from backend DB, falling back to type defaults
-    const descText = catalog?.description && catalog.description.trim() ? catalog.description : selected.about;
-    const whoText = catalog?.whoCanApply && catalog.whoCanApply.trim() ? catalog.whoCanApply : defaultWhoText;
+    // About and Who-can-Apply are admin-authored only. They come straight from
+    // the catalog (services.description / services.who_can_apply) with no frontend
+    // fallback copy, so the admin panel is the single source of truth. An unfilled
+    // field shows the standard "Nothing published here yet" empty state.
+    const descText = catalog?.description?.trim() ? catalog.description : "";
+    const whoText = catalog?.whoCanApply?.trim() ? catalog.whoCanApply : "";
     const docs = catalog?.documents && catalog.documents.length > 0 ? catalog.documents : selected.docs;
     const actsRules = catalog?.actsRules ?? "";
 

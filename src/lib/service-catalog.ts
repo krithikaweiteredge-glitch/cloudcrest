@@ -151,12 +151,18 @@ export function useCatalogGroups() {
     refetchOnWindowFocus: false,
   });
 
-  const groups = useMemo<ModuleGroup[]>(
-    () => (data && data.length > 0 ? catalogToGroups(data) : MODULE_GROUPS),
-    [data],
-  );
+  // While the very first fetch is in flight there is no data yet. Return an
+  // empty list (not MODULE_GROUPS) so consumers can show a loader instead of
+  // flashing the smaller hardcoded fallback and then swapping to the real,
+  // larger catalog. MODULE_GROUPS is only used once the fetch has *settled*
+  // with nothing usable (API unreachable), so the page never stays empty.
+  const groups = useMemo<ModuleGroup[]>(() => {
+    if (data && data.length > 0) return catalogToGroups(data);
+    if (isLoading) return [];
+    return MODULE_GROUPS;
+  }, [data, isLoading]);
 
-  return { groups, loaded: !isLoading };
+  return { groups, loaded: !isLoading, loading: isLoading };
 }
 
 export async function fetchService(slug: string): Promise<CatalogService | null> {

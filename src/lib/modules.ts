@@ -99,28 +99,109 @@ export function iconFor(name?: string | null): ModuleItem["icon"] {
 }
 
 /**
+ * One icon per category, so every service in a category renders the same glyph
+ * in the sidebar and home grid instead of a jumble of per-service icons. Keyed
+ * by category label; categories not listed here fall back to their first
+ * service's own icon (see `catalogToGroups`).
+ */
+const CATEGORY_ICON: Record<string, string> = {
+  "Entity Registration": "Building2",
+  "Business Conversion": "Handshake",
+  "Business Closure": "Shield",
+  "Tax Registration": "Wallet",
+  "Other Business Registrations": "IdCard",
+  "Labour & Municipal License": "HardHat",
+  "Intellectual Property": "Award",
+  "Industry Specific Registrations": "FileBadge2",
+};
+
+// -----------------------------------------------------------------------------
+// Display order — mirrors the client's "New registration additions" document so
+// the sidebar and home grid read top-to-bottom in the same sequence. The DB
+// returns categories/services in id order; we re-sort here (presentation only,
+// no schema change). Anything not listed keeps its original relative position
+// and falls to the end of its group.
+// -----------------------------------------------------------------------------
+const CATEGORY_ORDER = [
+  "Entity Registration",
+  "Business Conversion",
+  "Business Closure",
+  "Tax Registration",
+  "Other Business Registrations",
+  "Labour & Municipal License",
+  "Intellectual Property",
+  "Industry Specific Registrations",
+];
+
+const ITEM_ORDER = [
+  // Entity Registrations
+  "company", "llp", "partnership", "trust", "society", "huf", "sole-proprietorship",
+  // Business Conversions
+  "conversion-pvt-to-public", "conversion-llp-to-pvt", "conversion-opc-to-pvt",
+  "conversion-proprietorship-to-pvt", "conversion-partnership-to-pvt",
+  "conversion-pvt-to-opc", "conversion-partnership-to-llp", "conversion-public-to-pvt",
+  // Business Closures
+  "closure-pvt", "closure-llp", "closure-opc", "closure-proprietorship",
+  "closure-partnership", "closure-nidhi", "closure-sec8", "closure-public",
+  "closure-trust", "closure-society",
+  // Tax Registrations
+  "gst", "lut", "pan-tan", "dpiit", "lower-tax-deduction", "80iac", "12a", "80g",
+  "icegate", "form-10a", "non-deduction-declaration", "rcmc",
+  // Other Business Registrations (msme/iec live in the Tax category in the DB but
+  // are listed here per the document's grouping)
+  "msme", "iec", "din", "lei", "ngo-darpan", "rera", "dsc", "iso",
+  // Labour & Municipal
+  "labour-licence", "epf", "esi", "professional-tax", "trade-licence",
+  // Intellectual Property
+  "trademark", "patent", "copyright", "design", "layout-design",
+  // Industry Specific — licences first, then the 8 department entries. Each
+  // department opens a picker of its registrations (its inactive sub-heads).
+  "fssai", "factory-licence", "drug-licence",
+  "ind-agri", "ind-dept-agriculture", "ind-dept-commerce", "ind-dept-finance",
+  "ind-dept-health", "ind-dept-education", "ind-dept-dpiit", "ind-dept-tourism",
+];
+
+/** Position of `key` in `order`; unlisted keys sort to the end (stable). */
+const rankOf = (order: string[], key: string) => {
+  const i = order.indexOf(key);
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+};
+
+/**
  * Convert the backend catalog into sidebar groups. The database is the source of
  * truth for services; the built-in MODULE_GROUPS are only used as a fallback when
- * the catalog is unavailable (offline / API error).
+ * the catalog is unavailable (offline / API error). Categories and their items
+ * are ordered to match the client's document (see CATEGORY_ORDER / ITEM_ORDER).
  */
 export function catalogToGroups(groups: CatalogGroup[]): ModuleGroup[] {
   if (!groups || groups.length === 0) return MODULE_GROUPS;
 
   const mapped: ModuleGroup[] = groups
-    .map((g) => ({
-      label: g.label,
-      items: g.items
-        .filter((i) => !!i.slug)
-        .map((i) => ({
-          slug: i.slug,
-          title: i.title,
-          short: i.short || i.title,
-          icon: iconFor(i.icon),
-          authority: i.authority || "—",
-          form: i.form || undefined,
-        })),
-    }))
-    .filter((g) => g.items.length > 0);
+    .map((g) => {
+      // Every item in the category shares one icon. Unlisted (admin-created)
+      // categories fall back to the first service's own icon so they are still
+      // internally consistent.
+      const iconName = CATEGORY_ICON[g.label] ?? g.items.find((i) => i.icon)?.icon ?? null;
+      const groupIcon = iconFor(iconName);
+      return {
+        label: g.label,
+        items: g.items
+          .filter((i) => !!i.slug)
+          .map((i) => ({
+            slug: i.slug,
+            title: i.title,
+            short: i.short || i.title,
+            icon: groupIcon,
+            authority: i.authority || "—",
+            form: i.form || undefined,
+          }))
+          // Order services within the category to match the document.
+          .sort((a, b) => rankOf(ITEM_ORDER, a.slug) - rankOf(ITEM_ORDER, b.slug)),
+      };
+    })
+    .filter((g) => g.items.length > 0)
+    // Order the categories themselves to match the document.
+    .sort((a, b) => rankOf(CATEGORY_ORDER, a.label) - rankOf(CATEGORY_ORDER, b.label));
 
   return mapped.length > 0 ? mapped : MODULE_GROUPS;
 }

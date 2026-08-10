@@ -43,7 +43,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   // Services come from the backend catalog; the built-in list is only a fallback
   // so the sidebar still renders if the API is unreachable. Shared with the home
   // page so a newly published service appears in both.
-  const { groups } = useCatalogGroups();
+  const { groups, loading } = useCatalogGroups();
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -237,7 +237,14 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           </div>
 
           <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-2">
-            {filteredGroups.map((group, gi) => {
+            {loading &&
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="px-2 py-2 animate-pulse" aria-hidden>
+                  <div className="h-3 w-32 rounded bg-muted-foreground/15" />
+                </div>
+              ))}
+            {!loading &&
+              filteredGroups.map((group, gi) => {
               const isOpen = searchQuery.trim() ? true : !!openGroups[group.label];
               const hasActiveChild = group.items.some((m) => m.slug === activeSlug);
 

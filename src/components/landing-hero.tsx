@@ -73,8 +73,11 @@ export function LandingHero() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   // Same source as the sidebar, so an admin-published service shows up in both.
-  const { groups } = useCatalogGroups();
+  const { groups, loading } = useCatalogGroups();
   const allModules = groups.flatMap((g) => g.items);
+  // While the catalog loads, counts derived from it are 0 — show an em dash
+  // instead of flashing "0" until the real numbers arrive.
+  const count = (n: number) => (loading ? "—" : String(n));
 
   // Admins land on a service's registrations; customers on the service page.
   const openService = (slug: string) =>
@@ -159,7 +162,7 @@ export function LandingHero() {
             <span className="size-1.5 rounded-full bg-destructive live-dot" />
             <span className="size-1.5 rounded-full bg-success" />
             <span className="size-1.5 rounded-full bg-primary" />
-            India's compliance workspace · {allModules.length} registration modules
+            India's compliance workspace · {count(allModules.length)} registration modules
           </div>
           <h1 className="mt-7 text-5xl md:text-7xl lg:text-[5.5rem] font-display font-semibold tracking-[-0.03em] leading-[0.92]">
             Start your{" "}
@@ -285,7 +288,7 @@ export function LandingHero() {
             {[
               { n: "12,400+", l: "Businesses served" },
               { n: "4.8/5", l: "Client rating" },
-              { n: `${allModules.length}+`, l: "Registration modules" },
+              { n: loading ? "—" : `${allModules.length}+`, l: "Registration modules" },
               { n: "ISO 27001", l: "Secure filings" },
             ].map((s) => (
               <div key={s.l}>
@@ -348,12 +351,31 @@ export function LandingHero() {
             </div>
           </div>
           <span className="hidden md:block mono text-[11px] text-muted-foreground whitespace-nowrap pb-1">
-            {allModules.length} services
+            {count(allModules.length)} services
           </span>
         </div>
 
         <div className="space-y-10">
-          {groups.map((g) => (
+          {loading
+            ? Array.from({ length: 2 }).map((_, gi) => (
+                <div key={gi}>
+                  <div className="mb-4 h-4 w-40 rounded bg-muted-foreground/15 animate-pulse" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                    {Array.from({ length: 6 }).map((_, ci) => (
+                      <div
+                        key={ci}
+                        className="min-h-[14.5rem] border border-border bg-surface p-6 animate-pulse"
+                      >
+                        <div className="size-11 rounded-xl bg-muted-foreground/15" />
+                        <div className="mt-5 h-4 w-2/3 rounded bg-muted-foreground/15" />
+                        <div className="mt-3 h-3 w-full rounded bg-muted-foreground/10" />
+                        <div className="mt-2 h-3 w-5/6 rounded bg-muted-foreground/10" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            : groups.map((g) => (
             <div key={g.label}>
               <div className="flex items-baseline justify-between mb-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-foreground">
@@ -434,7 +456,7 @@ export function LandingHero() {
           {[
             { i: ShieldCheck, t: "Backed by compliance experts", d: "Every filing is reviewed by CA/CS professionals before submission." },
             { i: Clock, t: "Transparent turnaround", d: "Track your application status in real time from application to certificate." },
-            { i: Sparkles, t: "One dashboard for everything", d: `Manage ${allModules.length}+ registrations, renewals and post-approval compliance in a single place.` },
+            { i: Sparkles, t: "One dashboard for everything", d: `Manage ${loading ? "all your" : `${allModules.length}+`} registrations, renewals and post-approval compliance in a single place.` },
           ].map((f) => (
             <div key={f.t} className="flex items-start gap-3">
               <div className="size-9 rounded-lg bg-white/10 grid place-items-center text-primary shrink-0">

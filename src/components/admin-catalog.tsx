@@ -16,18 +16,53 @@ const WIZARD_SLUGS = new Set(["company", "llp"]);
 // Slugs that act as category launchers with sub-type variants in the catalog list.
 const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
 
+// Industry-Specific "department" launchers. Their registrations (sub-heads) live
+// in the same subcategory but don't follow the `slug-` variant convention, so
+// they're grouped by subcategory instead — every other service in a department's
+// subcategory is one of its types.
+const DEPARTMENT_SLUGS = new Set([
+  "ind-agri", "ind-dept-agriculture", "ind-dept-commerce", "ind-dept-finance",
+  "ind-dept-health", "ind-dept-education", "ind-dept-dpiit", "ind-dept-tourism",
+]);
+
+/**
+ * Classify a service within its subcategory: is it a launcher (has types priced
+ * below), a variant/type of a launcher, and how many types it has. Handles both
+ * the `slug-` convention (company/gst/…) and department subcategories.
+ */
+function classifyService(svc: any, siblings: any[]) {
+  if (svc.slug && DEPARTMENT_SLUGS.has(svc.slug)) {
+    const count = siblings.filter((o) => o.id !== svc.id).length;
+    return { isLauncher: count > 0, isVariant: false, variantCount: count };
+  }
+  const underDept = siblings.some((o) => o.id !== svc.id && o.slug && DEPARTMENT_SLUGS.has(o.slug));
+  if (underDept) return { isLauncher: false, isVariant: true, variantCount: 0 };
+  const variantCount = svc.slug
+    ? siblings.filter((o) => o.id !== svc.id && o.slug && o.slug.startsWith(svc.slug + "-")).length
+    : 0;
+  const isVariant = !!(
+    svc.slug && siblings.some((o) => o.id !== svc.id && o.slug && svc.slug.startsWith(o.slug + "-"))
+  );
+  return { isLauncher: variantCount > 0, isVariant, variantCount };
+}
+
 function organizeServicesWithVariants(list: any[]) {
   if (!Array.isArray(list)) return [];
   const launcherSlugs = [...LAUNCHER_SLUGS];
   const variantsByLauncher: Record<string, any[]> = {};
   const variantIdSet = new Set<number>();
 
+  // A department base in this subcategory owns every other service in it.
+  const dept = list.find((i) => i.slug && DEPARTMENT_SLUGS.has(i.slug));
+
   for (const item of list) {
     if (!item.slug) continue;
     const parentSlug = launcherSlugs.find((l) => item.slug.startsWith(l + "-"));
     if (parentSlug) {
-      if (!variantsByLauncher[parentSlug]) variantsByLauncher[parentSlug] = [];
-      variantsByLauncher[parentSlug].push(item);
+      (variantsByLauncher[parentSlug] ??= []).push(item);
+      variantIdSet.add(item.id);
+    } else if (dept && item.id !== dept.id) {
+      (variantsByLauncher[dept.slug] ??= []).push(item);
       variantIdSet.add(item.id);
     }
   }
@@ -73,6 +108,11 @@ export function AdminCatalogPanel() {
   >(null);
   const [manageId, setManageId] = useState<number | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
+  // By default the admin catalog mirrors the customer frontend: only active,
+  // listed services. Hidden rows (wizard types like `company-pvt`, and the
+  // industry department sub-heads) are inactive by design — showing them all the
+  // time confuses the catalog, so they're revealed only via this toggle.
+  const [showHidden, setShowHidden] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-catalog"],
@@ -100,7 +140,17 @@ export function AdminCatalogPanel() {
           <FolderTree className="size-4 text-primary" />
           Manage the service catalog: categories, services, fees, page tabs and document checklists.
         </div>
-        <button
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => setShowHidden(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Show hidden (wizard types &amp; inactive)
+          </label>
+          <button
           type="button"
           onClick={() =>
             setNameDialog({
@@ -116,6 +166,7 @@ export function AdminCatalogPanel() {
         >
           <Plus className="size-3.5" /> Category
         </button>
+        </div>
       </div>
 
       {banner && (
@@ -203,30 +254,19 @@ export function AdminCatalogPanel() {
 
                         {subOpen && (
                           <ul className="pl-14 pr-4 pb-2 space-y-1">
-                            {sub.services.length === 0 ? (
+                            {organizeServicesWithVariants(sub.services).filter((s: any) => showHidden || s.active || classifyService(s, sub.services).isVariant).length === 0 ? (
                               <li className="text-[12px] text-muted-foreground py-1">No services.</li>
                             ) : (
-                              organizeServicesWithVariants(sub.services).map((svc: any) => {
-                                // A "launcher" is a service whose per-type variants live
-                                // alongside it (slug `company` with `company-*` siblings).
-                                // It opens the wizard where the customer picks a type, so
-                                // its OWN fee is never shown — hide it, and count the types
-                                // so the nested rows below read as one service, not many.
-                                const variantCount = svc.slug
-                                  ? sub.services.filter(
-                                      (o: any) => o.id !== svc.id && o.slug && o.slug.startsWith(svc.slug + "-"),
-                                    ).length
-                                  : 0;
-                                const isLauncher = variantCount > 0;
-                                // A "variant" is a per-type price row under a launcher
-                                // (e.g. `company-pvt` under `company`). It's inactive by
-                                // design — that's not a disabled service, so don't strike
-                                // it out or badge it "inactive"; label it as a type.
-                                const isVariant =
-                                  svc.slug &&
-                                  sub.services.some(
-                                    (o: any) => o.id !== svc.id && o.slug && svc.slug.startsWith(o.slug + "-"),
-                                  );
+                              organizeServicesWithVariants(sub.services)
+                                .filter((s: any) => showHidden || s.active || classifyService(s, sub.services).isVariant)
+                                .map((svc: any) => {
+                                // A "launcher" opens a picker where the customer chooses a
+                                // type (company/gst/partnership, or an industry department).
+                                // Its OWN fee is never shown — its types are priced below.
+                                // A "variant" is one of those per-type rows (e.g. `company-pvt`
+                                // under `company`, or a department sub-head). It's inactive by
+                                // design, so it's labelled as a type rather than "inactive".
+                                const { isLauncher, isVariant, variantCount } = classifyService(svc, sub.services);
                                 return (
                                 <li
                                   key={svc.id}
