@@ -4,21 +4,7 @@ import { GstWizard } from "@/components/gst-wizard";
 import { PartnershipWizard } from "@/components/partnership-wizard";
 import { DepartmentPage } from "@/components/department-page";
 import { ServiceDetailPage } from "@/components/service-detail-page";
-
-/**
- * Industry-Specific "department" entries. Each is a catalog service whose
- * registrations are its inactive sibling services, shown as a picker (like GST).
- */
-const DEPARTMENT_SLUGS = new Set([
-  "ind-agri",
-  "ind-dept-agriculture",
-  "ind-dept-commerce",
-  "ind-dept-finance",
-  "ind-dept-health",
-  "ind-dept-education",
-  "ind-dept-dpiit",
-  "ind-dept-tourism",
-]);
+import { DEPARTMENT_SLUGS } from "@/lib/modules";
 
 export function ModulePage({ slug, initialName }: { slug: string; initialName?: string }) {
   // Company and LLP keep their bespoke multi-step incorporation wizards. GST and

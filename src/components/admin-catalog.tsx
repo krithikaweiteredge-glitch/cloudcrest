@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { assetUrl } from "@/lib/file-url";
 import { resolveWizardRules } from "@/lib/company-types";
+import { DEPARTMENT_SLUGS } from "@/lib/modules";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,15 +16,6 @@ const WIZARD_SLUGS = new Set(["company", "llp"]);
 
 // Slugs that act as category launchers with sub-type variants in the catalog list.
 const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
-
-// Industry-Specific "department" launchers. Their registrations (sub-heads) live
-// in the same subcategory but don't follow the `slug-` variant convention, so
-// they're grouped by subcategory instead — every other service in a department's
-// subcategory is one of its types.
-const DEPARTMENT_SLUGS = new Set([
-  "ind-agri", "ind-dept-agriculture", "ind-dept-commerce", "ind-dept-finance",
-  "ind-dept-health", "ind-dept-education", "ind-dept-dpiit", "ind-dept-tourism",
-]);
 
 /**
  * Classify a service within its subcategory: is it a launcher (has types priced

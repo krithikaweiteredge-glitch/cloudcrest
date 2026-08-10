@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import AppShell from "@/components/app-shell";
 import { StatusPill } from "./profile.index";
 import { AdminCatalogPanel } from "@/components/admin-catalog";
-import { getModule } from "@/lib/modules";
+import { getModule, DEPARTMENT_SLUGS } from "@/lib/modules";
+import { useCatalogFamily, useCatalogService } from "@/lib/service-catalog";
 import { assetUrl } from "@/lib/file-url";
 import { splitRequestNotes } from "@/lib/request-notes";
 import { renderExtraFormFields } from "@/lib/request-fields";
@@ -97,7 +98,29 @@ function AdminPage() {
   }
 
   const mod = service ? getModule(service) : undefined;
-  const filtered = service ? (data ?? []).filter((r) => r.serviceSlug === service) : data ?? [];
+  // The header name for a selected service: built-in modules resolve instantly;
+  // DB-only ones (departments, admin-published) come from the catalog.
+  const { service: selectedSvc } = useCatalogService(service ? [service] : []);
+  const selectedName = mod?.title ?? selectedSvc?.title ?? null;
+  // A launcher (GST/Company/Partnership, or an industry department) has no
+  // registrations of its own — customers apply for its sub-heads, whose requests
+  // are filed under the sub-head slug. So when a launcher is selected, match its
+  // sub-heads too, otherwise the list looks empty. `useCatalogFamily` returns the
+  // sibling services; for a department every sibling is a sub-head, for the others
+  // we keep only the `slug-` variants (the subcategory holds unrelated services).
+  const { variants } = useCatalogFamily(service ?? "");
+  const matchSlugs = ((): Set<string> | null => {
+    if (!service) return null;
+    const base = service; // narrowed to string
+    const isDept = DEPARTMENT_SLUGS.has(base);
+    const kids = (variants ?? [])
+      .filter((v) => v.slug && (isDept || v.slug.startsWith(base + "-")))
+      .map((v) => v.slug);
+    return new Set<string>([base, ...kids]);
+  })();
+  const filtered = matchSlugs
+    ? (data ?? []).filter((r) => matchSlugs.has(r.serviceSlug ?? ""))
+    : data ?? [];
 
   return (
     <AppShell>
@@ -117,8 +140,8 @@ function AdminPage() {
                 ? "Services Catalog"
                 : view === "employees"
                 ? "Employees"
-                : mod
-                ? `${mod.title} Registrations`
+                : selectedName
+                ? `${selectedName} Registrations`
                 : "All Registrations"}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -130,8 +153,8 @@ function AdminPage() {
                 ? "Create and manage services, fees, page tabs and document checklists."
                 : view === "employees"
                 ? "Add coordinator accounts and manage staff access to the console."
-                : mod
-                ? `Showing registrations submitted for ${mod.title}. Pick another service from the sidebar to switch.`
+                : selectedName
+                ? `Showing registrations submitted for ${selectedName} (including its sub-heads). Pick another service from the sidebar to switch.`
                 : "Pick a service from the sidebar to filter, or review every submitted registration below."}
             </p>
           </div>
@@ -179,7 +202,7 @@ function AdminPage() {
         {service && (
           <div className="mb-4 flex items-center gap-2 text-xs">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-              <ListFilter className="size-3" /> Filtered: {mod?.title ?? service}
+              <ListFilter className="size-3" /> Filtered: {selectedName ?? service}
             </span>
             <Link to="/admin" className="text-muted-foreground hover:text-foreground underline underline-offset-2">
               Show all registrations
@@ -253,8 +276,8 @@ function AdminPage() {
             </table>
           ) : (
             <div className="p-10 text-center text-sm text-muted-foreground">
-              {mod
-                ? `No registrations have been submitted for ${mod.title} yet.`
+              {selectedName
+                ? `No registrations have been submitted for ${selectedName} yet.`
                 : "No registrations have been submitted yet."}
             </div>
           )}

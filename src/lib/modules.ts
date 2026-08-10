@@ -115,6 +115,17 @@ const CATEGORY_ICON: Record<string, string> = {
   "Industry Specific Registrations": "FileBadge2",
 };
 
+/**
+ * Industry-Specific "department" launchers. Each is an active catalog service
+ * whose registrations (sub-heads) are its inactive siblings, shown as a picker
+ * like GST. Shared by the router, the admin catalog grouping and the admin
+ * registrations filter so a department aggregates its sub-heads everywhere.
+ */
+export const DEPARTMENT_SLUGS = new Set([
+  "ind-agri", "ind-dept-agriculture", "ind-dept-commerce", "ind-dept-finance",
+  "ind-dept-health", "ind-dept-education", "ind-dept-dpiit", "ind-dept-tourism",
+]);
+
 // -----------------------------------------------------------------------------
 // Display order — mirrors the client's "New registration additions" document so
 // the sidebar and home grid read top-to-bottom in the same sequence. The DB
