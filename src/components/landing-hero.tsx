@@ -4,9 +4,8 @@ import { useCatalogGroups } from "@/lib/service-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import {
-  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText,
+  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown,
 } from "lucide-react";
-import logo from "@/assets/cloudcrest-logo.png";
 
 // Typical turnaround + document count per service, shown as chips on each card.
 const TIMELINE: Record<string, { days: string; docs: number }> = {
@@ -150,14 +149,6 @@ export function LandingHero() {
           }}
         />
         <div className="relative max-w-5xl mx-auto px-8 pt-14 pb-20 text-center">
-          {/* `flex w-fit` (not inline-flex) so the status pill below starts a new
-              line instead of flowing alongside it. */}
-          <div className="mx-auto mb-6 flex w-fit items-center gap-3 px-4 py-2 rounded-xl bg-white/95 shadow-elev">
-            <img src={logo} alt="Cloudcrest" className="h-7 w-auto object-contain" />
-            <span className="text-[11px] mono uppercase tracking-widest text-muted-foreground">
-              Business Management
-            </span>
-          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
             <span className="size-1.5 rounded-full bg-destructive live-dot" />
             <span className="size-1.5 rounded-full bg-success" />
@@ -166,10 +157,8 @@ export function LandingHero() {
           </div>
           <h1 className="mt-7 text-5xl md:text-7xl lg:text-[5.5rem] font-display font-semibold tracking-[-0.03em] leading-[0.92]">
             Start your{" "}
-            <span className="italic font-normal">business.</span>
-            <br />
             <span className="bg-clip-text text-transparent animated-gradient" style={{ backgroundImage: "linear-gradient(90deg, oklch(0.68 0.22 27), oklch(0.72 0.16 152) 50%, oklch(0.7 0.20 255), oklch(0.68 0.22 27))" }}>
-              Registered in days.
+              business registration
             </span>
           </h1>
           <p className="mt-6 text-white/70 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
@@ -181,46 +170,56 @@ export function LandingHero() {
           <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
             <form
               onSubmit={(e) => { e.preventDefault(); checkAndGo(`${q.trim()} ${SUFFIXES[pick]}`); }}
-              className="relative flex items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
+              className="relative flex flex-col sm:flex-row items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
             >
               {/* Sweeping highlight — hidden once the field is in use. */}
               {!q && !checking && <span className="search-beam" />}
-              <div className="relative pl-5 pr-3 grid place-items-center shrink-0">
+              
+              <div className="relative pl-5 pr-2 grid place-items-center shrink-0">
                 <Search className="size-5 text-muted-foreground" />
               </div>
+              
               <input
                 autoFocus
                 disabled={checking}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Enter your business name — e.g. Acme Tech"
-                className="relative flex-1 min-w-0 py-4 pr-3 text-foreground text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
+                className="relative flex-1 min-w-0 py-4 px-3 text-foreground text-sm sm:text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
               />
-              <select
-                disabled={checking}
-                value={pick}
-                onChange={(e) => setPick(Number(e.target.value))}
-                className="relative hidden md:block shrink-0 border-l border-border bg-white text-foreground text-sm px-4 cursor-pointer focus:outline-none focus:bg-muted/40 transition-colors"
-              >
-                {SUFFIXES.map((s, i) => <option key={s} value={i}>{s}</option>)}
-              </select>
-              <button
-                type="submit"
-                disabled={checking}
-                className="group relative flex shrink-0 items-center justify-center gap-2 px-5 sm:px-7 min-w-[7.5rem] sm:min-w-[10rem] gradient-brand text-white font-semibold text-sm whitespace-nowrap hover:brightness-110 transition-all disabled:opacity-50"
-              >
-                {checking ? (
-                  <>
-                    <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                    Checking…
-                  </>
-                ) : (
-                  <>
-                    Check &amp; Start
-                    <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
-                  </>
-                )}
-              </button>
+
+              <div className="relative flex items-center shrink-0 border-t sm:border-t-0 sm:border-l border-border/80 bg-slate-50/90 hover:bg-slate-100/90 transition-colors">
+                <select
+                  disabled={checking}
+                  value={pick}
+                  onChange={(e) => setPick(Number(e.target.value))}
+                  className="appearance-none relative z-10 shrink-0 text-foreground font-semibold text-xs sm:text-sm pl-4 pr-9 py-4 cursor-pointer focus:outline-none bg-transparent"
+                >
+                  {SUFFIXES.map((s, i) => (
+                    <option key={s} value={i} className="text-slate-900 bg-white font-medium py-2">
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 size-4 text-slate-500 pointer-events-none z-20" />
+              </div>
+                <button
+                  type="submit"
+                  disabled={checking}
+                  className="group relative flex shrink-0 items-center justify-center gap-2 px-5 sm:px-7 min-w-[7.5rem] sm:min-w-[10rem] gradient-brand text-white font-semibold text-sm whitespace-nowrap hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                  {checking ? (
+                    <>
+                      <span className="size-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                      Checking…
+                    </>
+                  ) : (
+                    <>
+                      Check &amp; Start
+                      <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+                    </>
+                  )}
+                </button>
             </form>
 
             {errorMsg && (
