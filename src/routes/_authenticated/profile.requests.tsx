@@ -19,44 +19,68 @@ export const Route = createFileRoute("/_authenticated/profile/requests")({
 function parseDocLabel(name: string): { label: string; fileName: string } {
   if (!name) return { label: "Uploaded Document", fileName: "document" };
 
-  // Strip corrupted UTF-8 em-dash artifacts like 'â€”', 'â€“', or 'â'
-  const cleanName = name.replace(/â€”|â€“|â/g, "—").trim();
+  // Sanitize non-ASCII alien characters (like 'â   ', 'â€”', 'â', 'Ã') into clean ' — '
+  const sanitized = name.replace(/[^\x00-\x7F]+/g, " — ").replace(/\s*—\s*/g, " — ").trim();
 
-  // Try splitting by known separators: ' :: ', ' — ', ' – ', ' -- '
-  const match = cleanName.match(/^(.+?)\s*(?:::|—|–|--)\s*(.+)$/);
-  if (match) {
-    return {
-      label: match[1].trim(),
-      fileName: match[2].trim(),
-    };
-  }
+  let rawLabel = "";
+  let cleanFileName = name.replace(/[^\x00-\x7F]+/g, "").trim();
 
-  // Fallback split for ' - '
-  if (cleanName.includes(" - ")) {
-    const parts = cleanName.split(" - ");
-    if (parts.length > 1) {
-      return {
-        label: parts[0].trim(),
-        fileName: parts.slice(1).join(" - ").trim(),
-      };
+  if (sanitized.includes(" — ")) {
+    const parts = sanitized.split(" — ").filter(Boolean);
+    if (parts.length >= 2) {
+      rawLabel = parts[0].trim();
+      cleanFileName = parts.slice(1).join(" — ").trim();
+    }
+  } else if (sanitized.includes(" :: ")) {
+    const parts = sanitized.split(" :: ").filter(Boolean);
+    if (parts.length >= 2) {
+      rawLabel = parts[0].trim();
+      cleanFileName = parts.slice(1).join(" :: ").trim();
+    }
+  } else if (sanitized.includes(" - ")) {
+    const parts = sanitized.split(" - ").filter(Boolean);
+    if (parts.length >= 2) {
+      rawLabel = parts[0].trim();
+      cleanFileName = parts.slice(1).join(" - ").trim();
     }
   }
 
-  // Keyword fallbacks for legacy files without separator
-  const lower = cleanName.toLowerCase();
-  if (lower.includes("moa") || lower.includes("trust deed")) return { label: "Trust deed / MoA", fileName: cleanName };
-  if (lower.includes("aoa")) return { label: "AoA", fileName: cleanName };
-  if (lower.includes("pan")) return { label: "PAN Card", fileName: cleanName };
-  if (lower.includes("aadhaar") || lower.includes("adhar")) return { label: "Aadhaar Card", fileName: cleanName };
-  if (lower.includes("passport")) return { label: "Passport", fileName: cleanName };
-  if (lower.includes("voter")) return { label: "Voter ID", fileName: cleanName };
-  if (lower.includes("bank") || lower.includes("statement")) return { label: "Bank Statement", fileName: cleanName };
-  if (lower.includes("utility") || lower.includes("bill") || lower.includes("electricity")) return { label: "Utility Bill / Address Proof", fileName: cleanName };
-  if (lower.includes("photo")) return { label: "Passport Photo", fileName: cleanName };
-  if (lower.includes("deed")) return { label: "Deed / Agreement", fileName: cleanName };
-  if (lower.includes("certificate") || lower.includes("cert")) return { label: "Certificate", fileName: cleanName };
+  if (!rawLabel) {
+    rawLabel = cleanFileName;
+  }
 
-  return { label: "Uploaded Document", fileName: cleanName };
+  const lowerLabel = rawLabel.toLowerCase();
+  let label = rawLabel;
+
+  if (lowerLabel === "moa" || lowerLabel.includes("trust deed") || lowerLabel.includes("moa")) {
+    label = "Trust Deed / MoA";
+  } else if (lowerLabel === "aoa" || lowerLabel.includes("aoa")) {
+    label = "AoA";
+  } else if (lowerLabel.includes("member")) {
+    label = "Members List";
+  } else if (lowerLabel.includes("pan")) {
+    label = "PAN Card";
+  } else if (lowerLabel.includes("aadhaar") || lowerLabel.includes("adhar")) {
+    label = "Aadhaar Card";
+  } else if (lowerLabel.includes("passport")) {
+    label = "Passport";
+  } else if (lowerLabel.includes("voter")) {
+    label = "Voter ID";
+  } else if (lowerLabel.includes("bank") || lowerLabel.includes("statement")) {
+    label = "Bank Statement";
+  } else if (lowerLabel.includes("utility") || lowerLabel.includes("bill") || lowerLabel.includes("electricity")) {
+    label = "Utility Bill / Address Proof";
+  } else if (lowerLabel.includes("photo")) {
+    label = "Passport Photo";
+  } else if (lowerLabel.includes("deed")) {
+    label = "Trust Deed / Agreement";
+  } else if (lowerLabel.includes("certificate") || lowerLabel.includes("cert")) {
+    label = "Certificate";
+  } else {
+    label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+  }
+
+  return { label, fileName: cleanFileName };
 }
 
 function formatDateTime(dateStr: string | Date) {
