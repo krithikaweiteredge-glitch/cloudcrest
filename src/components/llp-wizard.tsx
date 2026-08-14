@@ -34,7 +34,7 @@ type LlpType = {
 
 const LLP_TYPES: LlpType[] = [
   {
-    value: "Limited Liability Partnership (LLP)",
+    value: "Indian LLP",
     short: "Indian LLP",
     icon: ShieldCheck,
     desc: "Incorporated in India via FiLLiP. Min 2 partners. Limited liability with flexible agreement.",
@@ -92,7 +92,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [typeValue, setTypeValue] = useState("Limited Liability Partnership (LLP)");
+  const [typeValue, setTypeValue] = useState("Indian LLP");
   const [jurisdiction, setJurisdiction] = useState<"indian" | "foreign">("indian");
   const [foreignCountry, setForeignCountry] = useState("");
   const [name1, setName1] = useState(initialName || "");
