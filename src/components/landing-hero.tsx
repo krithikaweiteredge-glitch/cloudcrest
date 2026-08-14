@@ -161,10 +161,6 @@ export function LandingHero() {
               business registration
             </span>
           </h1>
-          <p className="mt-6 text-white/70 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Search your name, upload documents once, and let Cloudcrest associates handle every
-            filing — MCA, GST, MSME, Trademark and more.
-          </p>
 
           {/* Search */}
           <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
@@ -281,6 +277,11 @@ export function LandingHero() {
               </div>
             )}
           </div>
+
+          <p className="mt-6 text-white/70 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
+            Search your name, upload documents once, and let Cloudcrest associates handle every
+            filing — MCA, GST, MSME, Trademark and more.
+          </p>
 
           {/* Oversized stat band */}
           <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 border-t border-white/10 pt-10">
