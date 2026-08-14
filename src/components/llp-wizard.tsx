@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 const STEPS = [
+  { key: "type", label: "Type" },
   { key: "name", label: "Name" },
   { key: "partners", label: "Partners" },
   { key: "office", label: "Office" },
@@ -20,10 +21,48 @@ const STEPS = [
   { key: "summary", label: "Summary" },
 ];
 
-// Base LLP definition. The Name step offers an Indian / Foreign LLP choice
-// (`jurisdiction`) which overlays the title, form and tags at runtime.
-const LLP_ENTITY_TYPES = [
-  { key: "standard", title: "Limited Liability Partnership (LLP)", suffix: "LLP", form: "FiLLiP · Form 3", tags: ["Min 2 Partners", "Flexible Agreement"], pop: true },
+type LlpType = {
+  value: string;
+  short: string;
+  icon: React.ComponentType<{ className?: string }>;
+  desc: string;
+  key: string;
+  jurisdiction: "indian" | "foreign";
+  form: string;
+  suffix: string;
+};
+
+const LLP_TYPES: LlpType[] = [
+  {
+    value: "Limited Liability Partnership (LLP)",
+    short: "Standard LLP",
+    icon: ShieldCheck,
+    desc: "Most popular. Min 2 partners. Limited liability with flexible agreement.",
+    key: "standard",
+    jurisdiction: "indian",
+    form: "FiLLiP · Form 3",
+    suffix: "LLP",
+  },
+  {
+    value: "Foreign LLP",
+    short: "Foreign LLP",
+    icon: Globe,
+    desc: "Foreign entity establishing a place of business in India via Form 27 (FC).",
+    key: "foreign",
+    jurisdiction: "foreign",
+    form: "Form 27 · FC",
+    suffix: "LLP",
+  },
+  {
+    value: "Wholly Owned Subsidiary LLP",
+    short: "WOS LLP",
+    icon: Building2,
+    desc: "LLP where total contribution is held by a parent body corporate / holding entity.",
+    key: "wos",
+    jurisdiction: "indian",
+    form: "FiLLiP · Form 3",
+    suffix: "LLP",
+  },
 ];
 
 // Fallback checklist when the admin hasn't configured document types.
@@ -63,10 +102,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  // An LLP is either an Indian LLP (incorporated in India via FiLLiP) or a
-  // Foreign LLP (a body incorporated outside India establishing a place of
-  // business in India via Form 27). The choice changes the filing form and adds
-  // a country-of-incorporation question.
+  const [typeValue, setTypeValue] = useState("Limited Liability Partnership (LLP)");
   const [jurisdiction, setJurisdiction] = useState<"indian" | "foreign">("indian");
   const [foreignCountry, setForeignCountry] = useState("");
   const [name1, setName1] = useState(initialName || "");
@@ -78,7 +114,6 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const [objects, setObjects] = useState("");
   const [industryType, setIndustryType] = useState("");
   const [industryOther, setIndustryOther] = useState("");
-  // The industry filed with the application — the free-text value when "Other".
   const effectiveIndustry = industryType === "Other" ? industryOther.trim() : industryType;
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -108,26 +143,25 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const [stepError, setStepError] = useState<string | null>(null);
 
   const isForeign = jurisdiction === "foreign";
-  // The picker card's title / form / tags reflect the chosen jurisdiction.
+  const stepKey = STEPS[step]?.key;
+
+  const selectedType = useMemo(() => {
+    return LLP_TYPES.find((t) => t.value === typeValue) || LLP_TYPES[0];
+  }, [typeValue]);
+
   const selected = useMemo(() => {
-    const base = LLP_ENTITY_TYPES[0];
-    return isForeign
-      ? {
-          ...base,
-          key: "foreign",
-          title: "Foreign LLP",
-          form: "Form 27 · FC",
-          tags: ["Foreign Body", "Place of Business in India"],
-        }
-      : { ...base, key: "indian", title: "Indian LLP" };
-  }, [isForeign]);
-  // Pricing & checklist come from the admin catalog's `llp` service.
+    return {
+      key: selectedType.key,
+      title: selectedType.value,
+      suffix: selectedType.suffix,
+      form: selectedType.form,
+      tags: isForeign ? ["Foreign Body", "Place of Business in India"] : ["Min 2 Partners", "Flexible Agreement"],
+    };
+  }, [selectedType, isForeign]);
+
   const { service, loading: catalogLoading } = useCatalogService(["llp"]);
   const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
 
-  // Fees come from the backend fee engine (the single source of truth): the
-  // FiLLiP schedule (filing fee by contribution + name reservation + PAN/TAN) +
-  // professional fee + 18% GST. The same context is recomputed at submission.
   const feeContext: FeeContext = { kind: "llp", contribution: capital };
   const estimate = useFeeEstimate(feeContext, !!user);
   const fees: ResolvedFees = {
@@ -151,6 +185,11 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
     let globalMsg: string | null = null;
 
     if (currentStep === 0) {
+      if (!typeValue) {
+        newErrors.type = "Please select an LLP entity type.";
+        globalMsg = "Please select an LLP entity type.";
+      }
+    } else if (currentStep === 1) {
       if (isForeign && !foreignCountry.trim()) {
         newErrors.foreignCountry = "Please enter the country of incorporation.";
         globalMsg = "Country of incorporation is required for a Foreign LLP.";
@@ -168,12 +207,12 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
         newErrors.objects = "Please describe the main object / business activity of the LLP.";
         if (!globalMsg) globalMsg = "Main business activity is required.";
       }
-    } else if (currentStep === 1) {
+    } else if (currentStep === 2) {
       if (partners < 2) {
         newErrors.partners = "LLP requires a minimum of 2 Designated Partners.";
         globalMsg = "Minimum 2 Designated Partners required.";
       }
-    } else if (currentStep === 2) {
+    } else if (currentStep === 3) {
       if (!address.trim()) {
         newErrors.address = "Please enter registered office address.";
         globalMsg = "Registered office address is required.";
@@ -190,7 +229,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
         newErrors.pincode = "Enter valid 6-digit Indian PIN Code.";
         if (!globalMsg) globalMsg = "Valid 6-digit PIN Code is required.";
       }
-    } else if (currentStep === 3) {
+    } else if (currentStep === 4) {
       if (!capital || capital < 10000) {
         newErrors.capital = "Partner contribution must be at least ₹10,000.";
         globalMsg = "Contribution must be at least ₹10,000.";
@@ -343,27 +382,55 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
             </div>
 
             <div key={step} className="mt-8 animate-in-up">
-              {step === 0 && (
+              {/* STEP 1 — TYPE */}
+              {stepKey === "type" && (
+                <Section
+                  title="Select Entity & LLP Type"
+                  desc="All registrations under Limited Liability Partnership Act, 2008, filed through the MCA portal."
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {LLP_TYPES.map((t) => {
+                      const Icon = t.icon;
+                      const active = typeValue === t.value;
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => {
+                            setTypeValue(t.value);
+                            setJurisdiction(t.jurisdiction as "indian" | "foreign");
+                            setErrors({});
+                            setStepError(null);
+                          }}
+                          className={
+                            "text-left p-4 rounded-xl border transition-all hover-lift ring-focus " +
+                            (active
+                              ? "border-primary ring-2 ring-primary/25 bg-primary/[0.05]"
+                              : "border-border bg-surface hover:border-primary/50")
+                          }
+                        >
+                          <span
+                            className={
+                              "inline-grid place-items-center size-9 rounded-lg mb-2.5 " +
+                              (active ? "gradient-brand text-white" : "bg-primary/10 text-primary")
+                            }
+                          >
+                            <Icon className="size-4.5" />
+                          </span>
+                          <div className="text-sm font-semibold leading-tight">{t.value}</div>
+                          <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{t.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.type && <ErrText>{errors.type}</ErrText>}
+                </Section>
+              )}
+
+              {/* STEP 2 — NAME */}
+              {stepKey === "name" && (
                 <Card>
                   <div className="space-y-6">
-                    <div>
-                      <div className="label-eyebrow mb-2.5">LLP Type</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <OptionCard
-                          active={!isForeign}
-                          onClick={() => setJurisdiction("indian")}
-                          title="Indian LLP"
-                          subtitle="Incorporated in India · FiLLiP (Form 3)"
-                        />
-                        <OptionCard
-                          active={isForeign}
-                          onClick={() => setJurisdiction("foreign")}
-                          title="Foreign LLP"
-                          subtitle="Body incorporated abroad · place of business in India (Form 27)"
-                        />
-                      </div>
-                    </div>
-
                     {isForeign && (
                       <Field label="Country of Incorporation *" error={errors.foreignCountry}>
                         <Input
@@ -450,7 +517,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 1 && (
+              {/* STEP 3 — PARTNERS */}
+              {stepKey === "partners" && (
                 <Card>
                   <div className="space-y-6">
                     <Field label="Number of Designated Partners (Min 2) *" error={errors.partners}>
@@ -466,7 +534,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 2 && (
+              {/* STEP 4 — OFFICE */}
+              {stepKey === "office" && (
                 <Card>
                   <div className="space-y-4">
                     <Field label="Registered Office Address *" error={errors.address}>
@@ -503,7 +572,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 3 && (
+              {/* STEP 5 — CAPITAL */}
+              {stepKey === "capital" && (
                 <Card>
                   <div className="space-y-6">
                     <Field label="Total Partner Contribution (INR) *" error={errors.capital}>
@@ -535,7 +605,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 </Card>
               )}
 
-              {step === 4 && (
+              {/* STEP 6 — FEES */}
+              {stepKey === "fees" && (
                 !user ? (
                   <div className="rounded-xl border border-border bg-surface shadow-card p-6">
                     <div className="flex items-center gap-2 mb-2">
@@ -584,7 +655,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 )
               )}
 
-              {step === 5 && (
+              {/* STEP 7 — SUMMARY */}
+              {stepKey === "summary" && (
                 <div className="rounded-xl border border-border bg-surface shadow-card p-6 space-y-4">
                   <div className="flex items-center justify-between border-b border-border pb-3">
                     <div className="text-xs font-bold uppercase tracking-wider text-primary">LLP Application Preview</div>
@@ -595,7 +667,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
                       <dt className="text-muted-foreground">Entity Type</dt>
-                      <dd className="font-semibold text-foreground mt-0.5">{selected.title}</dd>
+                      <dd className="font-semibold text-foreground mt-0.5">{typeValue || selected.title}</dd>
                     </div>
                     {isForeign && (
                       <div>
@@ -755,6 +827,24 @@ function Card({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+          {desc && <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>}
+        </div>
+        {children}
+      </div>
+    </Card>
+  );
+}
+
+function ErrText({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] text-destructive font-medium mt-1.5">{children}</p>;
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
