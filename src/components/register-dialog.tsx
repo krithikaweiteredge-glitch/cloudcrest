@@ -135,7 +135,7 @@ export function RegisterDialog({
       arr.map((f) =>
         label === OTHER_DOCS_KEY
           ? f.file
-          : new File([f.file], `${label} __FILE__ ${f.file.name}`, { type: f.file.type }),
+          : new File([f.file], `${label} - ${f.file.name}`, { type: f.file.type }),
       ),
     );
 
