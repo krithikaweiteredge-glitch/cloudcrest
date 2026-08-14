@@ -19,43 +19,44 @@ export const Route = createFileRoute("/_authenticated/profile/requests")({
 function parseDocLabel(name: string): { label: string; fileName: string } {
   if (!name) return { label: "Uploaded Document", fileName: "document" };
 
-  if (name.includes(" — ")) {
-    const parts = name.split(" — ");
-    return { label: parts[0].trim(), fileName: parts.slice(1).join(" — ").trim() };
+  // Strip corrupted UTF-8 em-dash artifacts like 'â€”', 'â€“', or 'â'
+  const cleanName = name.replace(/â€”|â€“|â/g, "—").trim();
+
+  // Try splitting by known separators: ' :: ', ' — ', ' – ', ' -- '
+  const match = cleanName.match(/^(.+?)\s*(?:::|—|–|--)\s*(.+)$/);
+  if (match) {
+    return {
+      label: match[1].trim(),
+      fileName: match[2].trim(),
+    };
   }
-  if (name.includes(" - ")) {
-    const parts = name.split(" - ");
-    const firstLower = parts[0].toLowerCase();
-    if (
-      parts.length > 1 &&
-      (firstLower.includes("pan") ||
-        firstLower.includes("aadhaar") ||
-        firstLower.includes("card") ||
-        firstLower.includes("proof") ||
-        firstLower.includes("statement") ||
-        firstLower.includes("photo") ||
-        firstLower.includes("certificate") ||
-        firstLower.includes("deed") ||
-        firstLower.includes("licence") ||
-        firstLower.includes("license") ||
-        firstLower.includes("utility"))
-    ) {
-      return { label: parts[0].trim(), fileName: parts.slice(1).join(" - ").trim() };
+
+  // Fallback split for ' - '
+  if (cleanName.includes(" - ")) {
+    const parts = cleanName.split(" - ");
+    if (parts.length > 1) {
+      return {
+        label: parts[0].trim(),
+        fileName: parts.slice(1).join(" - ").trim(),
+      };
     }
   }
 
-  const lower = name.toLowerCase();
-  if (lower.includes("pan")) return { label: "PAN Card", fileName: name };
-  if (lower.includes("aadhaar") || lower.includes("adhar")) return { label: "Aadhaar Card", fileName: name };
-  if (lower.includes("passport")) return { label: "Passport", fileName: name };
-  if (lower.includes("voter")) return { label: "Voter ID", fileName: name };
-  if (lower.includes("bank") || lower.includes("statement")) return { label: "Bank Statement", fileName: name };
-  if (lower.includes("utility") || lower.includes("bill") || lower.includes("electricity")) return { label: "Utility Bill / Address Proof", fileName: name };
-  if (lower.includes("photo")) return { label: "Passport Photo", fileName: name };
-  if (lower.includes("deed")) return { label: "Deed / Agreement", fileName: name };
-  if (lower.includes("certificate") || lower.includes("cert")) return { label: "Certificate", fileName: name };
+  // Keyword fallbacks for legacy files without separator
+  const lower = cleanName.toLowerCase();
+  if (lower.includes("moa") || lower.includes("trust deed")) return { label: "Trust deed / MoA", fileName: cleanName };
+  if (lower.includes("aoa")) return { label: "AoA", fileName: cleanName };
+  if (lower.includes("pan")) return { label: "PAN Card", fileName: cleanName };
+  if (lower.includes("aadhaar") || lower.includes("adhar")) return { label: "Aadhaar Card", fileName: cleanName };
+  if (lower.includes("passport")) return { label: "Passport", fileName: cleanName };
+  if (lower.includes("voter")) return { label: "Voter ID", fileName: cleanName };
+  if (lower.includes("bank") || lower.includes("statement")) return { label: "Bank Statement", fileName: cleanName };
+  if (lower.includes("utility") || lower.includes("bill") || lower.includes("electricity")) return { label: "Utility Bill / Address Proof", fileName: cleanName };
+  if (lower.includes("photo")) return { label: "Passport Photo", fileName: cleanName };
+  if (lower.includes("deed")) return { label: "Deed / Agreement", fileName: cleanName };
+  if (lower.includes("certificate") || lower.includes("cert")) return { label: "Certificate", fileName: cleanName };
 
-  return { label: "Uploaded Document", fileName: name };
+  return { label: "Uploaded Document", fileName: cleanName };
 }
 
 function formatDateTime(dateStr: string | Date) {
