@@ -28,6 +28,8 @@ export type CompanyFeeContext = {
   paidCapital: number;
   /** Number of members — sent only on the guarantee (no-share-capital) path. */
   members?: number;
+  /** Number of directors — adds DIN (₹500 each) + DSC (₹1,500 each) lines. */
+  directors?: number;
   state: string;
 };
 

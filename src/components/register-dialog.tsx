@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { X, UploadCloud, FileText, CheckCircle2, Trash2, ShieldCheck, Send, Loader2, LogIn, Download, Users, Coins, FolderLock } from "lucide-react";
+import { X, UploadCloud, FileText, CheckCircle2, ShieldCheck, Send, Loader2, LogIn, Download, Users, Coins, FolderLock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { FeeContext } from "@/lib/fees-api";
 
@@ -8,6 +8,9 @@ type UploadedFile = { file: File; name: string; size: number };
 type VaultDoc = { id: number; name: string; sizeBytes?: number | null };
 
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+
+/** Bucket for files uploaded outside the required-documents checklist. */
+const OTHER_DOCS_KEY = "Additional documents";
 
 export function RegisterDialog({
   open,
@@ -57,7 +60,9 @@ export function RegisterDialog({
   const [notes, setNotes] = useState("");
   const [partners, setPartners] = useState("");
   const [totalCapital, setTotalCapital] = useState(capital ? String(capital) : "");
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  // Files chosen per required document, keyed by the document label. Each named
+  // document has its own upload control; `OTHER_DOCS_KEY` holds extras.
+  const [docFiles, setDocFiles] = useState<Record<string, UploadedFile[]>>({});
   // Whether the device uploads should also be saved to the reusable vault.
   const [saveToVault, setSaveToVault] = useState(true);
   // The user's existing vault documents, and which ones they've picked to attach.
@@ -68,7 +73,6 @@ export function RegisterDialog({
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refNo, setRefNo] = useState<string>("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Prefill from profile. Anything the wizard already collected wins, so the
   // account address never clobbers what the customer just typed.
@@ -100,10 +104,20 @@ export function RegisterDialog({
 
   if (!open) return null;
 
-  const addFiles = (list: FileList | null) => {
-    if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list).map((f) => ({ file: f, name: f.name, size: f.size }))]);
+  const addFilesToDoc = (label: string, list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const added = Array.from(list).map((f) => ({ file: f, name: f.name, size: f.size }));
+    setDocFiles((prev) => ({ ...prev, [label]: [...(prev[label] ?? []), ...added] }));
   };
+  const removeDocFile = (label: string, index: number) => {
+    setDocFiles((prev) => {
+      const nextArr = (prev[label] ?? []).filter((_, i) => i !== index);
+      const next = { ...prev, [label]: nextArr };
+      if (nextArr.length === 0) delete next[label];
+      return next;
+    });
+  };
+  const hasFiles = Object.values(docFiles).some((a) => a.length > 0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,8 +128,19 @@ export function RegisterDialog({
       return;
     }
 
+    // Flatten the per-document selections into files to upload, tagging each with
+    // its document label in the filename so the advisor sees which requirement it
+    // satisfies (extras under OTHER_DOCS_KEY keep their original name).
+    const uploads = Object.entries(docFiles).flatMap(([label, arr]) =>
+      arr.map((f) =>
+        label === OTHER_DOCS_KEY
+          ? f.file
+          : new File([f.file], `${label} — ${f.file.name}`, { type: f.file.type }),
+      ),
+    );
+
     // Require at least one document — either a fresh upload or a vault selection.
-    if (files.length === 0 && selectedVaultIds.length === 0) {
+    if (uploads.length === 0 && selectedVaultIds.length === 0) {
       setError("Please upload at least one document to submit your application.");
       return;
     }
@@ -165,10 +190,10 @@ export function RegisterDialog({
       // Device uploads. When "save to vault" is on, send them to the vault (so
       // they're reusable) and link them to this request; otherwise attach them to
       // the request only.
-      if (files.length > 0) {
+      if (uploads.length > 0) {
         if (saveToVault) {
           const vaultForm = new FormData();
-          files.forEach((f) => vaultForm.append("file", f.file));
+          uploads.forEach((f) => vaultForm.append("file", f));
           const vaultRes = await fetch(`${BACKEND_URL}/api/requests/vault`, {
             method: "POST",
             credentials: "include",
@@ -187,9 +212,9 @@ export function RegisterDialog({
             body: JSON.stringify({ docIds: newIds }),
           });
         } else {
-          for (const f of files) {
+          for (const f of uploads) {
             const upload = new FormData();
-            upload.append("file", f.file);
+            upload.append("file", f);
             const docRes = await fetch(`${BACKEND_URL}/api/requests/${req.id}/documents`, {
               method: "POST",
               credentials: "include",
@@ -266,7 +291,7 @@ export function RegisterDialog({
     setSubmitted(false);
     setName(""); setBusiness(""); setEmail(""); setPhone(""); setNotes("");
     setPartners(""); setTotalCapital(capital ? String(capital) : "");
-    setFiles([]); setSelectedVaultIds([]); setSaveToVault(true); setError(null);
+    setDocFiles({}); setSelectedVaultIds([]); setSaveToVault(true); setError(null);
     onClose();
   };
 
@@ -382,62 +407,86 @@ export function RegisterDialog({
             </FieldLabel>
 
             <div className="rounded-xl border border-border bg-panel p-4">
-              <div className="label-eyebrow text-primary mb-2">Documents required</div>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5">
-                {documents.map((d) => (
-                  <li key={d} className="text-[12px] flex items-start gap-2">
-                    <span className="mt-1 size-1.5 rounded-full bg-primary/60 shrink-0" />
-                    <span className="text-foreground/80">{d}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="flex items-center justify-between mb-3">
+                <div className="label-eyebrow text-primary">Required documents — upload each</div>
+                <span className="text-[10px] mono text-muted-foreground">PDF · JPG · PNG · ≤ 10 MB</span>
+              </div>
+
+              <div className="space-y-2">
+                {documents.map((doc) => {
+                  const dfiles = docFiles[doc] ?? [];
+                  const done = dfiles.length > 0;
+                  return (
+                    <div key={doc} className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3.5 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium leading-snug">{doc}</div>
+                        {done && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {dfiles.map((f, i) => (
+                              <span key={i} className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-muted rounded px-1.5 py-0.5">
+                                <FileText className="size-3 text-primary" />
+                                <span className="max-w-[160px] truncate">{f.name}</span>
+                                <button type="button" onClick={() => removeDocFile(doc, i)} className="hover:text-destructive"><X className="size-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <span className={"text-[10px] mono uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 " + (done ? "bg-success/15 text-success" : "bg-warning/15 text-warning")}>
+                        {done ? "Uploaded" : "Pending"}
+                      </span>
+                      <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold cursor-pointer hover:bg-primary/20 transition-colors">
+                        <UploadCloud className="size-3.5" /> {done ? "Add" : "Upload"}
+                        <input type="file" multiple hidden onChange={(e) => { addFilesToDoc(doc, e.target.files); e.currentTarget.value = ""; }} />
+                      </label>
+                    </div>
+                  );
+                })}
+                {documents.length === 0 && (
+                  <div className="text-[12px] text-muted-foreground py-1">No specific checklist for this service — use "Additional documents" below.</div>
+                )}
+
+                {/* Anything outside the checklist. */}
+                <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-surface px-3.5 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium">Additional documents <span className="text-muted-foreground font-normal">(optional)</span></div>
+                    {(docFiles[OTHER_DOCS_KEY] ?? []).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {(docFiles[OTHER_DOCS_KEY] ?? []).map((f, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-muted rounded px-1.5 py-0.5">
+                            <FileText className="size-3 text-primary" />
+                            <span className="max-w-[160px] truncate">{f.name}</span>
+                            <button type="button" onClick={() => removeDocFile(OTHER_DOCS_KEY, i)} className="hover:text-destructive"><X className="size-3" /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold cursor-pointer hover:border-primary/50 transition-colors">
+                    <UploadCloud className="size-3.5 text-primary" /> Upload
+                    <input type="file" multiple hidden onChange={(e) => { addFilesToDoc(OTHER_DOCS_KEY, e.target.files); e.currentTarget.value = ""; }} />
+                  </label>
+                </div>
+              </div>
             </div>
 
-            <div className="label-eyebrow text-primary">Upload from device</div>
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
-              onClick={() => inputRef.current?.click()}
-              className="-mt-2 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 cursor-pointer transition-colors p-6 text-center"
-            >
-              <UploadCloud className="size-8 text-primary mx-auto mb-2" />
-              <div className="text-sm font-medium">Drop files here or click to upload</div>
-              <div className="text-[11px] text-muted-foreground mt-1">PDF, JPG, PNG · up to 10 MB each</div>
-              <input ref={inputRef} type="file" multiple hidden onChange={(e) => addFiles(e.target.files)} />
-            </div>
-
-            {files.length > 0 && (
-              <>
-                <ul className="space-y-1.5">
-                  {files.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs rounded-md border border-border bg-surface px-3 py-2">
-                      <FileText className="size-3.5 text-primary" />
-                      <span className="flex-1 truncate">{f.name}</span>
-                      <span className="mono text-[10px] text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
-                      <button type="button" onClick={() => setFiles(files.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Whether to keep the freshly uploaded files in the reusable vault. */}
-                <label className="flex items-start gap-2.5 rounded-lg border border-border bg-panel/40 px-3.5 py-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={saveToVault}
-                    onChange={(e) => setSaveToVault(e.target.checked)}
-                    className="size-4 mt-0.5 accent-[var(--brand)]"
-                  />
-                  <span className="text-[12px] text-foreground/80 leading-snug">
-                    <span className="font-semibold flex items-center gap-1.5">
-                      <FolderLock className="size-3.5 text-primary" /> Save these files to my Document Vault
-                    </span>
-                    Store them once and reuse across future applications. Uncheck to attach them to
-                    this application only.
+            {hasFiles && (
+              /* Whether to keep the freshly uploaded files in the reusable vault. */
+              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-panel/40 px-3.5 py-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={saveToVault}
+                  onChange={(e) => setSaveToVault(e.target.checked)}
+                  className="size-4 mt-0.5 accent-[var(--brand)]"
+                />
+                <span className="text-[12px] text-foreground/80 leading-snug">
+                  <span className="font-semibold flex items-center gap-1.5">
+                    <FolderLock className="size-3.5 text-primary" /> Save these files to my Document Vault
                   </span>
-                </label>
-              </>
+                  Store them once and reuse across future applications. Uncheck to attach them to
+                  this application only.
+                </span>
+              </label>
             )}
 
             {/* Attach from the existing Document Vault */}

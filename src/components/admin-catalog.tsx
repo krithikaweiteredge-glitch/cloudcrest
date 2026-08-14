@@ -14,7 +14,10 @@ const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 // For these, company-type incorporation rules apply, and the multi-step form handles fee/tab rendering.
 const WIZARD_SLUGS = new Set(["company", "llp"]);
 
-// Slugs that act as category launchers with sub-type variants in the catalog list.
+// Launchers whose variants carry company-type incorporation rules (used when
+// seeding a variant's rule defaults in the service dialog). Grouping/nesting in
+// the tree is generic (see organizeServicesWithVariants); this list only scopes
+// the wizard-rule seeding to the incorporation-style launchers.
 const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
 
 /**
@@ -40,7 +43,6 @@ function classifyService(svc: any, siblings: any[]) {
 
 function organizeServicesWithVariants(list: any[]) {
   if (!Array.isArray(list)) return [];
-  const launcherSlugs = [...LAUNCHER_SLUGS];
   const variantsByLauncher: Record<string, any[]> = {};
   const variantIdSet = new Set<number>();
 
@@ -49,9 +51,15 @@ function organizeServicesWithVariants(list: any[]) {
 
   for (const item of list) {
     if (!item.slug) continue;
-    const parentSlug = launcherSlugs.find((l) => item.slug.startsWith(l + "-"));
-    if (parentSlug) {
-      (variantsByLauncher[parentSlug] ??= []).push(item);
+    // Any service whose slug is a prefix of this one (`society` for
+    // `society-macs`, `company` for `company-pvt`, …) owns it as a type. Generic
+    // prefix match — no hardcoded launcher list — so it matches classifyService
+    // and nests every launcher (company/gst/partnership/society/…) the same way.
+    const parent = list.find(
+      (o) => o.id !== item.id && o.slug && item.slug.startsWith(o.slug + "-"),
+    );
+    if (parent) {
+      (variantsByLauncher[parent.slug] ??= []).push(item);
       variantIdSet.add(item.id);
     } else if (dept && item.id !== dept.id) {
       (variantsByLauncher[dept.slug] ??= []).push(item);

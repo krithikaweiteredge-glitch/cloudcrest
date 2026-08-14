@@ -2,6 +2,7 @@ import { CompanyWizard } from "@/components/company-wizard";
 import { LlpWizard } from "@/components/llp-wizard";
 import { GstWizard } from "@/components/gst-wizard";
 import { PartnershipWizard } from "@/components/partnership-wizard";
+import { SocietyWizard } from "@/components/society-wizard";
 import { DepartmentPage } from "@/components/department-page";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { DEPARTMENT_SLUGS } from "@/lib/modules";
@@ -16,6 +17,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "llp") return <LlpWizard initialName={initialName} />;
   if (slug === "gst") return <GstWizard initialName={initialName} />;
   if (slug === "partnership") return <PartnershipWizard initialName={initialName} />;
+  if (slug === "society") return <SocietyWizard />;
   if (DEPARTMENT_SLUGS.has(slug)) return <DepartmentPage slug={slug} />;
   return <ServiceDetailPage slug={slug} />;
 }

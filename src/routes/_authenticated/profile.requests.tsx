@@ -16,6 +16,48 @@ export const Route = createFileRoute("/_authenticated/profile/requests")({
   component: RequestsPage,
 });
 
+function parseDocLabel(name: string): { label: string; fileName: string } {
+  if (!name) return { label: "Uploaded Document", fileName: "document" };
+
+  if (name.includes(" — ")) {
+    const parts = name.split(" — ");
+    return { label: parts[0].trim(), fileName: parts.slice(1).join(" — ").trim() };
+  }
+  if (name.includes(" - ")) {
+    const parts = name.split(" - ");
+    const firstLower = parts[0].toLowerCase();
+    if (
+      parts.length > 1 &&
+      (firstLower.includes("pan") ||
+        firstLower.includes("aadhaar") ||
+        firstLower.includes("card") ||
+        firstLower.includes("proof") ||
+        firstLower.includes("statement") ||
+        firstLower.includes("photo") ||
+        firstLower.includes("certificate") ||
+        firstLower.includes("deed") ||
+        firstLower.includes("licence") ||
+        firstLower.includes("license") ||
+        firstLower.includes("utility"))
+    ) {
+      return { label: parts[0].trim(), fileName: parts.slice(1).join(" - ").trim() };
+    }
+  }
+
+  const lower = name.toLowerCase();
+  if (lower.includes("pan")) return { label: "PAN Card", fileName: name };
+  if (lower.includes("aadhaar") || lower.includes("adhar")) return { label: "Aadhaar Card", fileName: name };
+  if (lower.includes("passport")) return { label: "Passport", fileName: name };
+  if (lower.includes("voter")) return { label: "Voter ID", fileName: name };
+  if (lower.includes("bank") || lower.includes("statement")) return { label: "Bank Statement", fileName: name };
+  if (lower.includes("utility") || lower.includes("bill") || lower.includes("electricity")) return { label: "Utility Bill / Address Proof", fileName: name };
+  if (lower.includes("photo")) return { label: "Passport Photo", fileName: name };
+  if (lower.includes("deed")) return { label: "Deed / Agreement", fileName: name };
+  if (lower.includes("certificate") || lower.includes("cert")) return { label: "Certificate", fileName: name };
+
+  return { label: "Uploaded Document", fileName: name };
+}
+
 function formatDateTime(dateStr: string | Date) {
   if (!dateStr) return "—";
   let d: Date;
@@ -467,30 +509,49 @@ function RegistrationDetailDialog({
             )}
 
             {request.documents && request.documents.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-2">
-                {request.documents.map((doc: any) => (
-                  <li key={doc.id} className="flex items-center justify-between gap-3 text-xs rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-colors shadow-sm">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="size-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
-                        <FileText className="size-4.5" />
+              <ul className="grid grid-cols-1 gap-2.5">
+                {request.documents.map((doc: any) => {
+                  const parsed = parseDocLabel(doc.name);
+                  return (
+                    <li key={doc.id} className="rounded-xl border border-border/70 bg-card p-3.5 shadow-sm space-y-2.5 hover:border-primary/40 transition-colors">
+                      {/* Document Category / Name Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider min-w-0 truncate">
+                          <FileText className="size-3 shrink-0" />
+                          {parsed.label}
+                        </span>
+                        <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          Submitted by user
+                        </span>
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-foreground truncate">{doc.name}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {doc.sizeBytes ? `${(doc.sizeBytes / 1024).toFixed(0)} KB · ` : ""}
-                          {formatDateTime(doc.createdAt)}
+
+                      {/* File Details Below Document Name */}
+                      <div className="flex items-center justify-between gap-3 pt-0.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
+                            <FileText className="size-4 text-muted-foreground" />
+                          </div>
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="font-semibold text-xs text-foreground truncate">{parsed.fileName}</div>
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                              {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
+                              {doc.sizeBytes ? <span>·</span> : null}
+                              <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                            </div>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => openDoc(doc.storagePath)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground shrink-0"
+                        >
+                          <Download className="size-3" /> View
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => openDoc(doc.storagePath)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground shrink-0"
-                    >
-                      <Download className="size-3" /> View
-                    </button>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <div className="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
