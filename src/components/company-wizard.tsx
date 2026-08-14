@@ -39,7 +39,6 @@ const COMPANY_TYPES: CompanyType[] = [
   { value: "Public Limited Company", short: "Public Limited", icon: TrendingUp, desc: "Raise funds publicly. Min 3 directors, 7 shareholders.", slug: "company-public", entity: "public", entityClass: "public", suffix: "Limited" },
   { value: "One Person Company (OPC)", short: "OPC", icon: User, desc: "Solo founder with limited liability. Indian resident only.", slug: "company-opc", entity: "opc", suffix: "(OPC) Private Limited" },
   { value: "Section 8 Company (Non-Profit)", short: "Section 8", icon: Sprout, desc: "Charitable/educational. No dividends to members.", slug: "company-sec8", entity: "sec8", suffix: "Foundation / Association / Council / Sangh / Federation" },
-  { value: "Foreign Company", short: "Foreign", icon: Globe, desc: "Foreign entity establishing a place of business in India.", slug: "company", entity: "foreign", suffix: "Limited" },
   { value: "Producer Company", short: "Producer", icon: Wheat, desc: "For farmers & primary producers. Min 10 members or 2 institutions.", slug: "company-producer", entity: "producer", suffix: "Producer Company Limited" },
   { value: "Nidhi Company", short: "Nidhi", icon: Landmark, desc: "Mutual benefit — borrowing and lending among members only.", slug: "company-nidhi", entity: "nidhi", suffix: "Nidhi Limited" },
   { value: "Company Limited by Guarantee", short: "By Guarantee", icon: Handshake, desc: "No share capital. Liability limited by guarantee amount.", slug: "company-guarantee", entity: "pvt", liability: "guarantee", suffix: "Private Limited / Limited" },
@@ -698,7 +697,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
               <div className="text-[11px] text-muted-foreground">Entity Type</div>
               <div className="text-sm font-semibold mt-0.5">{typeValue || "—"}</div>
               <div className="text-[10px] mono text-primary mt-2">
-                Form · {selectedType?.value === "Foreign Company" ? "Form FC-1" : "SPICe+ (INC-32) · AGILE-PRO-S"}
+                Form · SPICe+ (INC-32) · AGILE-PRO-S
               </div>
             </div>
 
