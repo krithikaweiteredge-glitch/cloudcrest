@@ -19,38 +19,42 @@ export const Route = createFileRoute("/_authenticated/profile/requests")({
 function parseDocLabel(name: string): { label: string; fileName: string } {
   if (!name) return { label: "Uploaded Document", fileName: "document" };
 
-  // Sanitize non-ASCII alien characters (like 'â   ', 'â€”', 'â', 'Ã') into clean ' — '
-  const sanitized = name.replace(/[^\x00-\x7F]+/g, " — ").replace(/\s*—\s*/g, " — ").trim();
+  // 1. Try matching [Prefix Label] + [Separator / Alien Artifacts] + [Original Filename]
+  // Matches separators: __FILE__, ::, —, –, --, or any non-ASCII sequence starting with 'â' (e.g. â   , â€”, â)
+  const regex = /^(.+?)\s*(?:__FILE__|::|—|–|--|â[^\s]*)\s*(.+)$/i;
+  const match = name.match(regex);
 
   let rawLabel = "";
-  let cleanFileName = name.replace(/[^\x00-\x7F]+/g, "").trim();
+  let rawFileName = name;
 
-  if (sanitized.includes(" — ")) {
-    const parts = sanitized.split(" — ").filter(Boolean);
-    if (parts.length >= 2) {
-      rawLabel = parts[0].trim();
-      cleanFileName = parts.slice(1).join(" — ").trim();
-    }
-  } else if (sanitized.includes(" :: ")) {
-    const parts = sanitized.split(" :: ").filter(Boolean);
-    if (parts.length >= 2) {
-      rawLabel = parts[0].trim();
-      cleanFileName = parts.slice(1).join(" :: ").trim();
-    }
-  } else if (sanitized.includes(" - ")) {
-    const parts = sanitized.split(" - ").filter(Boolean);
-    if (parts.length >= 2) {
-      rawLabel = parts[0].trim();
-      cleanFileName = parts.slice(1).join(" - ").trim();
+  if (match && match[1] && match[2]) {
+    rawLabel = match[1].trim();
+    rawFileName = match[2].trim();
+  } else {
+    // Check if name starts with a known document prefix
+    const lower = name.toLowerCase();
+    if (lower.startsWith("moa")) {
+      rawLabel = "Trust Deed / MoA";
+      rawFileName = name.replace(/^moa\s*/i, "").trim();
+    } else if (lower.startsWith("members")) {
+      rawLabel = "Members List";
+      rawFileName = name.replace(/^members\s*/i, "").trim();
+    } else if (lower.startsWith("pan")) {
+      rawLabel = "PAN Card";
+      rawFileName = name.replace(/^pan\s*(?:card)?\s*/i, "").trim();
+    } else if (lower.startsWith("aadhaar") || lower.startsWith("adhar")) {
+      rawLabel = "Aadhaar Card";
+      rawFileName = name.replace(/^(?:aadhaar|adhar)\s*(?:card)?\s*/i, "").trim();
     }
   }
 
-  if (!rawLabel) {
-    rawLabel = cleanFileName;
-  }
+  // Clean non-ASCII garbage from rawFileName
+  let fileName = rawFileName.replace(/[^\x00-\x7F]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!fileName) fileName = name.replace(/[^\x00-\x7F]+/g, " ").trim() || "Uploaded File";
 
-  const lowerLabel = rawLabel.toLowerCase();
-  let label = rawLabel;
+  // 2. Map rawLabel to clean customer-facing requirement heading
+  let label = rawLabel || "Uploaded Document";
+  const lowerLabel = label.toLowerCase();
 
   if (lowerLabel === "moa" || lowerLabel.includes("trust deed") || lowerLabel.includes("moa")) {
     label = "Trust Deed / MoA";
@@ -76,11 +80,11 @@ function parseDocLabel(name: string): { label: string; fileName: string } {
     label = "Trust Deed / Agreement";
   } else if (lowerLabel.includes("certificate") || lowerLabel.includes("cert")) {
     label = "Certificate";
-  } else {
-    label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+  } else if (label.length > 0) {
+    label = label.charAt(0).toUpperCase() + label.slice(1);
   }
 
-  return { label, fileName: cleanFileName };
+  return { label, fileName };
 }
 
 function formatDateTime(dateStr: string | Date) {
