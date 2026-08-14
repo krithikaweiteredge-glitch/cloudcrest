@@ -35,7 +35,7 @@ const TIMELINE: Record<string, { days: string; docs: number }> = {
 
 const timelineFor = (slug: string) => TIMELINE[slug] ?? { days: "7–14 Days", docs: 6 };
 
-const SUFFIXES = ["Private Limited", "LLP", "Foundation", "Producer Company"];
+const SUFFIXES = ["Private Limited", "LLP", "Limited"];
 
 // Short, customer-facing one-liners per service. Keyed by slug; anything not
 // listed falls back to a sensible template so new catalog services still read
