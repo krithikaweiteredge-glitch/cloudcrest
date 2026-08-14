@@ -378,311 +378,361 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         </div>
       </section>
 
-      <div className="max-w-3xl mx-auto px-6 md:px-10 py-8 animate-in-up">
-        <div className="rounded-xl border border-border bg-surface shadow-card p-4">
-          <Stepper steps={STEPS} current={step} onGo={goTo} />
-        </div>
+      {/* Main Flex Body */}
+      <div className="flex">
+        {/* Left/Center Content */}
+        <div className="flex-1 min-w-0">
+          <div className="max-w-3xl mx-auto px-6 md:px-10 py-8 animate-in-up">
+            <div className="rounded-xl border border-border bg-surface shadow-card p-4">
+              <Stepper steps={STEPS} current={step} onGo={goTo} />
+            </div>
 
-        {stepError && (
-          <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 flex items-center gap-2.5 text-xs text-destructive">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span className="font-semibold">{stepError}</span>
-          </div>
-        )}
-
-        <div key={step} className="mt-8 animate-in-up">
-          {/* STEP 1 — TYPE */}
-          {stepKey === "type" && (
-            <Section title="Select Entity & Company Type" desc="All registrations under Companies Act, 2013, filed through the MCA21 portal.">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {COMPANY_TYPES.map((t) => {
-                  const Icon = t.icon;
-                  const active = typeValue === t.value;
-                  return (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => { setTypeValue(t.value); setErrors({}); setStepError(null); }}
-                      className={"text-left p-4 rounded-xl border transition-all hover-lift ring-focus " + (active ? "border-primary ring-2 ring-primary/25 bg-primary/[0.05]" : "border-border bg-surface hover:border-primary/50")}
-                    >
-                      <span className={"inline-grid place-items-center size-9 rounded-lg mb-2.5 " + (active ? "gradient-brand text-white" : "bg-primary/10 text-primary")}>
-                        <Icon className="size-4.5" />
-                      </span>
-                      <div className="text-sm font-semibold leading-tight">{t.value}</div>
-                      <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{t.desc}</div>
-                    </button>
-                  );
-                })}
+            {stepError && (
+              <div className="mt-6 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 flex items-center gap-2.5 text-xs text-destructive">
+                <AlertTriangle className="size-4 shrink-0" />
+                <span className="font-semibold">{stepError}</span>
               </div>
-              {errors.type && <ErrText>{errors.type}</ErrText>}
-            </Section>
-          )}
+            )}
 
-          {/* STEP 2 — NAME */}
-          {stepKey === "name" && (
-            <Section title="Company Name Selection" desc="Propose up to 3 preferences. Each is filed with the legal suffix for your company type, and must be unique.">
-              <InfoBox>Names with "National", "India", "Bharat", "Bank", "Insurance" or "Government" require Central Government approval.</InfoBox>
-              <Field label="Legal Suffix">
-                {hasSuffixChoice ? (
-                  <select value={suffixChoice} onChange={(e) => setSuffixChoice(e.target.value)} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
-                    {suffixOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                ) : (
-                  <div className="text-sm mono px-3 py-2.5 rounded-lg bg-muted/50 border border-border">{effectiveSuffix || "— (no standard suffix for this type)"}</div>
-                )}
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {selectedType?.short ?? "This type"} names are filed ending in this legal suffix.
-                </p>
-              </Field>
-              {[0, 1, 2].map((i) => {
-                const st = nameStatus[i];
-                return (
-                  <Field key={i} label={i === 0 ? "Name Preference 1 *" : `Name Preference ${i + 1}`} error={i === 0 ? errors.name0 : undefined}>
-                    <div className="flex gap-2">
-                      <Input
-                        value={names[i]}
-                        onChange={(v) => { setNames((n) => n.map((x, j) => (j === i ? v : x))); setNameStatus((s) => s.map((x, j) => (j === i ? null : x))); if (i === 0) setErrors((e) => ({ ...e, name0: "" })); }}
-                        placeholder={i === 0 ? "e.g. Cloudcrest Solutions Private Limited" : "Alternate preference…"}
-                        error={i === 0 ? errors.name0 : undefined}
-                      />
-                      <button type="button" onClick={() => checkName(i)} className="shrink-0 px-3.5 rounded-lg bg-navy text-navy-foreground text-xs font-bold hover:opacity-90 transition-opacity">
-                        Check
-                      </button>
-                    </div>
-                    {names[i].trim() && effectiveSuffix && (
-                      <div className="mt-1.5 text-[11px] text-muted-foreground">Filed as: <span className="text-foreground font-medium">{withSuffix(names[i])}</span></div>
+            <div key={step} className="mt-8 animate-in-up">
+              {/* STEP 1 — TYPE */}
+              {stepKey === "type" && (
+                <Section title="Select Entity & Company Type" desc="All registrations under Companies Act, 2013, filed through the MCA21 portal.">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {COMPANY_TYPES.map((t) => {
+                      const Icon = t.icon;
+                      const active = typeValue === t.value;
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => { setTypeValue(t.value); setErrors({}); setStepError(null); }}
+                          className={"text-left p-4 rounded-xl border transition-all hover-lift ring-focus " + (active ? "border-primary ring-2 ring-primary/25 bg-primary/[0.05]" : "border-border bg-surface hover:border-primary/50")}
+                        >
+                          <span className={"inline-grid place-items-center size-9 rounded-lg mb-2.5 " + (active ? "gradient-brand text-white" : "bg-primary/10 text-primary")}>
+                            <Icon className="size-4.5" />
+                          </span>
+                          <div className="text-sm font-semibold leading-tight">{t.value}</div>
+                          <div className="text-[11px] text-muted-foreground mt-1 leading-snug">{t.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {errors.type && <ErrText>{errors.type}</ErrText>}
+                </Section>
+              )}
+
+              {/* STEP 2 — NAME */}
+              {stepKey === "name" && (
+                <Section title="Company Name Selection" desc="Propose up to 3 preferences. Each is filed with the legal suffix for your company type, and must be unique.">
+                  <InfoBox>Names with "National", "India", "Bharat", "Bank", "Insurance" or "Government" require Central Government approval.</InfoBox>
+                  <Field label="Legal Suffix">
+                    {hasSuffixChoice ? (
+                      <select value={suffixChoice} onChange={(e) => setSuffixChoice(e.target.value)} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
+                        {suffixOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ) : (
+                      <div className="text-sm mono px-3 py-2.5 rounded-lg bg-muted/50 border border-border">{effectiveSuffix || "— (no standard suffix for this type)"}</div>
                     )}
-                    {st?.state === "checking" && <div className="mt-2 text-[11px] text-muted-foreground flex items-center gap-1.5"><Loader2 className="size-3 animate-spin" /> Checking…</div>}
-                    {st?.state === "done" && (
-                      <div className={"mt-2 text-[11px] flex items-center gap-1.5 " + (st.ok ? "text-success" : "text-destructive")}>
-                        {st.ok ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />} {st.msg}
-                      </div>
-                    )}
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {selectedType?.short ?? "This type"} names are filed ending in this legal suffix.
+                    </p>
                   </Field>
-                );
-              })}
-            </Section>
-          )}
-
-          {/* STEP 3 — DETAILS */}
-          {stepKey === "details" && (
-            <Section title="Company Details" desc="Objects, directors, shareholders, DINs and registered office.">
-              <Field label="Main Objects / Nature of Business *" error={errors.mainObjects}>
-                <Textarea value={mainObjects} onChange={(v) => { setMainObjects(v); setErrors((e) => ({ ...e, mainObjects: "" })); }} placeholder="e.g. Software development, IT consulting, digital marketing and related technology services…" error={errors.mainObjects} />
-              </Field>
-              <Field label="Industry Categories">
-                <div className="flex flex-wrap gap-2">
-                  {INDUSTRY_OPTIONS.map((opt) => {
-                    const on = industries.includes(opt);
+                  {[0, 1, 2].map((i) => {
+                    const st = nameStatus[i];
                     return (
-                      <button key={opt} type="button" onClick={() => setIndustries((a) => (on ? a.filter((x) => x !== opt) : [...a, opt]))}
-                        className={"px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all " + (on ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:border-primary/40")}>
-                        {on ? "✓ " : ""}{opt}
-                      </button>
+                      <Field key={i} label={i === 0 ? "Name Preference 1 *" : `Name Preference ${i + 1}`} error={i === 0 ? errors.name0 : undefined}>
+                        <div className="flex gap-2">
+                          <Input
+                            value={names[i]}
+                            onChange={(v) => { setNames((n) => n.map((x, j) => (j === i ? v : x))); setNameStatus((s) => s.map((x, j) => (j === i ? null : x))); if (i === 0) setErrors((e) => ({ ...e, name0: "" })); }}
+                            placeholder={i === 0 ? "e.g. Cloudcrest Solutions Private Limited" : "Alternate preference…"}
+                            error={i === 0 ? errors.name0 : undefined}
+                          />
+                          <button type="button" onClick={() => checkName(i)} className="shrink-0 px-3.5 rounded-lg bg-navy text-navy-foreground text-xs font-bold hover:opacity-90 transition-opacity">
+                            Check
+                          </button>
+                        </div>
+                        {names[i].trim() && effectiveSuffix && (
+                          <div className="mt-1.5 text-[11px] text-muted-foreground">Filed as: <span className="text-foreground font-medium">{withSuffix(names[i])}</span></div>
+                        )}
+                        {st?.state === "checking" && <div className="mt-2 text-[11px] text-muted-foreground flex items-center gap-1.5"><Loader2 className="size-3 animate-spin" /> Checking…</div>}
+                        {st?.state === "done" && (
+                          <div className={"mt-2 text-[11px] flex items-center gap-1.5 " + (st.ok ? "text-success" : "text-destructive")}>
+                            {st.ok ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />} {st.msg}
+                          </div>
+                        )}
+                      </Field>
                     );
                   })}
-                </div>
-              </Field>
-              <Divider />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Number of Directors *" error={errors.numDir}>
-                  <NumberInput value={numDir} onChange={(v) => { setNumDir(v); setErrors((e) => ({ ...e, numDir: "" })); }} min={1} max={15} placeholder="e.g. 2" error={errors.numDir} />
-                </Field>
-                <Field label="Number of Shareholders *" error={errors.numShar}>
-                  <NumberInput value={numShar} onChange={(v) => { setNumShar(v); setErrors((e) => ({ ...e, numShar: "" })); }} min={1} placeholder="e.g. 2" error={errors.numShar} />
-                </Field>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-panel/40 mt-1">
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium text-foreground">Are all Directors also Shareholders?</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">
-                    {sameDirShar ? "Yes — every director holds shares in the company." : "No — some shareholders are not directors."}
-                  </div>
-                </div>
-                <span className={"text-[11px] font-bold mono uppercase tracking-wider shrink-0 " + (sameDirShar ? "text-success" : "text-muted-foreground")}>
-                  {sameDirShar ? "Yes" : "No"}
-                </span>
-                <Toggle checked={sameDirShar} onChange={setSameDirShar} label="Are all Directors also Shareholders" />
-              </div>
-              {!sameDirShar && (
-                <Field label="Additional Shareholders (non-directors)">
-                  <NumberInput value={extraShar} onChange={setExtraShar} min={0} placeholder="e.g. 1" />
-                </Field>
+                </Section>
               )}
-              <Divider />
-              <Field label="Existing DINs">
-                <div className="space-y-2">
-                  {dins.map((d, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input value={d.din} maxLength={8} onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, din: e.target.value } : x)))} placeholder="DIN (8 digits)" className="w-36 bg-input border border-border rounded-lg px-3 py-2.5 text-sm mono ring-focus" />
-                      <input value={d.name} onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} placeholder="Director Name" className="flex-1 bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
-                      {i === dins.length - 1 ? (
-                        <button type="button" onClick={() => setDins((a) => [...a, { din: "", name: "" }])} className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"><Plus className="size-4" /></button>
-                      ) : (
-                        <button type="button" onClick={() => setDins((a) => a.filter((_, j) => j !== i))} className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20"><Minus className="size-4" /></button>
+
+              {/* STEP 3 — DETAILS */}
+              {stepKey === "details" && (
+                <Section title="Company Details" desc="Objects, directors, shareholders, DINs and registered office.">
+                  <Field label="Main Objects / Nature of Business *" error={errors.mainObjects}>
+                    <Textarea value={mainObjects} onChange={(v) => { setMainObjects(v); setErrors((e) => ({ ...e, mainObjects: "" })); }} placeholder="e.g. Software development, IT consulting, digital marketing and related technology services…" error={errors.mainObjects} />
+                  </Field>
+                  <Field label="Industry Categories">
+                    <div className="flex flex-wrap gap-2">
+                      {INDUSTRY_OPTIONS.map((opt) => {
+                        const on = industries.includes(opt);
+                        return (
+                          <button key={opt} type="button" onClick={() => setIndustries((a) => (on ? a.filter((x) => x !== opt) : [...a, opt]))}
+                            className={"px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all " + (on ? "border-primary bg-primary/10 text-primary" : "border-border bg-surface text-muted-foreground hover:border-primary/40")}>
+                            {on ? "✓ " : ""}{opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                  <Divider />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Number of Directors *" error={errors.numDir}>
+                      <NumberInput value={numDir} onChange={(v) => { setNumDir(v); setErrors((e) => ({ ...e, numDir: "" })); }} min={1} max={15} placeholder="e.g. 2" error={errors.numDir} />
+                    </Field>
+                    <Field label="Number of Shareholders *" error={errors.numShar}>
+                      <NumberInput value={numShar} onChange={(v) => { setNumShar(v); setErrors((e) => ({ ...e, numShar: "" })); }} min={1} placeholder="e.g. 2" error={errors.numShar} />
+                    </Field>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-panel/40 mt-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-medium text-foreground">Are all Directors also Shareholders?</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {sameDirShar ? "Yes — every director holds shares in the company." : "No — some shareholders are not directors."}
+                      </div>
+                    </div>
+                    <span className={"text-[11px] font-bold mono uppercase tracking-wider shrink-0 " + (sameDirShar ? "text-success" : "text-muted-foreground")}>
+                      {sameDirShar ? "Yes" : "No"}
+                    </span>
+                    <Toggle checked={sameDirShar} onChange={setSameDirShar} label="Are all Directors also Shareholders" />
+                  </div>
+                  {!sameDirShar && (
+                    <Field label="Additional Shareholders (non-directors)">
+                      <NumberInput value={extraShar} onChange={setExtraShar} min={0} placeholder="e.g. 1" />
+                    </Field>
+                  )}
+                  <Divider />
+                  <Field label="Existing DINs">
+                    <div className="space-y-2">
+                      {dins.map((d, i) => (
+                        <div key={i} className="flex gap-2">
+                          <input value={d.din} maxLength={8} onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, din: e.target.value } : x)))} placeholder="DIN (8 digits)" className="w-36 bg-input border border-border rounded-lg px-3 py-2.5 text-sm mono ring-focus" />
+                          <input value={d.name} onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} placeholder="Director Name" className="flex-1 bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+                          {i === dins.length - 1 ? (
+                            <button type="button" onClick={() => setDins((a) => [...a, { din: "", name: "" }])} className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20"><Plus className="size-4" /></button>
+                          ) : (
+                            <button type="button" onClick={() => setDins((a) => a.filter((_, j) => j !== i))} className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20"><Minus className="size-4" /></button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Leave blank if DIN not yet allotted — new directors can apply via SPICe+.</p>
+                  </Field>
+                  <Divider />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Field label="State *" error={errors.state}>
+                      <select value={state} onChange={(e) => { setState(e.target.value); setErrors((x) => ({ ...x, state: "" })); }} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
+                        {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="City *" error={errors.city}>
+                      <Input value={city} onChange={(v) => { setCity(v); setErrors((e) => ({ ...e, city: "" })); }} placeholder="Hyderabad" error={errors.city} />
+                    </Field>
+                    <Field label="Pincode *" error={errors.pin}>
+                      <Input value={pin} onChange={(v) => { setPin(v); setErrors((e) => ({ ...e, pin: "" })); }} placeholder="500032" error={errors.pin} />
+                    </Field>
+                  </div>
+                  <Field label="Full Registered Office Address *" error={errors.addr}>
+                    <Textarea value={addr} onChange={(v) => { setAddr(v); setErrors((e) => ({ ...e, addr: "" })); }} placeholder="Plot No., Street, Area, Landmark…" rows={2} error={errors.addr} />
+                  </Field>
+                </Section>
+              )}
+
+              {/* STEP 4 — CAPITAL */}
+              {stepKey === "capital" && (
+                <Section title="Capital Structure" desc="Authorised and paid-up capital. This determines the ROC filing fee.">
+                  <InfoBox><strong>Authorised Capital</strong> = maximum the company can raise. <strong>Paid-up</strong> = amount actually received (cannot exceed authorised).</InfoBox>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Authorised Capital *" error={errors.authCap}>
+                      <select value={authCapSel} onChange={(e) => { setAuthCapSel(e.target.value); setErrors((x) => ({ ...x, authCap: "" })); }} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
+                        <option value="">Select amount</option>
+                        {AUTH_CAP_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        <option value="custom">Custom</option>
+                      </select>
+                      {authCapSel === "custom" && (
+                        <div className="mt-2"><NumberInput value={authCapCustom} onChange={setAuthCapCustom} min={100000} placeholder="Enter in ₹" /></div>
                       )}
+                    </Field>
+                    <Field label="Paid-up / Subscribed Capital *" error={errors.paidCap}>
+                      <NumberInput value={paidCap} onChange={(v) => { setPaidCap(v); setErrors((e) => ({ ...e, paidCap: "" })); }} min={0} placeholder="Enter in ₹" error={errors.paidCap} />
+                    </Field>
+                  </div>
+                  {authCap > 0 && (
+                    <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] to-accent/[0.04] p-4 flex flex-wrap gap-x-10 gap-y-3">
+                      <Stat label="Authorised Capital" value={inr(authCap)} tone="primary" />
+                      <Stat label="Paid-up Capital" value={paidCap ? inr(Number(paidCap)) : "—"} tone="primary" />
+                      <div className="self-center text-[11px] text-muted-foreground max-w-[16rem]">
+                        Government fees for this capital are itemised on the next step.
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              )}
+
+              {/* STEP 5 — FEES (from the backend engine) */}
+              {stepKey === "fees" && (
+                <Section title="Fee Estimation" desc="Itemised government + professional fees for your incorporation.">
+                  {!user ? (
+                    <div className="rounded-xl border border-border bg-panel/40 p-6 text-center">
+                      <Lock className="size-5 text-primary mx-auto mb-2" />
+                      <h3 className="text-sm font-semibold">Sign in to view fees</h3>
+                      <p className="text-[13px] text-muted-foreground mt-1.5 max-w-sm mx-auto">The fee breakdown includes professional fees and is available to signed-in customers.</p>
+                      <button onClick={() => setOpenSignIn(true)} className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand">
+                        Sign in to continue <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-warning/30 bg-warning/8 p-3.5 flex gap-2.5 text-xs text-foreground/80 mb-4">
+                        <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
+                        <span>Indicative estimate recomputed on submission. Government/stamp fees are budgeting approximations — always cross-check the live MCA SPICe+ calculator before filing.{!estimate.stateKnown ? " Stamp duty for the selected state isn't on file yet, so it's shown as ₹0." : ""}</span>
+                      </div>
+                      {estimate.loading ? (
+                        <div className="text-xs text-muted-foreground py-6 text-center">Loading current pricing…</div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-xl border border-border">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+                                <th className="text-left px-3.5 py-2.5 font-bold">Component</th>
+                                <th className="text-right px-3.5 py-2.5 font-bold">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {estimate.lines.map((l) => (
+                                <tr key={l.label} className="border-t border-border">
+                                  <td className="px-3.5 py-2.5 font-medium">{l.label}</td>
+                                  <td className="px-3.5 py-2.5 text-right font-semibold mono">{inr(l.amount)}</td>
+                                </tr>
+                              ))}
+                              <tr className="border-t border-border bg-primary/[0.06]">
+                                <td className="px-3.5 py-3 font-bold text-primary">Estimated Total</td>
+                                <td className="px-3.5 py-3 text-right font-bold text-primary mono text-base">{inr(estimate.total)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </Section>
+              )}
+
+              {/* STEP 6 — DOCS */}
+              {stepKey === "docs" && (
+                <Section title="Required Documents" desc={`Checklist tailored to ${selectedType?.short ?? "your company"}.`}>
+                  {docSections.map((sec) => (
+                    <div key={sec.title} className="mb-5 last:mb-0">
+                      <h3 className="text-sm font-semibold flex items-center gap-2 mb-2.5">
+                        <span className={"w-1 h-4 rounded " + (sec.tone === "success" ? "bg-success" : "bg-primary")} />
+                        {sec.title}
+                      </h3>
+                      <ul className="space-y-2">
+                        {sec.docs.map((d) => (
+                          <li key={d} className="flex items-start gap-2.5 text-[13px]">
+                            <CheckCircle2 className={"size-4 shrink-0 mt-0.5 " + (sec.tone === "success" ? "text-success" : "text-primary")} />
+                            <span className="text-foreground/85">{d}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   ))}
-                </div>
-                <p className="mt-1.5 text-[11px] text-muted-foreground">Leave blank if DIN not yet allotted — new directors can apply via SPICe+.</p>
-              </Field>
-              <Divider />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="State *" error={errors.state}>
-                  <select value={state} onChange={(e) => { setState(e.target.value); setErrors((x) => ({ ...x, state: "" })); }} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
-                    {INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-                <Field label="City *" error={errors.city}>
-                  <Input value={city} onChange={(v) => { setCity(v); setErrors((e) => ({ ...e, city: "" })); }} placeholder="Hyderabad" error={errors.city} />
-                </Field>
-                <Field label="Pincode *" error={errors.pin}>
-                  <Input value={pin} onChange={(v) => { setPin(v); setErrors((e) => ({ ...e, pin: "" })); }} placeholder="500032" error={errors.pin} />
-                </Field>
-              </div>
-              <Field label="Full Registered Office Address *" error={errors.addr}>
-                <Textarea value={addr} onChange={(v) => { setAddr(v); setErrors((e) => ({ ...e, addr: "" })); }} placeholder="Plot No., Street, Area, Landmark…" rows={2} error={errors.addr} />
-              </Field>
-            </Section>
-          )}
-
-          {/* STEP 4 — CAPITAL */}
-          {stepKey === "capital" && (
-            <Section title="Capital Structure" desc="Authorised and paid-up capital. This determines the ROC filing fee.">
-              <InfoBox><strong>Authorised Capital</strong> = maximum the company can raise. <strong>Paid-up</strong> = amount actually received (cannot exceed authorised).</InfoBox>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Authorised Capital *" error={errors.authCap}>
-                  <select value={authCapSel} onChange={(e) => { setAuthCapSel(e.target.value); setErrors((x) => ({ ...x, authCap: "" })); }} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus">
-                    <option value="">Select amount</option>
-                    {AUTH_CAP_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                    <option value="custom">Custom</option>
-                  </select>
-                  {authCapSel === "custom" && (
-                    <div className="mt-2"><NumberInput value={authCapCustom} onChange={setAuthCapCustom} min={100000} placeholder="Enter in ₹" /></div>
-                  )}
-                </Field>
-                <Field label="Paid-up / Subscribed Capital *" error={errors.paidCap}>
-                  <NumberInput value={paidCap} onChange={(v) => { setPaidCap(v); setErrors((e) => ({ ...e, paidCap: "" })); }} min={0} placeholder="Enter in ₹" error={errors.paidCap} />
-                </Field>
-              </div>
-              {authCap > 0 && (
-                <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] to-accent/[0.04] p-4 flex flex-wrap gap-x-10 gap-y-3">
-                  <Stat label="Authorised Capital" value={inr(authCap)} tone="primary" />
-                  <Stat label="Paid-up Capital" value={paidCap ? inr(Number(paidCap)) : "—"} tone="primary" />
-                  <div className="self-center text-[11px] text-muted-foreground max-w-[16rem]">
-                    Government fees for this capital are itemised on the next step.
-                  </div>
-                </div>
+                </Section>
               )}
-            </Section>
-          )}
 
-          {/* STEP 5 — FEES (from the backend engine) */}
-          {stepKey === "fees" && (
-            <Section title="Fee Estimation" desc="Itemised government + professional fees for your incorporation.">
-              {!user ? (
-                <div className="rounded-xl border border-border bg-panel/40 p-6 text-center">
-                  <Lock className="size-5 text-primary mx-auto mb-2" />
-                  <h3 className="text-sm font-semibold">Sign in to view fees</h3>
-                  <p className="text-[13px] text-muted-foreground mt-1.5 max-w-sm mx-auto">The fee breakdown includes professional fees and is available to signed-in customers.</p>
-                  <button onClick={() => setOpenSignIn(true)} className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand">
-                    Sign in to continue <ArrowRight className="size-4" />
-                  </button>
-                </div>
+              {/* STEP 7 — SUMMARY */}
+              {stepKey === "summary" && (
+                <Section title="Incorporation Summary" desc="Review your application, then submit to the Cloudcrest BM team.">
+                  <SummaryBlock title="Entity" rows={[["Company Type", typeValue || "—"]]} />
+                  <SummaryBlock title="Proposed Names" rows={names.filter((n) => n.trim()).map((n, i) => [`Preference ${i + 1}`, withSuffix(n)])} />
+                  <SummaryBlock title="Business Details" rows={[["Main Objects", mainObjects || "—"], ["Industries", industries.join(", ") || "—"]]} />
+                  <SummaryBlock title="Management" rows={[
+                    ["Directors", String(dirCount)],
+                    ["Shareholders", String(Number(numShar || 0))],
+                    ["Directors = Shareholders", sameDirShar ? "Yes" : "No"],
+                    ...(!sameDirShar ? ([["Additional Shareholders", String(Number(extraShar || 0))]] as [string, string][]) : []),
+                    ["Existing DINs", dins.some((d) => d.din || d.name) ? dins.filter((d) => d.din || d.name).map((d) => `${d.din || "New"} — ${d.name || "—"}`).join("; ") : "None"],
+                  ]} />
+                  <SummaryBlock title="Registered Office" rows={[["State", state], ["City", city || "—"], ["Pincode", pin || "—"], ["Address", addr || "—"]]} />
+                  <SummaryBlock title="Capital" rows={[["Authorised", inr(authCap)], ["Paid-up", inr(Number(paidCap || 0))]]} />
+                  <SummaryBlock title="Fee Estimate" rows={[["Total (Govt + Prof + GST)", user ? inr(estimate.total) : "Sign in on the Fees step to view"], ["Note", "Recomputed authoritatively on submission; stamp duty finalised per state"]]} />
+                </Section>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
+              <button onClick={back} disabled={step === 0} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-all">
+                <ArrowLeft className="size-3.5" /> Previous
+              </button>
+              {step === STEPS.length - 1 ? (
+                <button onClick={() => (user ? setOpenReg(true) : setOpenSignIn(true))} className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow">
+                  <Send className="size-4" /> Submit Application
+                </button>
               ) : (
-                <>
-                  <div className="rounded-xl border border-warning/30 bg-warning/8 p-3.5 flex gap-2.5 text-xs text-foreground/80 mb-4">
-                    <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
-                    <span>Indicative estimate recomputed on submission. Government/stamp fees are budgeting approximations — always cross-check the live MCA SPICe+ calculator before filing.{!estimate.stateKnown ? " Stamp duty for the selected state isn't on file yet, so it's shown as ₹0." : ""}</span>
-                  </div>
-                  {estimate.loading ? (
-                    <div className="text-xs text-muted-foreground py-6 text-center">Loading current pricing…</div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
-                            <th className="text-left px-3.5 py-2.5 font-bold">Component</th>
-                            <th className="text-right px-3.5 py-2.5 font-bold">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {estimate.lines.map((l) => (
-                            <tr key={l.label} className="border-t border-border">
-                              <td className="px-3.5 py-2.5 font-medium">{l.label}</td>
-                              <td className="px-3.5 py-2.5 text-right font-semibold mono">{inr(l.amount)}</td>
-                            </tr>
-                          ))}
-                          <tr className="border-t border-border bg-primary/[0.06]">
-                            <td className="px-3.5 py-3 font-bold text-primary">Estimated Total</td>
-                            <td className="px-3.5 py-3 text-right font-bold text-primary mono text-base">{inr(estimate.total)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
+                <button onClick={next} className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all">
+                  Next · {STEPS[step + 1].label} <ArrowRight className="size-4" />
+                </button>
               )}
-            </Section>
-          )}
-
-          {/* STEP 6 — DOCS */}
-          {stepKey === "docs" && (
-            <Section title="Required Documents" desc={`Checklist tailored to ${selectedType?.short ?? "your company"}.`}>
-              {docSections.map((sec) => (
-                <div key={sec.title} className="mb-5 last:mb-0">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-2.5">
-                    <span className={"w-1 h-4 rounded " + (sec.tone === "success" ? "bg-success" : "bg-primary")} />
-                    {sec.title}
-                  </h3>
-                  <ul className="space-y-2">
-                    {sec.docs.map((d) => (
-                      <li key={d} className="flex items-start gap-2.5 text-[13px]">
-                        <CheckCircle2 className={"size-4 shrink-0 mt-0.5 " + (sec.tone === "success" ? "text-success" : "text-primary")} />
-                        <span className="text-foreground/85">{d}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </Section>
-          )}
-
-          {/* STEP 7 — SUMMARY */}
-          {stepKey === "summary" && (
-            <Section title="Incorporation Summary" desc="Review your application, then submit to the Cloudcrest BM team.">
-              <SummaryBlock title="Entity" rows={[["Company Type", typeValue || "—"]]} />
-              <SummaryBlock title="Proposed Names" rows={names.filter((n) => n.trim()).map((n, i) => [`Preference ${i + 1}`, withSuffix(n)])} />
-              <SummaryBlock title="Business Details" rows={[["Main Objects", mainObjects || "—"], ["Industries", industries.join(", ") || "—"]]} />
-              <SummaryBlock title="Management" rows={[
-                ["Directors", String(dirCount)],
-                ["Shareholders", String(Number(numShar || 0))],
-                ["Directors = Shareholders", sameDirShar ? "Yes" : "No"],
-                ...(!sameDirShar ? ([["Additional Shareholders", String(Number(extraShar || 0))]] as [string, string][]) : []),
-                ["Existing DINs", dins.some((d) => d.din || d.name) ? dins.filter((d) => d.din || d.name).map((d) => `${d.din || "New"} — ${d.name || "—"}`).join("; ") : "None"],
-              ]} />
-              <SummaryBlock title="Registered Office" rows={[["State", state], ["City", city || "—"], ["Pincode", pin || "—"], ["Address", addr || "—"]]} />
-              <SummaryBlock title="Capital" rows={[["Authorised", inr(authCap)], ["Paid-up", inr(Number(paidCap || 0))]]} />
-              <SummaryBlock title="Fee Estimate" rows={[["Total (Govt + Prof + GST)", user ? inr(estimate.total) : "Sign in on the Fees step to view"], ["Note", "Recomputed authoritatively on submission; stamp duty finalised per state"]]} />
-            </Section>
-          )}
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
-          <button onClick={back} disabled={step === 0} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-all">
-            <ArrowLeft className="size-3.5" /> Previous
-          </button>
-          {step === STEPS.length - 1 ? (
-            <button onClick={() => (user ? setOpenReg(true) : setOpenSignIn(true))} className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-shadow">
-              <Send className="size-4" /> Submit Application
-            </button>
-          ) : (
-            <button onClick={next} className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all">
-              Next · {STEPS[step + 1].label} <ArrowRight className="size-4" />
-            </button>
-          )}
-        </div>
+        {/* Right panel — current selection & documents */}
+        <aside className="hidden lg:block w-80 border-l border-border bg-surface">
+          <div className="sticky top-16 p-6">
+            <div className="label-eyebrow mb-2.5 text-primary">Current Selection</div>
+            <div className="rounded-lg border border-border bg-panel p-3">
+              <div className="text-[11px] text-muted-foreground">Entity Type</div>
+              <div className="text-sm font-semibold mt-0.5">{typeValue || "—"}</div>
+              <div className="text-[10px] mono text-primary mt-2">
+                Form · {selectedType?.value === "Foreign Company" ? "Form FC-1" : "SPICe+ (INC-32) · AGILE-PRO-S"}
+              </div>
+            </div>
+
+            <div className="mt-7">
+              <div className="label-eyebrow mb-3">Documents Required</div>
+              <ul className="space-y-2.5">
+                {[
+                  "PAN Card of all directors & shareholders",
+                  "Identity proof (Aadhaar / Voter ID / Passport)",
+                  "Address proof of directors (Bank Statement / Bill < 2 months)",
+                  "Passport-size photographs (2 per person)",
+                  "Specimen signature on plain paper",
+                  "Registered office proof (Utility bill < 2 months)",
+                  "Rent agreement + NOC (if rented)",
+                  "Digital Signature Certificate (DSC)",
+                  "MoA & AoA drafts (INC-33 & INC-34)",
+                  "Consent letters (DIR-2 & INC-9)",
+                ].map((doc) => (
+                  <li key={doc} className="flex items-start gap-2 text-[12px]">
+                    <CheckCircle2 className="size-3.5 text-success shrink-0 mt-0.5" />
+                    <span className="text-foreground">{doc}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-7 rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
+              <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
+              <div className="text-[11px] text-foreground/70 leading-relaxed">
+                Cloudcrest BM associates review every document before filing on the MCA21 portal.
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <RegisterDialog
