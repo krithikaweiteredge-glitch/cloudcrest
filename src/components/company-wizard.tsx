@@ -41,7 +41,7 @@ const COMPANY_TYPES: CompanyType[] = [
   { value: "Section 8 Company (Non-Profit)", short: "Section 8", icon: Sprout, desc: "Charitable/educational. No dividends to members.", slug: "company-sec8", entity: "sec8", suffix: "Foundation / Association / Council / Sangh / Federation" },
   { value: "Producer Company", short: "Producer", icon: Wheat, desc: "For farmers & primary producers. Min 10 members or 2 institutions.", slug: "company-producer", entity: "producer", suffix: "Producer Company Limited" },
   { value: "Nidhi Company", short: "Nidhi", icon: Landmark, desc: "Mutual benefit — borrowing and lending among members only.", slug: "company-nidhi", entity: "nidhi", suffix: "Nidhi Limited" },
-  { value: "Company Limited by Guarantee", short: "By Guarantee", icon: Handshake, desc: "No share capital. Liability limited by guarantee amount.", slug: "company-guarantee", entity: "pvt", liability: "guarantee", suffix: "Private Limited / Limited" },
+  { value: "Unlimited Company", short: "Unlimited", icon: Handshake, desc: "Liability of members is unlimited. Formed under Companies Act, 2013.", slug: "company-unlimited", entity: "unlimited", suffix: "Unlimited" },
 ];
 
 const INDUSTRY_OPTIONS = [
