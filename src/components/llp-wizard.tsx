@@ -35,9 +35,9 @@ type LlpType = {
 const LLP_TYPES: LlpType[] = [
   {
     value: "Limited Liability Partnership (LLP)",
-    short: "Standard LLP",
+    short: "Indian LLP",
     icon: ShieldCheck,
-    desc: "Most popular. Min 2 partners. Limited liability with flexible agreement.",
+    desc: "Incorporated in India via FiLLiP. Min 2 partners. Limited liability with flexible agreement.",
     key: "standard",
     jurisdiction: "indian",
     form: "FiLLiP · Form 3",
@@ -47,20 +47,10 @@ const LLP_TYPES: LlpType[] = [
     value: "Foreign LLP",
     short: "Foreign LLP",
     icon: Globe,
-    desc: "Foreign entity establishing a place of business in India via Form 27 (FC).",
+    desc: "Body incorporated abroad establishing a place of business in India via Form 27 (FC).",
     key: "foreign",
     jurisdiction: "foreign",
     form: "Form 27 · FC",
-    suffix: "LLP",
-  },
-  {
-    value: "Wholly Owned Subsidiary LLP",
-    short: "WOS LLP",
-    icon: Building2,
-    desc: "LLP where total contribution is held by a parent body corporate / holding entity.",
-    key: "wos",
-    jurisdiction: "indian",
-    form: "FiLLiP · Form 3",
     suffix: "LLP",
   },
 ];
