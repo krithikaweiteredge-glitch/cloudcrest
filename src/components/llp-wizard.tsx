@@ -8,7 +8,7 @@ import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
-  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock
+  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock, Globe,
 } from "lucide-react";
 
 const STEPS = [
