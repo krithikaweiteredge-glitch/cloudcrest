@@ -145,6 +145,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   // Whether every director also holds shares. When "yes", the wizard collects the
   // directors' existing DINs (blank rows allowed — new DINs apply via SPICe+).
   const [sameDirShar, setSameDirShar] = useState(true);
+  const [additionalShareholders, setAdditionalShareholders] = useState<number>(1);
   const [dins, setDins] = useState<{ din: string; name: string }[]>([{ din: "", name: "" }]);
 
   useEffect(() => {
@@ -364,6 +365,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
       if (selected.requiresNominee && !nominee.trim()) {
         newErrors.nominee = `Nominee name is mandatory for ${selected.title}.`;
         if (!globalMsg) globalMsg = "Nominee name is required.";
+      }
+
+      if (!sameDirShar && (!additionalShareholders || additionalShareholders < 1)) {
+        newErrors.additionalShareholders = "Please specify at least 1 additional shareholder (non-director).";
+        if (!globalMsg) globalMsg = "Additional shareholders must be at least 1.";
       }
 
       if (applicantEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail.trim())) {
@@ -888,7 +894,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                     </Field>
                   </div>
 
-                  {/* Are all Directors also Shareholders? — when yes, collect DINs. */}
+                  {/* Are all Directors also Shareholders? */}
                   <div className="mt-5 flex items-center gap-3 px-4 py-3 rounded-lg border border-border bg-panel/40">
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-medium text-foreground">Are all Directors also Shareholders?</div>
@@ -912,48 +918,63 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                     </button>
                   </div>
 
-                  {sameDirShar && (
+                  {!sameDirShar && (
                     <div className="mt-4">
-                      <div className="label-eyebrow mb-1.5 flex items-center gap-1.5">
-                        Existing DINs
-                        <span
-                          title="Enter existing Director Identification Numbers. New directors can apply via SPICe+ during incorporation."
-                          className="inline-grid place-items-center size-4 rounded-full bg-muted-foreground/20 text-[9px] font-bold text-muted-foreground cursor-help"
-                        >
-                          ?
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        {dins.map((d, i) => (
-                          <div key={i} className="flex gap-2">
-                            <input
-                              value={d.din}
-                              maxLength={8}
-                              onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, din: e.target.value } : x)))}
-                              placeholder="DIN (8 digits)"
-                              className="w-40 bg-input border border-border rounded-lg px-3 py-2.5 text-sm mono ring-focus"
-                            />
-                            <input
-                              value={d.name}
-                              onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-                              placeholder="Director Name"
-                              className="flex-1 bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
-                            />
-                            {i === dins.length - 1 ? (
-                              <button type="button" onClick={() => setDins((a) => [...a, { din: "", name: "" }])} title="Add" className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
-                                <span className="text-lg leading-none">+</span>
-                              </button>
-                            ) : (
-                              <button type="button" onClick={() => setDins((a) => a.filter((_, j) => j !== i))} title="Remove" className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20">
-                                <span className="text-lg leading-none">−</span>
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="mt-1.5 text-[11px] text-muted-foreground">Leave blank if DIN not yet allotted.</p>
+                      <Field label="Additional Shareholders (non-directors)" error={errors.additionalShareholders}>
+                        <NumberInput
+                          value={additionalShareholders}
+                          onChange={(v) => {
+                            setAdditionalShareholders(v);
+                            setErrors((prev) => ({ ...prev, additionalShareholders: "" }));
+                          }}
+                          min={1}
+                          placeholder="e.g. 1"
+                          error={errors.additionalShareholders}
+                        />
+                      </Field>
                     </div>
                   )}
+
+                  <div className="mt-4">
+                    <div className="label-eyebrow mb-1.5 flex items-center gap-1.5">
+                      Existing DINs
+                      <span
+                        title="Enter existing Director Identification Numbers. New directors can apply via SPICe+ during incorporation."
+                        className="inline-grid place-items-center size-4 rounded-full bg-muted-foreground/20 text-[9px] font-bold text-muted-foreground cursor-help"
+                      >
+                        ?
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {dins.map((d, i) => (
+                        <div key={i} className="flex gap-2">
+                          <input
+                            value={d.din}
+                            maxLength={8}
+                            onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, din: e.target.value } : x)))}
+                            placeholder="DIN (8 digits)"
+                            className="w-40 bg-input border border-border rounded-lg px-3 py-2.5 text-sm mono ring-focus"
+                          />
+                          <input
+                            value={d.name}
+                            onChange={(e) => setDins((a) => a.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                            placeholder="Director Name"
+                            className="flex-1 bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                          />
+                          {i === dins.length - 1 ? (
+                            <button type="button" onClick={() => setDins((a) => [...a, { din: "", name: "" }])} title="Add" className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
+                              <span className="text-lg leading-none">+</span>
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => setDins((a) => a.filter((_, j) => j !== i))} title="Remove" className="shrink-0 size-[42px] grid place-items-center rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20">
+                              <span className="text-lg leading-none">−</span>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Leave blank if DIN not yet allotted.</p>
+                  </div>
                 </Card>
               )}
 
@@ -1244,7 +1265,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
           ...(classable ? { entityClass: entityClass === "public" ? "Public" : "Private" } : {}),
           ...(selected.requiresNominee && nominee.trim() ? { nominee: nominee.trim() } : {}),
           directorsAreShareholders: sameDirShar ? "Yes" : "No",
-          ...(sameDirShar && dins.some((d) => d.din.trim() || d.name.trim())
+          ...(!sameDirShar ? { additionalShareholders } : {}),
+          ...(dins.some((d) => d.din.trim() || d.name.trim())
             ? { existingDins: dins.filter((d) => d.din.trim() || d.name.trim()).map((d) => `${d.din.trim() || "New DIN"} — ${d.name.trim() || "—"}`).join("; ") }
             : {}),
         }}
@@ -1303,8 +1325,8 @@ function Input({
   );
 }
 function NumberInput({
-  value, onChange, min = 0, max, step = 1, error,
-}: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; error?: string }) {
+  value, onChange, min = 0, max, step = 1, placeholder, error,
+}: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; placeholder?: string; error?: string }) {
   return (
     <input
       type="number"
@@ -1312,6 +1334,7 @@ function NumberInput({
       min={min}
       max={max}
       step={step}
+      placeholder={placeholder}
       onChange={(e) => onChange(Number(e.target.value))}
       className={
         "w-full bg-input border rounded-lg px-3 py-2.5 text-sm mono ring-focus transition-shadow " +
