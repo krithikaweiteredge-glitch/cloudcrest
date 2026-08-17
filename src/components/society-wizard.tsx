@@ -38,7 +38,14 @@ const TYPES = [
   },
 ];
 
-const STATES = ["Telangana", "Andhra Pradesh", "Karnataka"];
+// Society registration is handled state-wise, and every (type × state)
+// combination has its own catalog row (slug `society-<type>-<state>`). The slug
+// here is the state half of that combination slug.
+const STATES = [
+  { name: "Telangana", slug: "telangana" },
+  { name: "Andhra Pradesh", slug: "andhra-pradesh" },
+  { name: "Karnataka", slug: "karnataka" },
+];
 
 export function SocietyWizard() {
   const [typeKey, setTypeKey] = useState<string | null>(null);
@@ -46,11 +53,17 @@ export function SocietyWizard() {
   const [started, setStarted] = useState(false);
 
   const selectedType = TYPES.find((t) => t.key === typeKey) ?? null;
-  // Resolve the chosen type's own catalog service (society-macs / society-coop)
-  // so its admin-authored About / Who / documents / fee show, falling back to the
-  // base `society` service until a type is picked.
+  const stateSlug = STATES.find((s) => s.name === stateSel)?.slug ?? null;
+  // Resolve the picked (type × state) combination first — that row carries the
+  // combination's own About / Who / documents / fee. Fall back to the type row
+  // (society-macs / society-coop / society-general) and then the base `society`
+  // service so the page never renders empty if a combination isn't authored yet.
   const { service, loading } = useCatalogService(
-    selectedType ? [selectedType.slug, "society"] : ["society"],
+    selectedType && stateSlug
+      ? [`${selectedType.slug}-${stateSlug}`, selectedType.slug, "society"]
+      : selectedType
+        ? [selectedType.slug, "society"]
+        : ["society"],
   );
 
   // Started → hand off to the standard tabbed service page (with this type's own
@@ -175,12 +188,12 @@ export function SocietyWizard() {
 
             <div className="mt-5 flex flex-wrap gap-2">
               {STATES.map((s) => {
-                const active = stateSel === s;
+                const active = stateSel === s.name;
                 return (
                   <button
-                    key={s}
+                    key={s.slug}
                     type="button"
-                    onClick={() => setStateSel(s)}
+                    onClick={() => setStateSel(s.name)}
                     className={
                       "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all " +
                       (active
@@ -189,7 +202,7 @@ export function SocietyWizard() {
                     }
                   >
                     <MapPin className={"size-4 " + (active ? "text-white" : "text-primary")} />
-                    {s}
+                    {s.name}
                   </button>
                 );
               })}

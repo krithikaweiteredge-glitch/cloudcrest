@@ -20,62 +20,70 @@ const WIZARD_SLUGS = new Set(["company", "llp"]);
 // the wizard-rule seeding to the incorporation-style launchers.
 const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
 
+/** A service in display order, tagged with its nesting depth and family role. */
+type OrganizedService = {
+  svc: any;
+  /** 0 = top level; each slug-prefix level below adds 1 (type = 1, state = 2). */
+  depth: number;
+  /** Has child rows nested under it (a wizard launcher / type with steps). */
+  isLauncher: boolean;
+  /** Nested under a parent row (a wizard type / step), so shown even when hidden. */
+  isVariant: boolean;
+  /** Number of DIRECT children (types/steps priced below this row). */
+  variantCount: number;
+};
+
 /**
- * Classify a service within its subcategory: is it a launcher (has types priced
- * below), a variant/type of a launcher, and how many types it has. Handles both
- * the `slug-` convention (company/gst/…) and department subcategories.
+ * Order a subcategory's services into a nested tree by slug prefix, tagging each
+ * with its depth and family role. A row nests under the sibling whose slug is its
+ * LONGEST proper prefix, so multi-level families render as a tree:
+ *   `society` › `society-macs` › `society-macs-telangana`
+ * (base society → type → state), exactly like GST shows its registration types —
+ * just one level deeper. Department subcategories keep their flat "everything under
+ * the department base" nesting.
  */
-function classifyService(svc: any, siblings: any[]) {
-  if (svc.slug && DEPARTMENT_SLUGS.has(svc.slug)) {
-    const count = siblings.filter((o) => o.id !== svc.id).length;
-    return { isLauncher: count > 0, isVariant: false, variantCount: count };
-  }
-  const underDept = siblings.some((o) => o.id !== svc.id && o.slug && DEPARTMENT_SLUGS.has(o.slug));
-  if (underDept) return { isLauncher: false, isVariant: true, variantCount: 0 };
-  const variantCount = svc.slug
-    ? siblings.filter((o) => o.id !== svc.id && o.slug && o.slug.startsWith(svc.slug + "-")).length
-    : 0;
-  const isVariant = !!(
-    svc.slug && siblings.some((o) => o.id !== svc.id && o.slug && svc.slug.startsWith(o.slug + "-"))
-  );
-  return { isLauncher: variantCount > 0, isVariant, variantCount };
-}
-
-function organizeServicesWithVariants(list: any[]) {
+function organizeServicesWithVariants(list: any[]): OrganizedService[] {
   if (!Array.isArray(list)) return [];
-  const variantsByLauncher: Record<string, any[]> = {};
-  const variantIdSet = new Set<number>();
 
-  // A department base in this subcategory owns every other service in it.
+  // A department base in this subcategory owns every other service in it (one flat
+  // level), regardless of any incidental slug-prefix overlaps between sub-heads.
   const dept = list.find((i) => i.slug && DEPARTMENT_SLUGS.has(i.slug));
 
-  for (const item of list) {
-    if (!item.slug) continue;
-    // Any service whose slug is a prefix of this one (`society` for
-    // `society-macs`, `company` for `company-pvt`, …) owns it as a type. Generic
-    // prefix match — no hardcoded launcher list — so it matches classifyService
-    // and nests every launcher (company/gst/partnership/society/…) the same way.
-    const parent = list.find(
-      (o) => o.id !== item.id && o.slug && item.slug.startsWith(o.slug + "-"),
-    );
-    if (parent) {
-      (variantsByLauncher[parent.slug] ??= []).push(item);
-      variantIdSet.add(item.id);
-    } else if (dept && item.id !== dept.id) {
-      (variantsByLauncher[dept.slug] ??= []).push(item);
-      variantIdSet.add(item.id);
+  const parentOf = (item: any): any | null => {
+    if (dept) return item.id === dept.id ? null : dept;
+    if (!item.slug) return null;
+    let best: any = null;
+    for (const o of list) {
+      if (o.id === item.id || !o.slug) continue;
+      if (item.slug.startsWith(o.slug + "-") && (!best || o.slug.length > best.slug.length)) {
+        best = o;
+      }
     }
+    return best;
+  };
+
+  const childrenOf: Record<number, any[]> = {};
+  const roots: any[] = [];
+  for (const item of list) {
+    const parent = parentOf(item);
+    if (parent) (childrenOf[parent.id] ??= []).push(item);
+    else roots.push(item);
   }
 
-  const result: any[] = [];
-  for (const item of list) {
-    if (variantIdSet.has(item.id)) continue;
-    result.push(item);
-    if (item.slug && variantsByLauncher[item.slug]) {
-      result.push(...variantsByLauncher[item.slug]);
-    }
-  }
-  return result;
+  const out: OrganizedService[] = [];
+  const walk = (item: any, depth: number) => {
+    const children = childrenOf[item.id] ?? [];
+    out.push({
+      svc: item,
+      depth,
+      isLauncher: children.length > 0,
+      isVariant: depth > 0,
+      variantCount: children.length,
+    });
+    for (const c of children) walk(c, depth + 1);
+  };
+  for (const r of roots) walk(r, 0);
+  return out;
 }
 
 async function call(path: string, method: string, body?: any) {
@@ -252,24 +260,27 @@ export function AdminCatalogPanel() {
                           />
                         </div>
 
-                        {subOpen && (
+                        {subOpen && (() => {
+                          const organized = organizeServicesWithVariants(sub.services).filter(
+                            (e) => showHidden || e.svc.active || e.isVariant,
+                          );
+                          return (
                           <ul className="pl-14 pr-4 pb-2 space-y-1">
-                            {organizeServicesWithVariants(sub.services).filter((s: any) => showHidden || s.active || classifyService(s, sub.services).isVariant).length === 0 ? (
+                            {organized.length === 0 ? (
                               <li className="text-[12px] text-muted-foreground py-1">No services.</li>
                             ) : (
-                              organizeServicesWithVariants(sub.services)
-                                .filter((s: any) => showHidden || s.active || classifyService(s, sub.services).isVariant)
-                                .map((svc: any) => {
+                              organized.map(({ svc, depth, isLauncher, isVariant, variantCount }) => {
                                 // A "launcher" opens a picker where the customer chooses a
-                                // type (company/gst/partnership, or an industry department).
-                                // Its OWN fee is never shown — its types are priced below.
-                                // A "variant" is one of those per-type rows (e.g. `company-pvt`
-                                // under `company`, or a department sub-head). It's inactive by
-                                // design, so it's labelled as a type rather than "inactive".
-                                const { isLauncher, isVariant, variantCount } = classifyService(svc, sub.services);
+                                // type (company/gst/partnership/society, or an industry
+                                // department). Its OWN fee is never shown — its types are
+                                // priced below. A "variant" is a nested row (a wizard type
+                                // like `company-pvt`, or a society state step). `depth` drives
+                                // the indent so multi-level families (society › type › state)
+                                // read as a tree.
                                 return (
                                 <li
                                   key={svc.id}
+                                  style={isVariant ? { marginLeft: (depth - 1) * 16 } : undefined}
                                   className={
                                     "flex items-center gap-2 py-1.5 text-[13px] group border-b border-border/40 last:border-0 " +
                                     (isVariant ? "pl-5 ml-2 border-l-2 border-l-primary/20" : "")
@@ -333,7 +344,8 @@ export function AdminCatalogPanel() {
                               })
                             )}
                           </ul>
-                        )}
+                          );
+                        })()}
                       </div>
                     );
                   })}
