@@ -16,9 +16,9 @@ const TYPES = [
     key: "macs",
     slug: "society-macs",
     title: "Mutually Aided Cooperative Society",
-    note: "Recommended for Flat Owners / Apartment Associations",
+    note: "For Flat Owners / Apartment Associations.",
     icon: Building2,
-    recommended: true,
+    recommended: false,
   },
   {
     key: "coop",
@@ -26,6 +26,14 @@ const TYPES = [
     title: "Co-operative Society",
     note: "For general co-operative societies.",
     icon: Users,
+    recommended: false,
+  },
+  {
+    key: "society",
+    slug: "society-general",
+    title: "Society",
+    note: "General society registration under the Societies Registration Act, 1860.",
+    icon: ScrollText,
     recommended: false,
   },
 ];
@@ -116,7 +124,7 @@ export function SocietyWizard() {
           <h2 className="text-2xl font-semibold tracking-tight">Choose a society type</h2>
           <p className="text-sm text-muted-foreground mt-1.5">Select the structure that fits your society.</p>
 
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
             {TYPES.map((t) => {
               const Icon = t.icon;
               const active = typeKey === t.key;
