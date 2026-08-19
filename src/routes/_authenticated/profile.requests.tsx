@@ -105,6 +105,124 @@ function formatDateTime(dateStr: string | Date) {
   });
 }
 
+function getRequiredDocumentsForRequest(request: any): string[] {
+  if (!request) return [];
+  const title = (request.serviceTitle || "").toLowerCase();
+  const form = (request.form || "").toLowerCase();
+
+  let fd: any = {};
+  if (request.formData) {
+    try {
+      fd = typeof request.formData === "string" ? JSON.parse(request.formData) : request.formData;
+    } catch (_) {}
+  }
+
+  if (title.includes("company") || title.includes("incorporation") || form.includes("spice")) {
+    const isSec8 = title.includes("section 8") || title.includes("foundation") || fd.entity === "sec8";
+    const isOpc = title.includes("one person") || title.includes("opc") || fd.entity === "opc";
+    return [
+      "PAN Card of Directors",
+      "Aadhaar Card / Photo ID of Directors",
+      "Passport-size Photographs of Directors",
+      "Address Proof of Directors (Utility Bill < 2 months)",
+      "Registered Office Premises Proof",
+      "Rent Agreement + NOC (if rented)",
+      "Digital Signature Certificate (DSC)",
+      "MoA & AoA Drafts",
+      ...(isSec8 ? ["Form INC-12 / Section 8 License Approval"] : []),
+      ...(isOpc ? ["INC-3 Nominee Consent Form"] : []),
+    ];
+  }
+
+  if (title.includes("llp") || title.includes("limited liability partnership") || form.includes("fillip")) {
+    return [
+      "PAN Card of Designated Partners",
+      "Aadhaar Card / Photo ID of Partners",
+      "Passport-size Photographs of Partners",
+      "Address Proof of Partners (Utility Bill < 2 months)",
+      "Registered Office Premises Proof of LLP",
+      "Rent Agreement + NOC (if rented)",
+      "Digital Signature Certificate (DSC) of Partners",
+      "LLP Agreement Draft",
+    ];
+  }
+
+  if (title.includes("gst")) {
+    return [
+      "PAN Card of Entity / Proprietor",
+      "Aadhaar Card of Proprietor / Partners / Directors",
+      "Business Premises Address Proof (Electricity Bill / Rent Agreement)",
+      "Bank Account Proof (Cancelled Cheque / Passbook)",
+      "Owner NOC / Rent Agreement",
+    ];
+  }
+
+  if (title.includes("partnership")) {
+    return [
+      "PAN Card of all Partners",
+      "Aadhaar Card / ID Proof of Partners",
+      "Partnership Deed",
+      "Principal Place of Business Address Proof",
+    ];
+  }
+
+  if (title.includes("trust") || title.includes("society") || title.includes("ngo")) {
+    return [
+      "PAN Card of Trust / Trustees / Members",
+      "Aadhaar Card / ID Proof of Trustees",
+      "Trust Deed / Society Rules & Bye-laws",
+      "Registered Office Address Proof",
+    ];
+  }
+
+  if (title.includes("trademark") || title.includes("patent") || title.includes("copyright") || title.includes("design")) {
+    return [
+      "Incorporation Certificate / Deed / PAN",
+      "Brand Name / Logo Representation File",
+      "Power of Attorney (TM-48)",
+    ];
+  }
+
+  return [
+    "PAN Card of Applicant / Entity",
+    "Aadhaar / Photo ID Proof",
+    "Address Proof of Premises",
+    "Business Registration Proof",
+  ];
+}
+
+function findMatchingUploadedDoc(reqDoc: string, docs: any[]): any | null {
+  if (!docs || docs.length === 0) return null;
+  const reqLower = reqDoc.toLowerCase();
+
+  // 1. Label match
+  for (const doc of docs) {
+    const parsed = parseDocLabel(doc.name);
+    const parsedLabelLower = parsed.label.toLowerCase();
+    const docNameLower = (doc.name || "").toLowerCase();
+
+    if (parsedLabelLower.includes(reqLower) || reqLower.includes(parsedLabelLower) || docNameLower.includes(reqLower)) {
+      return doc;
+    }
+  }
+
+  // 2. Keyword fallback matching
+  for (const doc of docs) {
+    const text = (doc.name || "").toLowerCase();
+
+    if (reqLower.includes("pan") && text.includes("pan")) return doc;
+    if ((reqLower.includes("aadhaar") || reqLower.includes("photo id")) && (text.includes("aadhaar") || text.includes("adhar") || text.includes("id"))) return doc;
+    if (reqLower.includes("photograph") && (text.includes("photo") || text.includes("pic"))) return doc;
+    if (reqLower.includes("address proof") && (text.includes("address") || text.includes("bill") || text.includes("utility"))) return doc;
+    if (reqLower.includes("office") && (text.includes("office") || text.includes("premises") || text.includes("tax"))) return doc;
+    if (reqLower.includes("rent") && (text.includes("rent") || text.includes("noc") || text.includes("lease"))) return doc;
+    if (reqLower.includes("dsc") && (text.includes("dsc") || text.includes("signature") || text.includes("digital"))) return doc;
+    if ((reqLower.includes("moa") || reqLower.includes("aoa") || reqLower.includes("deed") || reqLower.includes("agreement")) && (text.includes("moa") || text.includes("aoa") || text.includes("deed") || text.includes("agreement") || text.includes("draft"))) return doc;
+  }
+
+  return null;
+}
+
 function RequestsPage() {
   const queryClient = useQueryClient();
   const { ref } = Route.useSearch();
@@ -136,6 +254,7 @@ function RequestsPage() {
         createdAt: r.createdAt,
         status: r.status || "pending",
         documents: r.documents || [],
+        requiredDocuments: r.requiredDocuments || [],
       }));
     },
   });
@@ -259,9 +378,15 @@ function RegistrationDetailDialog({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [activeUploadLabel, setActiveUploadLabel] = useState<string | null>(null);
 
   const openDoc = (path: string) => {
     window.open(assetUrl(path), "_blank", "noopener");
+  };
+
+  const triggerUploadForDoc = (docLabel?: string) => {
+    setActiveUploadLabel(docLabel || null);
+    fileInputRef.current?.click();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,10 +397,15 @@ function RegistrationDetailDialog({
     setUploadError(null);
     setUploadSuccess(null);
 
+    const currentLabel = activeUploadLabel;
+
     try {
       for (const f of Array.from(files)) {
         const formData = new FormData();
         formData.append("file", f);
+        if (currentLabel) {
+          formData.append("label", currentLabel);
+        }
 
         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/${request.id}/documents`, {
           method: "POST",
@@ -289,12 +419,17 @@ function RegistrationDetailDialog({
         }
       }
 
-      setUploadSuccess("Document(s) uploaded successfully!");
+      setUploadSuccess(
+        currentLabel
+          ? `Uploaded "${currentLabel}" successfully!`
+          : "Document(s) uploaded successfully!"
+      );
       onRefresh();
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload document");
     } finally {
       setUploading(false);
+      setActiveUploadLabel(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -499,92 +634,192 @@ function RegistrationDetailDialog({
             );
           })()}
 
-          {/* Documents Section */}
-          <div className="space-y-3 pt-2 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Uploaded Documents ({request.documents?.length || 0})
-                </h4>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Files attached to this registration. You can upload additional requested files below.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0"
-              >
-                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
-                Upload File
-              </button>
-              <input ref={fileInputRef} type="file" multiple hidden onChange={handleFileUpload} />
-            </div>
+          {/* Documents Section with Required Documents Checklist */}
+          {(() => {
+            const requiredDocs = getRequiredDocumentsForRequest(request);
+            const uploadedList = request.documents || [];
+            const uploadedCount = requiredDocs.filter((r) => findMatchingUploadedDoc(r, uploadedList)).length;
+            const progressPct = requiredDocs.length > 0 ? Math.round((uploadedCount / requiredDocs.length) * 100) : 0;
 
-            {uploadError && (
-              <div className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2">
-                {uploadError}
-              </div>
-            )}
+            return (
+              <div className="space-y-4 pt-4 border-t border-border">
+                {/* Section Header */}
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="size-3.5 text-primary" /> Application Documents Checklist
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Upload all required documents for your registration to be processed by Cloudcrest associates.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => triggerUploadForDoc()}
+                    disabled={uploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0 cursor-pointer"
+                  >
+                    {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
+                    Upload File
+                  </button>
+                  <input ref={fileInputRef} type="file" multiple hidden onChange={handleFileUpload} />
+                </div>
 
-            {uploadSuccess && (
-              <div className="text-xs text-success rounded-lg border border-success/30 bg-success/10 px-3.5 py-2 flex items-center gap-1.5 font-medium">
-                <CheckCircle2 className="size-3.5" /> {uploadSuccess}
-              </div>
-            )}
+                {/* Progress Bar */}
+                {requiredDocs.length > 0 && (
+                  <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-foreground">
+                        Document Upload Progress ({uploadedCount} of {requiredDocs.length} uploaded)
+                      </span>
+                      <span className="mono text-[11px] font-bold text-primary">{progressPct}% Complete</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-primary to-emerald-500 h-full transition-all duration-500 rounded-full"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-            {request.documents && request.documents.length > 0 ? (
-              <ul className="grid grid-cols-1 gap-2.5">
-                {request.documents.map((doc: any) => {
-                  const parsed = parseDocLabel(doc.name);
-                  return (
-                    <li key={doc.id} className="rounded-xl border border-border/70 bg-card p-3.5 shadow-sm space-y-2.5 hover:border-primary/40 transition-colors">
-                      {/* Document Category / Name Header */}
-                      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider min-w-0 truncate">
-                          <FileText className="size-3 shrink-0" />
-                          {parsed.label}
-                        </span>
-                        <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                          <span className="size-1.5 rounded-full bg-emerald-500" />
-                          Submitted by user
-                        </span>
-                      </div>
+                {uploadError && (
+                  <div className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2">
+                    {uploadError}
+                  </div>
+                )}
 
-                      {/* File Details Below Document Name */}
-                      <div className="flex items-center justify-between gap-3 pt-0.5">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
-                            <FileText className="size-4 text-muted-foreground" />
-                          </div>
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="font-semibold text-xs text-foreground truncate">{parsed.fileName}</div>
-                            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                              {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
-                              {doc.sizeBytes ? <span>·</span> : null}
-                              <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                {uploadSuccess && (
+                  <div className="text-xs text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 flex items-center gap-1.5 font-medium">
+                    <CheckCircle2 className="size-3.5 text-emerald-500" /> {uploadSuccess}
+                  </div>
+                )}
+
+                {/* Required Documents Checklist */}
+                {requiredDocs.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Required Documents Checklist
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {requiredDocs.map((reqDoc, idx) => {
+                        const matchedDoc = findMatchingUploadedDoc(reqDoc, uploadedList);
+                        const isUploaded = !!matchedDoc;
+                        const parsedMatch = matchedDoc ? parseDocLabel(matchedDoc.name) : null;
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-3 ${
+                              isUploaded
+                                ? "bg-emerald-500/[0.04] border-emerald-500/30"
+                                : "bg-amber-500/[0.03] border-amber-500/30 hover:border-amber-500/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`size-6 rounded-full grid place-items-center shrink-0 text-xs ${
+                                  isUploaded
+                                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold"
+                                    : "bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold"
+                                }`}
+                              >
+                                {isUploaded ? "✓" : idx + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-foreground truncate">{reqDoc}</div>
+                                {isUploaded ? (
+                                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mt-0.5 truncate">
+                                    <span className="font-medium truncate">{parsedMatch?.fileName || matchedDoc.name}</span>
+                                    <span>·</span>
+                                    <span>Uploaded {formatDateTime(matchedDoc.createdAt)}</span>
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                                    Pending upload — click to attach this document
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isUploaded ? (
+                                <>
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                                    Uploaded
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => openDoc(matchedDoc.storagePath)}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground"
+                                  >
+                                    View
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => triggerUploadForDoc(reqDoc)}
+                                  disabled={uploading}
+                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-500 hover:text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                                >
+                                  <UploadCloud className="size-3" /> Upload Document
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => openDoc(doc.storagePath)}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground shrink-0"
-                        >
-                          <Download className="size-3" /> View
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-                No files attached yet for this registration. Click "Upload File" above to add documents.
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* All Uploaded Files */}
+                {uploadedList.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      All Attached Files ({uploadedList.length})
+                    </div>
+                    <ul className="grid grid-cols-1 gap-2">
+                      {uploadedList.map((doc: any) => {
+                        const parsed = parseDocLabel(doc.name);
+                        return (
+                          <li
+                            key={doc.id}
+                            className="rounded-xl border border-border/70 bg-card p-3 shadow-sm flex items-center justify-between gap-3 hover:border-primary/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
+                                <FileText className="size-4 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-xs text-foreground truncate">{parsed.label}</span>
+                                  <span className="text-[10px] text-muted-foreground">({parsed.fileName})</span>
+                                </div>
+                                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                  {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
+                                  {doc.sizeBytes ? <span>·</span> : null}
+                                  <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => openDoc(doc.storagePath)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground shrink-0"
+                            >
+                              <Download className="size-3" /> View
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
 
         {/* Footer */}
