@@ -296,6 +296,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     capital: isGuarantee ? 0 : capital,
     paidCapital: isGuarantee ? 0 : paidCapital,
     members: isGuarantee ? members : undefined,
+    directors,
     state,
   };
   const estimate = useFeeEstimate(feeContext, !!user);

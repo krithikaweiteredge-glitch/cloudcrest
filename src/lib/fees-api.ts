@@ -36,6 +36,8 @@ export type CompanyFeeContext = {
 export type LlpFeeContext = {
   kind: "llp";
   contribution: number;
+  /** Number of partners — drives DSC fee (₹1,500 each). */
+  partners?: number;
   /** Indian LLP (FiLLiP) vs Foreign LLP (FC) — each is priced on its own catalog row. */
   jurisdiction?: "indian" | "foreign";
 };

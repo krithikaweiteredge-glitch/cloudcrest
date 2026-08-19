@@ -164,7 +164,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   const { service, loading: catalogLoading } = useCatalogService(["llp"]);
   const { documents, fromCatalog: docsFromCatalog } = resolveDocuments(service, FALLBACK_DOCS);
 
-  const feeContext: FeeContext = { kind: "llp", contribution: capital, jurisdiction };
+  const feeContext: FeeContext = { kind: "llp", contribution: capital, jurisdiction, partners };
   const estimate = useFeeEstimate(feeContext, !!user);
   const fees: ResolvedFees = {
     lines: estimate.lines,
