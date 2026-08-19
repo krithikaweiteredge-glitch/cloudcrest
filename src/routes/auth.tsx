@@ -56,7 +56,12 @@ export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Cloudcrest BM" }] }),
   validateSearch: (s: Record<string, unknown>): Search => ({
     next: typeof s.next === "string" ? s.next : undefined,
-    admin: s.admin === true || s.admin === "1" || s.admin === "true" ? true : undefined,
+    // Accept the numeric form too — the router coerces `?admin=1` to the number 1,
+    // so string-only checks would drop it and redirect back to /auth.
+    admin:
+      s.admin === true || s.admin === 1 || s.admin === "1" || s.admin === "true"
+        ? true
+        : undefined,
   }),
   component: AuthPage,
 });
@@ -331,41 +336,45 @@ function AuthPage() {
               : "No passwords. Continue with Google, or receive a one-time code."}
           </p>
 
-          {/* Three peer tabs: Individual · Business · Administrator */}
-          <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1.5 rounded-xl border border-border/80 mb-6 mt-6">
-            {(
-              [
-                { key: "individual", label: "Individual", icon: User },
-                { key: "business", label: "Business", icon: Building2 },
-                { key: "admin", label: "Admin", icon: ShieldAlert },
-              ] as const
-            ).map((t) => {
-              const Icon = t.icon;
-              const selected = activeTab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => {
-                    setActiveTab(t.key);
-                    setMsg(null);
-                    setOtpSent(false);
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold tracking-wide uppercase transition-all duration-200 cursor-pointer ${
-                    selected
-                      ? "bg-surface text-primary shadow-sm border border-border/20 font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  }`}
-                >
-                  <Icon className="size-3.5" />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Customer tabs: Individual · Business. The Administrator login is
+              intentionally NOT shown here — staff reach it via the separate link
+              `/auth?admin=1`, so it is never visible to customers. The tab bar is
+              hidden entirely in admin mode (that page is a dedicated admin login). */}
+          {activeTab !== "admin" && (
+            <div className="grid grid-cols-2 gap-1 bg-muted/60 p-1.5 rounded-xl border border-border/80 mb-6 mt-6">
+              {(
+                [
+                  { key: "individual", label: "Individual", icon: User },
+                  { key: "business", label: "Business", icon: Building2 },
+                ] as const
+              ).map((t) => {
+                const Icon = t.icon;
+                const selected = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => {
+                      setActiveTab(t.key);
+                      setMsg(null);
+                      setOtpSent(false);
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold tracking-wide uppercase transition-all duration-200 cursor-pointer ${
+                      selected
+                        ? "bg-surface text-primary shadow-sm border border-border/20 font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    }`}
+                  >
+                    <Icon className="size-3.5" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {activeTab === "admin" ? (
             /* ---- Admin login form (email + password) ---- */
-            <div className="space-y-3">
+            <div className="space-y-3 mt-6">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold">
                 <ShieldAlert className="size-4" /> Admin Portal
               </div>

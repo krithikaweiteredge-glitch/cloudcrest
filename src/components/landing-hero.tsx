@@ -59,6 +59,10 @@ export function LandingHero() {
   const [pick, setPick] = useState(0);
   const [checking, setChecking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Existing companies with the searched name, returned by the RocketReach check.
+  const [matches, setMatches] = useState<
+    { id?: number; name: string; domain?: string; industry?: string; location?: string }[]
+  >([]);
 
   const suggestions = q.trim()
     ? SUFFIXES.map((s) => `${q.trim()} ${s}`)
@@ -68,6 +72,7 @@ export function LandingHero() {
     if (checking || !finalName.trim()) return;
     setChecking(true);
     setErrorMsg(null);
+    setMatches([]);
 
     try {
       const response = await fetch("/api/mca/name-check", {
@@ -91,6 +96,7 @@ export function LandingHero() {
         });
       } else {
         setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
+        setMatches(Array.isArray(data.matches) ? data.matches : []);
       }
     } catch (err: any) {
       console.error("Name check error:", err);
@@ -191,9 +197,28 @@ export function LandingHero() {
             </form>
 
             {errorMsg && (
-              <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-left flex items-start gap-2.5">
-                <span className="font-semibold shrink-0">Status:</span>
-                <span>{errorMsg}</span>
+              <div className="mt-3 text-left">
+                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex items-start gap-2.5">
+                  <span className="font-semibold shrink-0">Status:</span>
+                  <span>{errorMsg}</span>
+                </div>
+                {matches.length > 0 && (
+                  <div className="mt-2 rounded-xl bg-white text-foreground shadow-elev border border-border overflow-hidden">
+                    <div className="label-eyebrow px-4 pt-3 pb-1">Existing companies with this name</div>
+                    <ul className="pb-1">
+                      {matches.map((m, i) => (
+                        <li key={m.id ?? m.name + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
+                          <div className="text-sm font-semibold">{m.name}</div>
+                          <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                            {m.domain && <span>{m.domain}</span>}
+                            {m.industry && <span>{m.industry}</span>}
+                            {m.location && <span>{m.location}</span>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
