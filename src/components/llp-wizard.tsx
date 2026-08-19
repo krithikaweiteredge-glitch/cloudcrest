@@ -66,10 +66,22 @@ const FALLBACK_DOCS = [
   "Consent letters (Form 9)",
 ];
 
+// Registration certificates provided upon LLP incorporation displayed in sidebar.
+const LLP_CERTIFICATES = [
+  "Certificate of Incorporation",
+  "PAN",
+  "TAN",
+  "LLP Agreement",
+  "DPIN / DIN of Designated Partners",
+  "DSC of Partners",
+  "GST Registration Certificate",
+  "EPFO / ESIC Registration",
+];
+
 const HIGHLIGHTS = [
   { icon: ShieldCheck, label: "MCA FiLLiP Validations" },
   { icon: Zap, label: "Dynamic Fee Estimate" },
-  { icon: ClipboardList, label: "LLP Checklist" },
+  { icon: ClipboardList, label: "Registration Certificates" },
   { icon: FileDown, label: "Downloadable Summary" },
 ];
 
@@ -739,15 +751,15 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
 
             <div className="mt-7">
               <div className="label-eyebrow mb-3">
-                Documents Required
+                Registration Certificates
                 {!docsFromCatalog && !catalogLoading && (
                   <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
-                    (indicative)
+                    (included)
                   </span>
                 )}
               </div>
               <ul className="space-y-2.5">
-                {documents.map((label) => (
+                {LLP_CERTIFICATES.map((label) => (
                   <li key={label} className="flex items-start gap-2 text-[12px]">
                     <CheckCircle2 className="size-3.5 text-success shrink-0 mt-0.5" />
                     <span className="text-foreground">{label}</span>
@@ -759,8 +771,7 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
             <div className="mt-7 rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
               <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
               <div className="text-[11px] text-foreground/70 leading-relaxed">
-                Cloudcrest BM associates review every document before filing on the
-                MCA FiLLiP portal.
+                Cloudcrest BM associates handle filing end-to-end and deliver all registration certificates upon LLP incorporation.
               </div>
             </div>
           </div>
