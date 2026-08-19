@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import {
   useCatalogService,
@@ -761,19 +762,41 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       </div>
                     )}
                     <div>
-                      <div className="label-eyebrow mb-2.5">Liability</div>
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <span className="label-eyebrow">Liability</span>
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center size-4 rounded-full bg-muted/60 text-muted-foreground hover:text-primary hover:bg-muted transition-colors cursor-pointer"
+                                aria-label="Liability Info"
+                              >
+                                <Info className="size-3" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs p-3 text-xs bg-slate-900 text-slate-100 shadow-xl border border-slate-700 z-50">
+                              <p className="font-semibold mb-1 text-primary-foreground">Company Liability Types</p>
+                              <p className="mb-2"><strong className="text-white">Limited by Shares:</strong> Shareholders are only liable up to the unpaid face value of their shares. Standard structure for commercial businesses.</p>
+                              <p><strong className="text-white">Limited by Guarantee:</strong> Members guarantee a fixed amount to contribute if the company is wound up. Used for non-profits & associations without share capital.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <OptionCard
                           active={liability === "shares"}
                           onClick={() => setLiability("shares")}
                           title="Limited by Shares"
                           subtitle="You'll state a share capital"
+                          tooltip="Limited by Shares: Members' liability is limited to the unpaid amount on shares held by them. Most common for commercial businesses."
                         />
                         <OptionCard
                           active={liability === "guarantee"}
                           onClick={() => setLiability("guarantee")}
                           title="Limited by Guarantee"
                           subtitle="No share capital — you'll state a number of members"
+                          tooltip="Limited by Guarantee: Members guarantee a fixed amount to contribute toward assets if wound up. Common for non-profits, clubs & associations."
                         />
                       </div>
                     </div>
@@ -1478,32 +1501,63 @@ function NumberInput({
 
 /** A selectable option tile used for the Class / Liability choices. */
 function OptionCard({
-  active, onClick, title, subtitle,
-}: { active: boolean; onClick: () => void; title: string; subtitle: string }) {
+  active,
+  onClick,
+  title,
+  subtitle,
+  tooltip,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+  tooltip?: string;
+}) {
   return (
-    <button
-      type="button"
+    <div
       onClick={onClick}
       className={
-        "text-left p-3.5 rounded-lg border transition-all hover-lift ring-focus " +
+        "text-left p-3.5 rounded-lg border transition-all hover-lift ring-focus cursor-pointer relative flex flex-col justify-between " +
         (active
           ? "border-primary ring-2 ring-primary/25 bg-primary/[0.04]"
           : "border-border hover:border-border-strong bg-surface")
       }
     >
-      <div className="flex items-center gap-2">
-        <span
-          className={
-            "size-3.5 rounded-full border-2 grid place-items-center shrink-0 " +
-            (active ? "border-primary" : "border-border-strong")
-          }
-        >
-          {active && <span className="size-1.5 rounded-full bg-primary" />}
-        </span>
-        <span className="text-sm font-semibold leading-tight">{title}</span>
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                "size-3.5 rounded-full border-2 grid place-items-center shrink-0 " +
+                (active ? "border-primary" : "border-border-strong")
+              }
+            >
+              {active && <span className="size-1.5 rounded-full bg-primary" />}
+            </span>
+            <span className="text-sm font-semibold leading-tight">{title}</span>
+          </div>
+          {tooltip && (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="p-1 rounded-full text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors shrink-0 cursor-pointer"
+                    aria-label="Info"
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs p-2.5 text-xs bg-slate-900 text-slate-100 shadow-xl border border-slate-700 z-50">
+                  <p className="leading-relaxed">{tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="text-[11px] text-muted-foreground mt-1.5 pl-[22px]">{subtitle}</div>
       </div>
-      <div className="text-[11px] text-muted-foreground mt-1.5 pl-[22px]">{subtitle}</div>
-    </button>
+    </div>
   );
 }
 
