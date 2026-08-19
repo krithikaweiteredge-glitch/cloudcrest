@@ -121,14 +121,13 @@ function getRequiredDocumentsForRequest(request: any): string[] {
     const isSec8 = title.includes("section 8") || title.includes("foundation") || fd.entity === "sec8";
     const isOpc = title.includes("one person") || title.includes("opc") || fd.entity === "opc";
     return [
-      "PAN Card of Directors",
-      "Aadhaar Card / Photo ID of Directors",
-      "Passport-size Photographs of Directors",
-      "Address Proof of Directors (Utility Bill < 2 months)",
-      "Registered Office Premises Proof",
-      "Rent Agreement + NOC (if rented)",
+      "PAN & Aadhaar of all directors",
+      "Passport-size photographs",
+      "Address proof (utility bill < 2 mo)",
+      "Registered office proof",
+      "Rent agreement + NOC (if rented)",
       "Digital Signature Certificate (DSC)",
-      "MoA & AoA Drafts",
+      "MoA & AoA drafts",
       ...(isSec8 ? ["Form INC-12 / Section 8 License Approval"] : []),
       ...(isOpc ? ["INC-3 Nominee Consent Form"] : []),
     ];
@@ -136,14 +135,13 @@ function getRequiredDocumentsForRequest(request: any): string[] {
 
   if (title.includes("llp") || title.includes("limited liability partnership") || form.includes("fillip")) {
     return [
-      "PAN Card of Designated Partners",
-      "Aadhaar Card / Photo ID of Partners",
-      "Passport-size Photographs of Partners",
-      "Address Proof of Partners (Utility Bill < 2 months)",
-      "Registered Office Premises Proof of LLP",
-      "Rent Agreement + NOC (if rented)",
-      "Digital Signature Certificate (DSC) of Partners",
-      "LLP Agreement Draft",
+      "PAN & Aadhaar of all partners",
+      "Passport-size photographs",
+      "Address proof (utility bill < 2 mo)",
+      "Registered office proof",
+      "Rent agreement + NOC (if rented)",
+      "Digital Signature Certificate (DSC)",
+      "LLP Agreement draft",
     ];
   }
 
