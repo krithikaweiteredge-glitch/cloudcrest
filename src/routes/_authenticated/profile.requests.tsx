@@ -3,7 +3,7 @@ import { assetUrl } from "@/lib/file-url";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { FileText, Download, UploadCloud, X, Loader2, Info, User, Mail, Phone, Building2, Coins, Calendar, CheckCircle2, ChevronRight, Clock } from "lucide-react";
+import { FileText, Download, UploadCloud, FolderLock, X, Loader2, Info, User, Mail, Phone, Building2, Coins, Calendar, CheckCircle2, ChevronRight, Clock } from "lucide-react";
 import { StatusPill, EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
 import { splitRequestNotes } from "@/lib/request-notes";
@@ -421,6 +421,8 @@ function RegistrationDetailDialog({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [activeUploadLabel, setActiveUploadLabel] = useState<string | null>(null);
+  const [vaultModalOpen, setVaultModalOpen] = useState(false);
+  const [targetVaultDocLabel, setTargetVaultDocLabel] = useState<string | undefined>(undefined);
 
   const openDoc = (path: string) => {
     window.open(assetUrl(path), "_blank", "noopener");
@@ -429,6 +431,11 @@ function RegistrationDetailDialog({
   const triggerUploadForDoc = (docLabel?: string) => {
     setActiveUploadLabel(docLabel || null);
     fileInputRef.current?.click();
+  };
+
+  const triggerVaultPickerForDoc = (docLabel?: string) => {
+    setTargetVaultDocLabel(docLabel);
+    setVaultModalOpen(true);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -698,15 +705,24 @@ function RegistrationDetailDialog({
                       Upload all required documents for your registration to be processed by Cloudcrest associates.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => triggerUploadForDoc()}
-                    disabled={uploading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0 cursor-pointer"
-                  >
-                    {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
-                    Upload File
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => triggerVaultPickerForDoc()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                    >
+                      <FolderLock className="size-3.5 text-primary" /> From Vault
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerUploadForDoc()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0 cursor-pointer"
+                    >
+                      {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <UploadCloud className="size-3.5" />}
+                      Upload File
+                    </button>
+                  </div>
                   <input ref={fileInputRef} type="file" multiple hidden onChange={handleFileUpload} />
                 </div>
 
@@ -781,7 +797,7 @@ function RegistrationDetailDialog({
                                   </div>
                                 ) : (
                                   <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-                                    Pending upload — click to attach this document
+                                    Pending upload — attach from device or Vault
                                   </div>
                                 )}
                               </div>
@@ -802,14 +818,23 @@ function RegistrationDetailDialog({
                                   </button>
                                 </>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => triggerUploadForDoc(reqDoc)}
-                                  disabled={uploading}
-                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-500 hover:text-white transition-all cursor-pointer shadow-xs disabled:opacity-50"
-                                >
-                                  <UploadCloud className="size-3" /> Upload Document
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerVaultPickerForDoc(reqDoc)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all cursor-pointer shadow-2xs"
+                                  >
+                                    <FolderLock className="size-3" /> From Vault
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerUploadForDoc(reqDoc)}
+                                    disabled={uploading}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-500 hover:text-white transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                  >
+                                    <UploadCloud className="size-3" /> Upload File
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -878,6 +903,20 @@ function RegistrationDetailDialog({
           </button>
         </div>
       </div>
+
+      {vaultModalOpen && (
+        <VaultPickerModal
+          isOpen={vaultModalOpen}
+          onClose={() => setVaultModalOpen(false)}
+          requestId={request.id}
+          requiredDocs={request.requiredDocuments && request.requiredDocuments.length > 0 ? request.requiredDocuments : getRequiredDocumentsForRequest(request)}
+          initialTargetLabel={targetVaultDocLabel}
+          onSuccess={() => {
+            setUploadSuccess(`Document from Vault attached successfully!`);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 
@@ -895,4 +934,206 @@ function DetailLine({ icon: Icon, label, value }: { icon: any; label: string; va
       </div>
     </div>
   );
+}
+
+function VaultPickerModal({
+  isOpen,
+  onClose,
+  requestId,
+  requiredDocs,
+  initialTargetLabel,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  requestId: number;
+  requiredDocs: string[];
+  initialTargetLabel?: string;
+  onSuccess: () => void;
+}) {
+  const [selectedLabel, setSelectedLabel] = useState<string>(initialTargetLabel || requiredDocs[0] || "");
+  const [linkingDocId, setLinkingDocId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialTargetLabel) {
+      setSelectedLabel(initialTargetLabel);
+    } else if (requiredDocs.length > 0) {
+      setSelectedLabel(requiredDocs[0]);
+    }
+  }, [initialTargetLabel, requiredDocs]);
+
+  const { data: vaultDocs, isLoading } = useQuery({
+    queryKey: ["my-docs"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/documents`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load documents");
+      const list = await res.json();
+      return list.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        size_bytes: d.sizeBytes,
+        storage_path: d.storagePath,
+        created_at: d.createdAt,
+      }));
+    },
+    enabled: isOpen,
+  });
+
+  const handleLinkDoc = async (docId: number) => {
+    setLinkingDocId(docId);
+    setError(null);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/requests/${requestId}/link-vault-docs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          docIds: [docId],
+          label: selectedLabel,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to attach vault document");
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Failed to attach document");
+    } finally {
+      setLinkingDocId(null);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const content = (
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
+      <div className="fixed inset-0 bg-slate-950/90" onClick={onClose} />
+
+      <div className="relative w-full max-w-xl max-h-[85vh] overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-2xl flex flex-col z-10 animate-in zoom-in-95 duration-200 my-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-slate-900 via-navy/95 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-white/10 shrink-0">
+          <div className="space-y-0.5">
+            <h3 className="text-base font-display font-bold text-white flex items-center gap-2">
+              <FolderLock className="size-4 text-primary" /> Select Document from Vault
+            </h3>
+            <p className="text-[11px] text-white/70">
+              Attach a document stored in your Vault directly to this application checklist slot.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="size-8 rounded-full bg-white/10 hover:bg-white/20 text-white grid place-items-center transition-colors shrink-0"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+          {/* Target Required Document Selector */}
+          <div className="p-3 rounded-xl border border-border bg-card space-y-1.5 shadow-xs">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Attach As (Target Checklist Slot)
+            </label>
+            <select
+              value={selectedLabel}
+              onChange={(e) => setSelectedLabel(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              {requiredDocs.map((docName, idx) => (
+                <option key={idx} value={docName}>
+                  {docName}
+                </option>
+              ))}
+              <option value="Additional Document">Other / Additional Attachment</option>
+            </select>
+          </div>
+
+          {error && (
+            <div className="text-xs text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2">
+              {error}
+            </div>
+          )}
+
+          {/* Vault Files List */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Your Saved Vault Documents
+            </div>
+
+            {isLoading ? (
+              <div className="py-8 grid place-items-center">
+                <Loader2 className="size-6 animate-spin text-primary" />
+              </div>
+            ) : vaultDocs && vaultDocs.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2 max-h-[340px] overflow-y-auto pr-1">
+                {vaultDocs.map((doc: any) => {
+                  const parsed = parseDocLabel(doc.name);
+                  const isLinking = linkingDocId === doc.id;
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="p-3 rounded-xl border border-border/80 bg-card hover:border-primary/40 transition-colors flex items-center justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="size-8 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                          <FileText className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-foreground truncate">
+                            {parsed.fileName || doc.name}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            Category: {parsed.label}
+                            {doc.size_bytes ? ` · ${(doc.size_bytes / 1024).toFixed(0)} KB` : ""}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleLinkDoc(doc.id)}
+                        disabled={isLinking}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold gradient-brand text-white shadow-brand hover:opacity-95 disabled:opacity-60 transition-all shrink-0 cursor-pointer"
+                      >
+                        {isLinking ? <Loader2 className="size-3.5 animate-spin" /> : <FolderLock className="size-3.5" />}
+                        Attach File
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                No documents found in your Document Vault. You can upload files directly to your Vault from the "Documents Vault" page.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3.5 border-t border-border bg-muted/20 flex justify-end shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(content, document.body);
 }
