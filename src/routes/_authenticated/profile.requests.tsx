@@ -191,36 +191,78 @@ function getRequiredDocumentsForRequest(request: any): string[] {
   ];
 }
 
-function findMatchingUploadedDoc(reqDoc: string, docs: any[]): any | null {
-  if (!docs || docs.length === 0) return null;
-  const reqLower = reqDoc.toLowerCase();
+function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: any[]) {
+  const claimedDocIds = new Set<number | string>();
+  const matches: Record<string, any> = {};
 
-  // 1. Label match
-  for (const doc of docs) {
-    const parsed = parseDocLabel(doc.name);
-    const parsedLabelLower = parsed.label.toLowerCase();
-    const docNameLower = (doc.name || "").toLowerCase();
+  if (!requiredDocs || !uploadedDocs || uploadedDocs.length === 0) {
+    return { matches, unclaimedDocs: uploadedDocs || [] };
+  }
 
-    if (parsedLabelLower.includes(reqLower) || reqLower.includes(parsedLabelLower) || docNameLower.includes(reqLower)) {
-      return doc;
+  // Pass 1: Explicit Label Matches (e.g. document name starts with "PAN Card of Directors :: ")
+  for (const reqDoc of requiredDocs) {
+    const reqLower = reqDoc.toLowerCase();
+    for (const doc of uploadedDocs) {
+      if (claimedDocIds.has(doc.id)) continue;
+      const parsed = parseDocLabel(doc.name);
+      const parsedLabelLower = parsed.label.toLowerCase();
+
+      // Check if doc was uploaded with an explicit label matching this required document item
+      if (
+        parsedLabelLower !== "uploaded document" &&
+        (parsedLabelLower === reqLower || parsedLabelLower.includes(reqLower) || reqLower.includes(parsedLabelLower))
+      ) {
+        matches[reqDoc] = doc;
+        claimedDocIds.add(doc.id);
+        break;
+      }
     }
   }
 
-  // 2. Keyword fallback matching
-  for (const doc of docs) {
-    const text = (doc.name || "").toLowerCase();
+  // Pass 2: Strict Keyword Matching for unclaimed required docs
+  for (const reqDoc of requiredDocs) {
+    if (matches[reqDoc]) continue;
+    const reqLower = reqDoc.toLowerCase();
 
-    if (reqLower.includes("pan") && text.includes("pan")) return doc;
-    if ((reqLower.includes("aadhaar") || reqLower.includes("photo id")) && (text.includes("aadhaar") || text.includes("adhar") || text.includes("id"))) return doc;
-    if (reqLower.includes("photograph") && (text.includes("photo") || text.includes("pic"))) return doc;
-    if (reqLower.includes("address proof") && (text.includes("address") || text.includes("bill") || text.includes("utility"))) return doc;
-    if (reqLower.includes("office") && (text.includes("office") || text.includes("premises") || text.includes("tax"))) return doc;
-    if (reqLower.includes("rent") && (text.includes("rent") || text.includes("noc") || text.includes("lease"))) return doc;
-    if (reqLower.includes("dsc") && (text.includes("dsc") || text.includes("signature") || text.includes("digital"))) return doc;
-    if ((reqLower.includes("moa") || reqLower.includes("aoa") || reqLower.includes("deed") || reqLower.includes("agreement")) && (text.includes("moa") || text.includes("aoa") || text.includes("deed") || text.includes("agreement") || text.includes("draft"))) return doc;
+    for (const doc of uploadedDocs) {
+      if (claimedDocIds.has(doc.id)) continue;
+      const docText = (doc.name || "").toLowerCase();
+      const parsed = parseDocLabel(doc.name);
+      const labelText = parsed.label.toLowerCase();
+      const combined = `${labelText} ${docText}`;
+
+      let isMatch = false;
+
+      if (reqLower.includes("pan")) {
+        if (/\bpan\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("aadhaar") || reqLower.includes("photo id")) {
+        if (/\b(aadhaar|adhar|voter|passport|identity)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("photograph")) {
+        if (/\b(photograph|photo|pic|picture)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("address proof")) {
+        if (/\b(address|utility|bill|electricity|water|gas)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("office") || reqLower.includes("premises")) {
+        if (/\b(office|premises|property|tax)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("rent")) {
+        if (/\b(rent|lease|noc|agreement)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("dsc") || reqLower.includes("signature")) {
+        if (/\b(dsc|signature|digital)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("moa") || reqLower.includes("aoa")) {
+        if (/\b(moa|aoa|memorandum|articles|draft)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("cheque") || reqLower.includes("bank")) {
+        if (/\b(cheque|bank|passbook|statement)\b/.test(combined)) isMatch = true;
+      }
+
+      if (isMatch) {
+        matches[reqDoc] = doc;
+        claimedDocIds.add(doc.id);
+        break;
+      }
+    }
   }
 
-  return null;
+  const unclaimedDocs = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
+  return { matches, unclaimedDocs };
 }
 
 function RequestsPage() {
@@ -636,9 +678,12 @@ function RegistrationDetailDialog({
 
           {/* Documents Section with Required Documents Checklist */}
           {(() => {
-            const requiredDocs = getRequiredDocumentsForRequest(request);
+            const requiredDocs = request.requiredDocuments && request.requiredDocuments.length > 0
+              ? request.requiredDocuments
+              : getRequiredDocumentsForRequest(request);
             const uploadedList = request.documents || [];
-            const uploadedCount = requiredDocs.filter((r) => findMatchingUploadedDoc(r, uploadedList)).length;
+            const { matches, unclaimedDocs } = computeDocumentChecklistMatches(requiredDocs, uploadedList);
+            const uploadedCount = Object.keys(matches).length;
             const progressPct = requiredDocs.length > 0 ? Math.round((uploadedCount / requiredDocs.length) * 100) : 0;
 
             return (
@@ -702,8 +747,8 @@ function RegistrationDetailDialog({
                       Required Documents Checklist
                     </div>
                     <div className="grid grid-cols-1 gap-2">
-                      {requiredDocs.map((reqDoc, idx) => {
-                        const matchedDoc = findMatchingUploadedDoc(reqDoc, uploadedList);
+                      {requiredDocs.map((reqDoc: string, idx: number) => {
+                        const matchedDoc = matches[reqDoc];
                         const isUploaded = !!matchedDoc;
                         const parsedMatch = matchedDoc ? parseDocLabel(matchedDoc.name) : null;
 
