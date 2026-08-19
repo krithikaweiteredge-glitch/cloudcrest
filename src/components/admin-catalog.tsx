@@ -557,6 +557,11 @@ function ServiceDialog({
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
+  // Home-page card chips (turnaround + document count).
+  const [timelineDays, setTimelineDays] = useState(svc?.timelineDays || "");
+  const [documentsCount, setDocumentsCount] = useState(
+    svc?.documentsCount != null ? String(svc.documentsCount) : "",
+  );
   const [icon, setIcon] = useState(svc?.icon || "");
   const [actsRulesPdfs, setActsRulesPdfs] = useState<{ name: string; url: string }[]>(() => {
     if (!svc?.actsRulesPdfs) return [];
@@ -663,6 +668,8 @@ function ServiceDialog({
         authority,
         formNo,
         icon,
+        timelineDays: timelineDays.trim() || null,
+        documentsCount: documentsCount.trim() === "" ? null : Number(documentsCount),
         whoCanApply: tabsList.find((t) => t.id === "who")?.content || "",
         actsRules: tabsList.find((t) => t.id === "acts")?.content || "",
         actsRulesPdfs: JSON.stringify(actsRulesPdfs),
@@ -913,6 +920,14 @@ function ServiceDialog({
             </Field>
             <Field label="Form">
               <input value={formNo} onChange={(e) => setFormNo(e.target.value)} placeholder="GI-1" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Home-card turnaround (e.g. 7–10 Days)">
+              <input value={timelineDays} onChange={(e) => setTimelineDays(e.target.value)} placeholder="7–10 Days" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+            </Field>
+            <Field label="Home-card document count">
+              <input value={documentsCount} onChange={(e) => setDocumentsCount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="15" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono" />
             </Field>
           </div>
           <Field label="Icon (lucide name, e.g. Award, Shield, Wallet)">

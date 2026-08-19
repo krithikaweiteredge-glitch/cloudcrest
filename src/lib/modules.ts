@@ -12,6 +12,9 @@ export type ModuleItem = {
   icon: React.ComponentType<{ className?: string }>;
   authority: string;
   form?: string;
+  /** Home-card chips, admin-editable (null when unset — the card falls back). */
+  timelineDays?: string | null;
+  documentsCount?: number | null;
 };
 
 export type ModuleGroup = {
@@ -83,7 +86,10 @@ export function getModule(slug: string): ModuleItem | undefined {
 /** A service published from the admin catalog (DB-driven). */
 export type CatalogGroup = {
   label: string;
-  items: { slug: string; title: string; short: string; authority: string; form: string; icon?: string }[];
+  items: {
+    slug: string; title: string; short: string; authority: string; form: string; icon?: string;
+    timelineDays?: string | null; documentsCount?: number | null;
+  }[];
 };
 
 /** Icon names stored on `services.icon` -> lucide components. */
@@ -205,6 +211,8 @@ export function catalogToGroups(groups: CatalogGroup[]): ModuleGroup[] {
             icon: groupIcon,
             authority: i.authority || "—",
             form: i.form || undefined,
+            timelineDays: i.timelineDays ?? null,
+            documentsCount: i.documentsCount ?? null,
           }))
           // Order services within the category to match the document.
           .sort((a, b) => rankOf(ITEM_ORDER, a.slug) - rankOf(ITEM_ORDER, b.slug)),

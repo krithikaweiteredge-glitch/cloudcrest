@@ -24,7 +24,13 @@ import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
+  PenLine, Phone, MessageCircle, X,
 } from "lucide-react";
+
+// Cloudcrest advisor contact — one place so the call / WhatsApp links stay in sync.
+const ADVISOR_PHONE_DISPLAY = "+91 89770 79433";
+const ADVISOR_TEL = "tel:+918977079433";
+const ADVISOR_WHATSAPP = "https://wa.me/918977079433";
 
 const STEPS = [
   { key: "type", label: "Type" },
@@ -46,6 +52,8 @@ type EntityType = {
   minDirectors: number;
   minShareholders: number;
   requiresNominee: boolean;
+  /** Admin-set professional fee; undefined when the type is unpriced. */
+  professionalFee?: number;
 };
 
 // The catalog (`company-*` rows) is the source of truth for which entity types
@@ -59,7 +67,13 @@ type EntityType = {
 const entityKeyFromSlug = (slug: string) => slug.replace(/^company-/, "");
 
 /** Build a full picker entry, layering saved catalog rules over the built-in defaults. */
-function buildEntityType(key: string, title: string, form: string, rawRules?: string | null): EntityType {
+function buildEntityType(
+  key: string,
+  title: string,
+  form: string,
+  rawRules?: string | null,
+  professionalFee?: number | null,
+): EntityType {
   const r = resolveWizardRules(key, rawRules);
   return {
     key,
@@ -71,6 +85,7 @@ function buildEntityType(key: string, title: string, form: string, rawRules?: st
     minDirectors: r.minDirectors,
     minShareholders: r.minShareholders,
     requiresNominee: r.requiresNominee,
+    professionalFee: typeof professionalFee === "number" ? professionalFee : undefined,
   };
 }
 
@@ -168,6 +183,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
   const [openSignIn, setOpenSignIn] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stepError, setStepError] = useState<string | null>(null);
+  // "How would you like to proceed?" popup, opened when a type card is clicked.
+  const [proceedOpen, setProceedOpen] = useState(false);
 
   // Entity-type picker, driven by the catalog. Each `company-*` sibling becomes
   // a card; its title and form come from the catalog, while the legal suffix and
@@ -182,7 +199,7 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     // rather than any static fallback.
     if (!companyVariants) return [];
     return companyVariants.map((v) =>
-      buildEntityType(entityKeyFromSlug(v.slug), v.name, v.formNo ?? "", v.wizardRules),
+      buildEntityType(entityKeyFromSlug(v.slug), v.name, v.formNo ?? "", v.wizardRules, v.professionalFee),
     );
   }, [companyVariants]);
 
@@ -639,6 +656,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {entityTypes.map((t) => {
                     const active = t.key === entity;
+                    // Fee tag shown where the form number used to be: the admin's
+                    // professional fee for this type, with a "+ GST" note. Revealed
+                    // on card hover. Shown whenever the type is priced.
+                    const hasFee = typeof t.professionalFee === "number" && t.professionalFee > 0;
+                    const proFee = t.professionalFee ?? 0;
                     return (
                       <button
                         key={t.key}
@@ -649,9 +671,12 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           setEntity(t.key);
                           setErrors({});
                           setStepError(null);
+                          // Clicking a type opens the "how would you like to
+                          // proceed?" popup (fill yourself / call / WhatsApp).
+                          setProceedOpen(true);
                         }}
                         className={
-                          "text-left p-4 rounded-xl bg-surface border transition-all hover-lift ring-focus " +
+                          "group/card text-left p-4 rounded-xl bg-surface border transition-all hover-lift ring-focus " +
                           (active
                             ? "border-primary ring-2 ring-primary/25 shadow-card"
                             : "border-border hover:border-border-strong shadow-card")
@@ -661,9 +686,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           <span className="text-sm font-semibold leading-tight">
                             {t.title}
                           </span>
-                          <span className="text-[9px] mono text-muted-foreground shrink-0">
-                            {t.form}
-                          </span>
+                          {hasFee && (
+                            <span className="mono text-[10px] font-semibold text-foreground/80 whitespace-nowrap shrink-0 opacity-0 transition-opacity duration-150 group-hover/card:opacity-100 group-focus-within/card:opacity-100">
+                              ₹{proFee.toLocaleString("en-IN")} + GST
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground mb-3">
                           Suffix: <span className="text-foreground/80">{t.suffix}</span>
@@ -1173,6 +1200,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       <Send className="size-4" /> Submit Application
                     </button>
                   </div>
+                ) : stepKey === "type" ? (
+                  // On the type step, progression is handled by the "How would you
+                  // like to proceed?" panel above ("Fill on your own"), so no Next
+                  // button here.
+                  null
                 ) : (
                   <button
                     onClick={next}
@@ -1282,6 +1314,91 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         reason="Sign in to continue your company incorporation — we'll save your progress, show the fee breakdown and let you submit the application."
         next="/m/company"
       />
+
+      {/* "How would you like to proceed?" popup — opened by clicking a type card.
+          "Fill on your own" advances to the Structure step; the other two hand off
+          to a Cloudcrest advisor by phone call or WhatsApp. */}
+      {proceedOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setProceedOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-elev p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-base font-semibold">How would you like to proceed?</div>
+                <p className="text-[12px] text-muted-foreground mt-1">
+                  Continue with{" "}
+                  <span className="font-medium text-foreground/80">{selected.title}</span>{" "}
+                  yourself, or let a Cloudcrest advisor handle the filing for you.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProceedOpen(false)}
+                className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <button
+                type="button"
+                onClick={() => { setProceedOpen(false); next(); }}
+                className="group w-full flex items-center gap-3 text-left p-4 rounded-xl border border-primary bg-primary/[0.06] ring-focus hover:shadow-card transition-all"
+              >
+                <span className="size-10 rounded-lg grid place-items-center gradient-brand text-white shadow-brand shrink-0">
+                  <PenLine className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold">
+                    Fill on your own
+                    <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">
+                    Continue to structure, name, office and the rest.
+                  </span>
+                </span>
+              </button>
+
+              <a
+                href={ADVISOR_TEL}
+                className="group w-full flex items-center gap-3 text-left p-4 rounded-xl border border-border bg-surface ring-focus hover:border-primary/50 hover:shadow-card transition-all"
+              >
+                <span className="size-10 rounded-lg grid place-items-center bg-primary/10 text-primary group-hover:gradient-brand group-hover:text-white transition-all shrink-0">
+                  <Phone className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Talk to an advisor</span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">Call {ADVISOR_PHONE_DISPLAY}</span>
+                </span>
+              </a>
+
+              <a
+                href={`${ADVISOR_WHATSAPP}?text=${encodeURIComponent(`Hi, I'd like help registering a ${selected.title}.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group w-full flex items-center gap-3 text-left p-4 rounded-xl border border-border bg-surface ring-focus hover:border-primary/50 hover:shadow-card transition-all"
+              >
+                <span className="size-10 rounded-lg grid place-items-center bg-success/12 text-success group-hover:bg-success group-hover:text-white transition-all shrink-0">
+                  <MessageCircle className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">Text on WhatsApp</span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5">Chat on {ADVISOR_PHONE_DISPLAY}</span>
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

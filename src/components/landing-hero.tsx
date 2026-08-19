@@ -7,34 +7,6 @@ import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown,
 } from "lucide-react";
 
-// Typical turnaround + document count per service, shown as chips on each card.
-const TIMELINE: Record<string, { days: string; docs: number }> = {
-  company: { days: "7–10 Days", docs: 15 },
-  llp: { days: "5–7 Days", docs: 10 },
-  partnership: { days: "5–7 Days", docs: 7 },
-  huf: { days: "2–3 Days", docs: 5 },
-  gst: { days: "3–7 Days", docs: 6 },
-  "pan-tan": { days: "2–5 Days", docs: 4 },
-  msme: { days: "1–3 Days", docs: 4 },
-  iec: { days: "3–5 Days", docs: 5 },
-  dpiit: { days: "7–14 Days", docs: 6 },
-  "labour-licence": { days: "7–15 Days", docs: 6 },
-  epf: { days: "3–7 Days", docs: 5 },
-  esi: { days: "3–7 Days", docs: 5 },
-  "shop-establishment": { days: "5–10 Days", docs: 5 },
-  "trade-licence": { days: "7–15 Days", docs: 6 },
-  "fire-noc": { days: "10–20 Days", docs: 6 },
-  fssai: { days: "7–15 Days", docs: 6 },
-  "pollution-ncb": { days: "15–30 Days", docs: 7 },
-  "drug-licence": { days: "10–20 Days", docs: 8 },
-  trademark: { days: "2–4 Days", docs: 4 },
-  patent: { days: "5–10 Days", docs: 6 },
-  copyright: { days: "3–7 Days", docs: 4 },
-  design: { days: "5–10 Days", docs: 5 },
-};
-
-const timelineFor = (slug: string) => TIMELINE[slug] ?? { days: "7–14 Days", docs: 6 };
-
 const SUFFIXES = ["Private Limited", "LLP", "Limited"];
 
 // Short, customer-facing one-liners per service. Keyed by slug; anything not
@@ -415,22 +387,22 @@ export function LandingHero() {
                       <div className="relative flex-1 mt-2 text-[13px] font-sans leading-relaxed text-muted-foreground transition-colors duration-300 group-hover:text-white/75">
                         {describe(m.slug, m.title, m.short)}
                       </div>
-                      {/* Turnaround + document count. */}
-                      <div className="relative mt-3 flex flex-wrap items-center gap-2">
-                        {(() => {
-                          const tl = timelineFor(m.slug);
-                          return (
-                            <>
-                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
-                                <Clock className="size-3.5" /> {tl.days}
-                              </span>
-                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
-                                <FileText className="size-3.5" /> {tl.docs} Documents
-                              </span>
-                            </>
-                          );
-                        })()}
-                      </div>
+                      {/* Turnaround + document count — admin-managed. Each chip
+                          shows only when its value is set (no hardcoded fallback). */}
+                      {(m.timelineDays || m.documentsCount != null) && (
+                        <div className="relative mt-3 flex flex-wrap items-center gap-2">
+                          {m.timelineDays && (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
+                              <Clock className="size-3.5" /> {m.timelineDays}
+                            </span>
+                          )}
+                          {m.documentsCount != null && (
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors duration-300 group-hover:border-white/15 group-hover:bg-white/10 group-hover:text-white/70">
+                              <FileText className="size-3.5" /> {m.documentsCount} Documents
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Start Application CTA — slides up into view on hover. */}
                       <div className="relative grid transition-all duration-300 grid-rows-[0fr] opacity-0 group-hover:grid-rows-[1fr] group-hover:opacity-100 group-hover:mt-4">

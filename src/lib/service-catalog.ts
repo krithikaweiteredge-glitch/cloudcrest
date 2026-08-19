@@ -216,6 +216,12 @@ export type CatalogVariant = {
   active: boolean;
   /** JSON blob of per-type incorporation rules; see lib/company-types.ts. */
   wizardRules: string | null;
+  /**
+   * The admin-set professional fee for this variant. Only present for signed-in
+   * users (the family endpoint withholds pricing from anonymous visitors), and
+   * `undefined`/`null` when the admin hasn't priced the variant yet.
+   */
+  professionalFee?: number | null;
 };
 
 /**
@@ -229,10 +235,17 @@ export function useCatalogFamily(baseSlug: string) {
   const { data, isLoading } = useQuery({
     queryKey: ["catalog-family", baseSlug],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND()}/api/services/family/${encodeURIComponent(baseSlug)}`);
+      // `credentials: include` so the auth cookie rides along — the endpoint only
+      // attaches per-variant pricing (`professionalFee`) for signed-in users.
+      const res = await fetch(`${BACKEND()}/api/services/family/${encodeURIComponent(baseSlug)}`, {
+        credentials: "include",
+      });
       if (!res.ok) return [] as CatalogVariant[];
       const json = await res.json();
-      return Array.isArray(json?.variants) ? (json.variants as CatalogVariant[]) : [];
+      const raw = Array.isArray(json?.variants) ? (json.variants as CatalogVariant[]) : [];
+      // `professionalFee` arrives as a decimal string; normalise to a number (or
+      // undefined when absent / withheld) so consumers don't re-parse it.
+      return raw.map((v) => ({ ...v, professionalFee: toFee(v.professionalFee as any) }));
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

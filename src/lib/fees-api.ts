@@ -33,7 +33,12 @@ export type CompanyFeeContext = {
   state: string;
 };
 
-export type LlpFeeContext = { kind: "llp"; contribution: number };
+export type LlpFeeContext = {
+  kind: "llp";
+  contribution: number;
+  /** Indian LLP (FiLLiP) vs Foreign LLP (FC) — each is priced on its own catalog row. */
+  jurisdiction?: "indian" | "foreign";
+};
 
 export type FeeContext = CompanyFeeContext | LlpFeeContext;
 
