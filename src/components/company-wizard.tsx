@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -341,18 +341,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
 
   const stepKey = steps[step]?.key ?? "type";
 
-  // When the wizard is opened with a proposed name already in hand (e.g. from the
-  // homepage search), skip straight to the Name step — whose index depends on
-  // whether a Structure step was inserted, so resolve it from the keyed list.
-  const jumpedToName = useRef(false);
-  useEffect(() => {
-    if (initialName && !jumpedToName.current) {
-      jumpedToName.current = true;
-      const idx = steps.findIndex((s) => s.key === "name");
-      if (idx > 0) setStep(idx);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialName, steps]);
+  // A name passed in from the homepage search only pre-fills the Name field
+  // (name1, above) — the wizard still opens on the Type step so the applicant
+  // chooses the company type first.
 
   const validateStep = (currentStep: number): boolean => {
     const key = steps[currentStep]?.key ?? "type";

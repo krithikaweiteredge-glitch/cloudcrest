@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCatalogGroups } from "@/lib/service-catalog";
 import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
+import { SignInDialog } from "@/components/sign-in-dialog";
 import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown,
 } from "lucide-react";
 
 const SUFFIXES = ["Private Limited", "LLP", "Limited"];
+// Which registration wizard each suffix routes to once the name is available:
+// Private Limited & Limited (public) → the Company wizard (it carries the
+// private/public class internally); LLP → the LLP wizard.
+const SUFFIX_SLUGS = ["company", "llp", "company"];
 
 // Short, customer-facing one-liners per service. Keyed by slug; anything not
 // listed falls back to a sensible template so new catalog services still read
@@ -42,7 +47,7 @@ const describe = (slug: string, title: string, short: string) =>
 
 export function LandingHero() {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated, loading: authLoading } = useAuth();
   // Same source as the sidebar, so an admin-published service shows up in both.
   const { groups, loading } = useCatalogGroups();
   const allModules = groups.flatMap((g) => g.items);
@@ -59,19 +64,65 @@ export function LandingHero() {
   const [pick, setPick] = useState(0);
   const [checking, setChecking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // Existing companies with the searched name, returned by the RocketReach check.
-  const [matches, setMatches] = useState<
-    { id?: number; name: string; domain?: string; industry?: string; location?: string }[]
-  >([]);
+  // Shown briefly when a name is free, before routing to its registration wizard.
+  const [okMsg, setOkMsg] = useState<string | null>(null);
+  // Set when a signed-out visitor tries to check a name — prompts them to sign in.
+  const [needAuth, setNeedAuth] = useState(false);
+  type Company = { id?: number; name: string; domain?: string; industry?: string; location?: string };
+  // Existing companies with the searched name, returned by the availability check.
+  const [matches, setMatches] = useState<Company[]>([]);
+  // Already-registered companies whose brand begins with what the user is typing,
+  // fetched live from the MCA index so they can pick a distinctive name.
+  const [similar, setSimilar] = useState<Company[]>([]);
 
-  const suggestions = q.trim()
-    ? SUFFIXES.map((s) => `${q.trim()} ${s}`)
-    : [];
+  // Entity type each dropdown option filters the "similar" lookup by.
+  const SUFFIX_TYPES = ["private", "llp", "public"];
 
-  const checkAndGo = async (finalName: string) => {
+  // Debounced lookup of similar existing names as the user types — scoped to the
+  // entity type selected in the dropdown (Private Limited / LLP / Limited).
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setSimilar([]);
+      return;
+    }
+    const type = SUFFIX_TYPES[pick] ?? "private";
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/mca/similar?q=${encodeURIComponent(term)}&type=${type}`,
+          { signal: ctrl.signal },
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setSimilar(Array.isArray(data.matches) ? data.matches : []);
+      } catch {
+        /* aborted or offline — ignore */
+      }
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, pick]);
+
+  const checkAndGo = async (finalName: string, suffixIdx: number = pick) => {
     if (checking || !finalName.trim()) return;
+    // Require sign-in before starting a registration flow.
+    if (!authLoading && !isAuthenticated) {
+      setErrorMsg(null);
+      setOkMsg(null);
+      setMatches([]);
+      setSimilar([]);
+      setNeedAuth(true);
+      return;
+    }
     setChecking(true);
     setErrorMsg(null);
+    setOkMsg(null);
+    setNeedAuth(false);
     setMatches([]);
 
     try {
@@ -88,12 +139,15 @@ export function LandingHero() {
       }
 
       if (data.available) {
-        // Direct redirect to company wizard with prefilled name!
-        navigate({
-          to: "/m/$slug",
-          params: { slug: "company" },
-          search: { name: finalName },
-        });
+        // Confirm availability, then route to the wizard for the entity type the
+        // applicant picked (LLP → LLP wizard, Private Limited / Limited → Company).
+        const slug = SUFFIX_SLUGS[suffixIdx] ?? "company";
+        const dest = slug === "llp" ? "LLP" : "Company";
+        setSimilar([]);
+        setOkMsg(`“${finalName}” is available — opening ${dest} registration…`);
+        setTimeout(() => {
+          navigate({ to: "/m/$slug", params: { slug }, search: { name: finalName } });
+        }, 1100);
       } else {
         setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
         setMatches(Array.isArray(data.matches) ? data.matches : []);
@@ -196,6 +250,15 @@ export function LandingHero() {
                 </button>
             </form>
 
+            {okMsg && (
+              <div className="mt-3 text-left">
+                <div className="text-sm text-success bg-success/10 border border-success/20 rounded-xl p-3 flex items-center gap-2.5">
+                  <span className="size-4 rounded-full border-2 border-success/40 border-t-success animate-spin shrink-0" />
+                  <span className="font-medium">{okMsg}</span>
+                </div>
+              </div>
+            )}
+
             {errorMsg && (
               <div className="mt-3 text-left">
                 <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex items-start gap-2.5">
@@ -222,35 +285,26 @@ export function LandingHero() {
               </div>
             )}
 
-            {(suggestions.length > 0 || filteredModules.length > 0) && (
+            {((similar.length > 0 && !errorMsg && !okMsg && !needAuth) || filteredModules.length > 0) && (
               <div className="mt-3 rounded-xl bg-white text-foreground shadow-elev border border-border text-left overflow-hidden">
-                {suggestions.length > 0 && (
+                {similar.length > 0 && !errorMsg && !okMsg && !needAuth && (
                   <div>
-                    <div className="label-eyebrow px-4 pt-3 pb-1">Name availability preview</div>
-                    <ul>
-                      {suggestions.map((s, i) => (
-                        <li key={s}>
-                          <button
-                            onClick={() => checkAndGo(s)}
-                            disabled={checking}
-                            className="w-full text-left flex items-center justify-between px-4 py-2.5 hover:bg-muted transition-colors disabled:opacity-50"
-                          >
-                            <span className="text-sm">
-                              <span className="font-semibold">{q.trim()}</span>{" "}
-                              <span className="text-muted-foreground">{s.replace(q.trim(), "").trim()}</span>
-                            </span>
-                            <span className="text-[11px] mono text-success flex items-center gap-1">
-                              <span className="size-1.5 rounded-full bg-success" /> Click to check
-                            </span>
-                          </button>
-                          {i < suggestions.length - 1 && <div className="border-b border-border" />}
+                    <div className="label-eyebrow px-4 pt-3 pb-1">Similar existing companies</div>
+                    <ul className="pb-1">
+                      {similar.map((m, i) => (
+                        <li key={(m.name ?? "") + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
+                          <div className="text-sm font-semibold">{m.name}</div>
+                          <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                            {m.industry && <span>{m.industry}</span>}
+                            {m.location && <span>{m.location}</span>}
+                          </div>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
                 {filteredModules.length > 0 && (
-                  <div className="border-t border-border">
+                  <div className={similar.length > 0 && !errorMsg && !okMsg && !needAuth ? "border-t border-border" : ""}>
                     <div className="label-eyebrow px-4 pt-3 pb-1">Matching services</div>
                     <ul className="pb-2">
                       {filteredModules.map((m) => {
@@ -467,6 +521,14 @@ export function LandingHero() {
           ))}
         </div>
       </section>
+
+      {/* Sign-in required before starting a registration from the search. */}
+      <SignInDialog
+        open={needAuth}
+        onClose={() => setNeedAuth(false)}
+        reason="Please sign in to check your business name and start your registration."
+        next="/"
+      />
     </div>
   );
 }
