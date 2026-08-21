@@ -8,6 +8,12 @@ import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown,
 } from "lucide-react";
 
+// Backend origin — same convention as the rest of the app. Empty in local dev
+// (Vite proxies /api); set to the backend URL in production. Using it here keeps
+// the name check / similar-name calls pointed at the backend on the deployed
+// site instead of the frontend's own domain (which 404s).
+const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+
 const SUFFIXES = ["Private Limited", "LLP", "Limited"];
 // Which registration wizard each suffix routes to once the name is available:
 // Private Limited & Limited (public) → the Company wizard (it carries the
@@ -81,6 +87,13 @@ export function LandingHero() {
   // Debounced lookup of similar existing names as the user types — scoped to the
   // entity type selected in the dropdown (Private Limited / LLP / Limited).
   useEffect(() => {
+    // Editing the name (or switching entity type) invalidates the previous
+    // check's result — clear it so a stale status message doesn't keep the
+    // similar-names panel hidden.
+    setErrorMsg(null);
+    setOkMsg(null);
+    setMatches([]);
+
     const term = q.trim();
     if (term.length < 2) {
       setSimilar([]);
@@ -91,7 +104,7 @@ export function LandingHero() {
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `/api/mca/similar?q=${encodeURIComponent(term)}&type=${type}`,
+          `${BACKEND}/api/mca/similar?q=${encodeURIComponent(term)}&type=${type}`,
           { signal: ctrl.signal },
         );
         if (!res.ok) return;
@@ -126,7 +139,7 @@ export function LandingHero() {
     setMatches([]);
 
     try {
-      const response = await fetch("/api/mca/name-check", {
+      const response = await fetch(`${BACKEND}/api/mca/name-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: finalName }),
