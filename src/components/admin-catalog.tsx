@@ -18,7 +18,7 @@ const WIZARD_SLUGS = new Set(["company", "llp"]);
 // seeding a variant's rule defaults in the service dialog). Grouping/nesting in
 // the tree is generic (see organizeServicesWithVariants); this list only scopes
 // the wizard-rule seeding to the incorporation-style launchers.
-const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership"]);
+const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership", "trust"]);
 
 /** A service in display order, tagged with its nesting depth and family role. */
 type OrganizedService = {
@@ -38,7 +38,8 @@ type OrganizedService = {
  * with its depth and family role. A row nests under the sibling whose slug is its
  * LONGEST proper prefix, so multi-level families render as a tree:
  *   `society` › `society-macs` › `society-macs-telangana`
- * (base society → type → state), exactly like GST shows its registration types —
+ *   `trust`   › `trust-public` › `trust-public-telangana`
+ * (base entity → type → state), exactly like GST shows its registration types —
  * just one level deeper. Department subcategories keep their flat "everything under
  * the department base" nesting.
  */
@@ -271,12 +272,12 @@ export function AdminCatalogPanel() {
                             ) : (
                               organized.map(({ svc, depth, isLauncher, isVariant, variantCount }) => {
                                 // A "launcher" opens a picker where the customer chooses a
-                                // type (company/gst/partnership/society, or an industry
-                                // department). Its OWN fee is never shown — its types are
-                                // priced below. A "variant" is a nested row (a wizard type
+                                // type (company/gst/partnership/trust/society, or an
+                                // industry department). Its OWN fee is never shown — its types
+                                // are priced below. A "variant" is a nested row (a wizard type
                                 // like `company-pvt`, or a society state step). `depth` drives
-                                // the indent so multi-level families (society › type › state)
-                                // read as a tree.
+                                // the indent so multi-level families (trust/society › type ›
+                                // state) read as a tree.
                                 return (
                                 <li
                                   key={svc.id}

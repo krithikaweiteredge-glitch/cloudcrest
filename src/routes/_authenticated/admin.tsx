@@ -564,6 +564,7 @@ function AdminDetailDialog({
                   <div className="space-y-2 text-xs">
                     {fd.gstType && <DetailRow icon={FileText} label="GST Registration Type" value={fd.gstType} />}
                     {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
+                    {fd.trustType && <DetailRow icon={FileText} label="Trust Type" value={fd.trustType} />}
                     <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
                     {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={fd.name2} />}
                     {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={fd.suffix} />}

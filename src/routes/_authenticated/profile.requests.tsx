@@ -588,6 +588,7 @@ function RegistrationDetailDialog({
                 <div className="space-y-2 text-xs">
                   {fd.gstType && <DetailLine icon={FileText} label="GST Registration Type" value={fd.gstType} />}
                   {fd.partnershipType && <DetailLine icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
+                  {fd.trustType && <DetailLine icon={FileText} label="Trust Type" value={fd.trustType} />}
                   <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
                   {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={fd.name2} />}
                   {fd.suffix && <DetailLine icon={Building2} label="Entity Suffix" value={fd.suffix} />}

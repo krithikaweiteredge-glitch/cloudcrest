@@ -23,6 +23,7 @@ const KNOWN_FORM_KEYS = new Set([
   "foreignCountry",
   "gstType",
   "partnershipType",
+  "trustType",
   "directors",
   "shareholders",
   "partners",
