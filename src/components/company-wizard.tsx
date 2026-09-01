@@ -742,9 +742,6 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           setEntity(t.key);
                           setErrors({});
                           setStepError(null);
-                          // Clicking a type opens the "how would you like to
-                          // proceed?" popup (fill yourself / call / WhatsApp).
-                          setProceedOpen(true);
                         }}
                         className={
                           "group/card text-left p-4 rounded-xl bg-surface border transition-all hover-lift ring-focus " +
@@ -1316,15 +1313,16 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                       <Send className="size-4" /> Submit Application
                     </button>
                   </div>
-                ) : stepKey === "type" ? (
-                  // On the type step, progression is handled by the "How would you
-                  // like to proceed?" panel above ("Fill on your own"), so no Next
-                  // button here.
-                  null
                 ) : (
                   <button
-                    onClick={next}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all"
+                    onClick={() => {
+                      if (stepKey === "type") {
+                        setProceedOpen(true);
+                      } else {
+                        next();
+                      }
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all cursor-pointer"
                   >
                     Next · {steps[step + 1].label}
                     <ArrowRight className="size-4" />
