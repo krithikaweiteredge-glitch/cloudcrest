@@ -8,7 +8,7 @@ import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
-  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock, Globe,
+  Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock, Globe, Loader2,
 } from "lucide-react";
 
 const STEPS = [
@@ -100,6 +100,75 @@ function format10DigitPhone(phoneStr?: string | null): string {
   return cleaned;
 }
 
+function useMcaNameCheck(rawName: string, suffix: string) {
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    const trimmed = rawName.trim();
+    if (!trimmed) {
+      setResult(null);
+      setChecking(false);
+      return;
+    }
+
+    if (trimmed.length < 3) {
+      setResult({ ok: false, msg: "Minimum 3 characters required." });
+      setChecking(false);
+      return;
+    }
+
+    if (/(India|National|Bharat|President|Bank|Reserve|Insurance|Govt)/i.test(trimmed)) {
+      setResult({ ok: false, msg: "Contains restricted keyword — needs Central Govt. approval." });
+      setChecking(false);
+      return;
+    }
+
+    const fullName = suffix ? `${trimmed} ${suffix}` : trimmed;
+    const ctrl = new AbortController();
+    setChecking(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/mca/name-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: fullName }),
+          signal: ctrl.signal,
+        });
+
+        if (!res.ok) {
+          setResult({ ok: true, msg: "Preliminary check passed — reserve via RUN-LLP / FiLLiP." });
+          return;
+        }
+
+        const data = await res.json();
+        if (data.available) {
+          setResult({ ok: true, msg: `“${fullName}” appears to be available on the MCA registry.` });
+        } else {
+          setResult({
+            ok: false,
+            msg: data.reason || `“${fullName}” is already registered or restricted on MCA.`,
+          });
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setResult({ ok: true, msg: "Preliminary check passed — reserve via RUN-LLP / FiLLiP." });
+        }
+      } finally {
+        setChecking(false);
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [rawName, suffix]);
+
+  return { checking, result };
+}
+
 export function LlpWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
 
@@ -173,14 +242,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
   };
   const total = estimate.total;
 
-  const nameOk = useMemo(() => {
-    if (!name1) return null;
-    const len = name1.trim().length;
-    const bad = /(India|National|Bharat|President|Bank)/i.test(name1);
-    if (len < 3) return { ok: false, msg: "Minimum 3 characters" };
-    if (bad) return { ok: false, msg: "Contains restricted keyword — needs Central Govt. approval" };
-    return { ok: true, msg: "Preliminary check passed — reserve via RUN-LLP / FiLLiP" };
-  }, [name1]);
+  const { checking: checkingName1, result: name1Check } = useMcaNameCheck(name1, selected.suffix);
+  const { checking: checkingName2, result: name2Check } = useMcaNameCheck(name2, selected.suffix);
 
   const validateStep = (currentStep: number): boolean => {
     const newErrors: Record<string, string> = {};
@@ -200,9 +263,9 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
       if (!name1.trim()) {
         newErrors.name1 = "Please enter Proposed Name 1.";
         if (!globalMsg) globalMsg = "Proposed Name 1 is required.";
-      } else if (name1.trim().length < 3) {
-        newErrors.name1 = "Proposed Name 1 must be at least 3 characters long.";
-        if (!globalMsg) globalMsg = "Proposed Name 1 is too short.";
+      } else if (name1Check && !name1Check.ok) {
+        newErrors.name1 = name1Check.msg;
+        if (!globalMsg) globalMsg = name1Check.msg;
       }
 
       if (!objects.trim()) {
@@ -456,21 +519,25 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                           {selected.suffix}
                         </span>
                       </div>
-                      {nameOk && (
+                      {checkingName1 ? (
+                        <div className="mt-2 text-[11px] text-primary flex items-center gap-1.5 font-medium">
+                          <Loader2 className="size-3 animate-spin" /> Checking MCA registry availability…
+                        </div>
+                      ) : name1Check ? (
                         <div
                           className={
-                            "mt-2 text-[11px] flex items-center gap-1.5 " +
-                            (nameOk.ok ? "text-success" : "text-destructive")
+                            "mt-2 text-[11px] flex items-center gap-1.5 font-medium " +
+                            (name1Check.ok ? "text-success" : "text-destructive")
                           }
                         >
-                          {nameOk.ok ? (
-                            <CheckCircle2 className="size-3" />
+                          {name1Check.ok ? (
+                            <CheckCircle2 className="size-3.5 shrink-0" />
                           ) : (
-                            <AlertTriangle className="size-3" />
+                            <AlertTriangle className="size-3.5 shrink-0" />
                           )}
-                          <span>{nameOk.msg}</span>
+                          <span>{name1Check.msg}</span>
                         </div>
-                      )}
+                      ) : null}
                     </Field>
 
                     <Field label="Proposed LLP Name 2 (Optional)">
@@ -484,6 +551,25 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                           {selected.suffix}
                         </span>
                       </div>
+                      {checkingName2 ? (
+                        <div className="mt-2 text-[11px] text-primary flex items-center gap-1.5 font-medium">
+                          <Loader2 className="size-3 animate-spin" /> Checking MCA registry availability…
+                        </div>
+                      ) : name2Check ? (
+                        <div
+                          className={
+                            "mt-2 text-[11px] flex items-center gap-1.5 font-medium " +
+                            (name2Check.ok ? "text-success" : "text-destructive")
+                          }
+                        >
+                          {name2Check.ok ? (
+                            <CheckCircle2 className="size-3.5 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                          )}
+                          <span>{name2Check.msg}</span>
+                        </div>
+                      ) : null}
                     </Field>
 
                     <Field label="Industry Type">
@@ -741,10 +827,23 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
         <aside className="hidden lg:block w-80 border-l border-border bg-surface">
           <div className="sticky top-16 p-6">
             <div className="label-eyebrow mb-2.5 text-primary">Current Selection</div>
-            <div className="rounded-lg border border-border bg-panel p-3">
-              <div className="text-[11px] text-muted-foreground">Entity Type</div>
-              <div className="text-sm font-semibold mt-0.5">{selected.title}</div>
-              <div className="text-[10px] mono text-primary mt-2">
+            <div className="rounded-lg border border-border bg-panel p-3.5 space-y-3">
+              <div>
+                <div className="text-[11px] text-muted-foreground font-medium">Entity Type</div>
+                <div className="text-sm font-semibold text-foreground mt-0.5">{selected.title}</div>
+              </div>
+
+              {fees && fees.total > 0 && (
+                <div className="pt-2.5 border-t border-border/60">
+                  <div className="text-[11px] text-muted-foreground font-medium">Estimated Total Fee</div>
+                  <div className="text-sm font-bold mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    ₹{fees.total.toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Statutory fees + Pro fee + GST</div>
+                </div>
+              )}
+
+              <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">
                 Form · {selected.form}
               </div>
             </div>

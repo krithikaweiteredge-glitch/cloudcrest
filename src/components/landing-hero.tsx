@@ -123,15 +123,6 @@ export function LandingHero() {
 
   const checkAndGo = async (finalName: string, suffixIdx: number = pick) => {
     if (checking || !finalName.trim()) return;
-    // Require sign-in before starting a registration flow.
-    if (!authLoading && !isAuthenticated) {
-      setErrorMsg(null);
-      setOkMsg(null);
-      setMatches([]);
-      setSimilar([]);
-      setNeedAuth(true);
-      return;
-    }
     setChecking(true);
     setErrorMsg(null);
     setOkMsg(null);
@@ -159,8 +150,8 @@ export function LandingHero() {
         setSimilar([]);
         setOkMsg(`“${finalName}” is available — opening ${dest} registration…`);
         setTimeout(() => {
-          navigate({ to: "/m/$slug", params: { slug }, search: { name: finalName } });
-        }, 1100);
+          navigate({ to: "/m/$slug", params: { slug } });
+        }, 300);
       } else {
         setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
         setMatches(Array.isArray(data.matches) ? data.matches : []);
@@ -274,9 +265,21 @@ export function LandingHero() {
 
             {errorMsg && (
               <div className="mt-3 text-left">
-                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex items-start gap-2.5">
-                  <span className="font-semibold shrink-0">Status:</span>
-                  <span>{errorMsg}</span>
+                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="font-semibold shrink-0">Status:</span>
+                    <span>{errorMsg}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const slug = SUFFIX_SLUGS[pick] ?? "company";
+                      navigate({ to: "/m/$slug", params: { slug } });
+                    }}
+                    className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30 transition-colors cursor-pointer"
+                  >
+                    Open {SUFFIX_SLUGS[pick] === "llp" ? "LLP" : "Company"} Registration →
+                  </button>
                 </div>
                 {matches.length > 0 && (
                   <div className="mt-2 rounded-xl bg-white text-foreground shadow-elev border border-border overflow-hidden">

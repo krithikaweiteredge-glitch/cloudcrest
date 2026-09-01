@@ -25,7 +25,7 @@ import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
-  PenLine, Phone, MessageCircle, X,
+  PenLine, Phone, MessageCircle, X, Loader2,
 } from "lucide-react";
 
 // Cloudcrest advisor contact — one place so the call / WhatsApp links stay in sync.
@@ -138,6 +138,75 @@ function format10DigitPhone(phoneStr?: string | null): string {
     cleaned = cleaned.slice(-10);
   }
   return cleaned;
+}
+
+function useMcaNameCheck(rawName: string, suffix: string) {
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  useEffect(() => {
+    const trimmed = rawName.trim();
+    if (!trimmed) {
+      setResult(null);
+      setChecking(false);
+      return;
+    }
+
+    if (trimmed.length < 3) {
+      setResult({ ok: false, msg: "Minimum 3 characters required." });
+      setChecking(false);
+      return;
+    }
+
+    if (/(India|National|Bharat|President|Bank|Reserve|Insurance|Govt)/i.test(trimmed)) {
+      setResult({ ok: false, msg: "Contains restricted keyword — needs Central Govt approval." });
+      setChecking(false);
+      return;
+    }
+
+    const fullName = suffix ? `${trimmed} ${suffix}` : trimmed;
+    const ctrl = new AbortController();
+    setChecking(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL || ""}/api/mca/name-check`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: fullName }),
+          signal: ctrl.signal,
+        });
+
+        if (!res.ok) {
+          setResult({ ok: true, msg: "Preliminary check passed — reserve the name via RUN / Part A." });
+          return;
+        }
+
+        const data = await res.json();
+        if (data.available) {
+          setResult({ ok: true, msg: `“${fullName}” appears to be available on the MCA registry.` });
+        } else {
+          setResult({
+            ok: false,
+            msg: data.reason || `“${fullName}” is already registered or restricted on MCA.`,
+          });
+        }
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setResult({ ok: true, msg: "Preliminary check passed — reserve the name via RUN / Part A." });
+        }
+      } finally {
+        setChecking(false);
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [rawName, suffix]);
+
+  return { checking, result };
 }
 
 export function CompanyWizard({ initialName }: { initialName?: string }) {
@@ -315,14 +384,8 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
     return t ? `${t} ${effectiveSuffix}` : "";
   };
 
-  const nameOk = useMemo(() => {
-    if (!name1) return null;
-    const len = name1.trim().length;
-    const bad = /(India|National|Bharat|President|Bank)/i.test(name1);
-    if (len < 3) return { ok: false, msg: "Minimum 3 characters" };
-    if (bad) return { ok: false, msg: "Contains restricted keyword — needs Central Govt. approval" };
-    return { ok: true, msg: "Preliminary check passed — reserve the name via RUN / Part A" };
-  }, [name1]);
+  const { checking: checkingName1, result: name1Check } = useMcaNameCheck(name1, effectiveSuffix);
+  const { checking: checkingName2, result: name2Check } = useMcaNameCheck(name2, effectiveSuffix);
 
   const capitalCategory =
     capital <= 100000 ? "Small" : capital <= 1000000 ? "Standard" : capital <= 10000000 ? "Growth" : "Large";
@@ -354,9 +417,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
       if (!name1.trim()) {
         newErrors.name1 = "Please enter Proposed Name 1.";
         globalMsg = "Proposed Name 1 is required.";
-      } else if (name1.trim().length < 3) {
-        newErrors.name1 = "Proposed Name 1 must be at least 3 characters long.";
-        globalMsg = "Proposed Name 1 is too short.";
+      } else if (name1Check && !name1Check.ok) {
+        newErrors.name1 = name1Check.msg;
+        globalMsg = name1Check.msg;
       } else if (/(India|National|Bharat|President|Bank)/i.test(name1)) {
         newErrors.name1 = "Contains restricted keyword requiring Central Govt approval.";
         globalMsg = "Proposed Name 1 contains restricted keywords.";
@@ -834,21 +897,25 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           </span>
                         )}
                       </div>
-                      {nameOk && (
+                      {checkingName1 ? (
+                        <div className="mt-2 text-[11px] text-primary flex items-center gap-1.5 font-medium">
+                          <Loader2 className="size-3 animate-spin" /> Checking MCA registry availability…
+                        </div>
+                      ) : name1Check ? (
                         <div
                           className={
-                            "mt-2 text-[11px] flex items-center gap-1.5 " +
-                            (nameOk.ok ? "text-success" : "text-destructive")
+                            "mt-2 text-[11px] flex items-center gap-1.5 font-medium " +
+                            (name1Check.ok ? "text-success" : "text-destructive")
                           }
                         >
-                          {nameOk.ok ? (
-                            <CheckCircle2 className="size-3" />
+                          {name1Check.ok ? (
+                            <CheckCircle2 className="size-3.5 shrink-0" />
                           ) : (
-                            <AlertTriangle className="size-3" />
+                            <AlertTriangle className="size-3.5 shrink-0" />
                           )}
-                          {nameOk.msg}
+                          <span>{name1Check.msg}</span>
                         </div>
-                      )}
+                      ) : null}
                     </Field>
                     <Field label="Proposed Name 2 (Alternate)">
                       <div className="flex gap-2">
@@ -857,6 +924,25 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                           {effectiveSuffix}
                         </span>
                       </div>
+                      {checkingName2 ? (
+                        <div className="mt-2 text-[11px] text-primary flex items-center gap-1.5 font-medium">
+                          <Loader2 className="size-3 animate-spin" /> Checking MCA registry availability…
+                        </div>
+                      ) : name2Check ? (
+                        <div
+                          className={
+                            "mt-2 text-[11px] flex items-center gap-1.5 font-medium " +
+                            (name2Check.ok ? "text-success" : "text-destructive")
+                          }
+                        >
+                          {name2Check.ok ? (
+                            <CheckCircle2 className="size-3.5 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                          )}
+                          <span>{name2Check.msg}</span>
+                        </div>
+                      ) : null}
                     </Field>
                     <Field label="Industry Type">
                       <select
@@ -1253,10 +1339,32 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         <aside className="hidden lg:block w-80 border-l border-border bg-surface">
           <div className="sticky top-16 p-6">
             <div className="label-eyebrow mb-2.5 text-primary">Current Selection</div>
-            <div className="rounded-lg border border-border bg-panel p-3">
-              <div className="text-[11px] text-muted-foreground">Entity Type</div>
-              <div className="text-sm font-semibold mt-0.5">{selected.title}</div>
-              <div className="text-[10px] mono text-primary mt-2">
+            <div className="rounded-lg border border-border bg-panel p-3.5 space-y-3">
+              <div>
+                <div className="text-[11px] text-muted-foreground font-medium">Entity Type</div>
+                <div className="text-sm font-semibold text-foreground mt-0.5">{selected.title}</div>
+              </div>
+
+              {typeof selected.professionalFee === "number" && selected.professionalFee > 0 && (
+                <div className="pt-2.5 border-t border-border/60">
+                  <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+                  <div className="text-xs font-semibold mono text-primary mt-0.5">
+                    ₹{selected.professionalFee.toLocaleString("en-IN")} + 18% GST
+                  </div>
+                </div>
+              )}
+
+              {fees && fees.total > 0 && (
+                <div className="pt-2.5 border-t border-border/60">
+                  <div className="text-[11px] text-muted-foreground font-medium">Estimated Total Fee</div>
+                  <div className="text-sm font-bold mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    ₹{fees.total.toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Statutory fees + Pro fee + GST</div>
+                </div>
+              )}
+
+              <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">
                 Form · {selected.form}
               </div>
             </div>
