@@ -16,6 +16,8 @@ import {
   MapPin,
   Landmark,
   User,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import logo from "@/assets/cloudcrest-logo.png";
 import { z } from "zod";
@@ -117,6 +119,51 @@ function AuthPage() {
   const [cin, setCin] = useState("");
   const [address, setAddress] = useState("");
   const [gst, setGst] = useState("");
+  const [fetchingCin, setFetchingCin] = useState(false);
+  const [cinStatus, setCinStatus] = useState<string | null>(null);
+
+  const lookupCin = async (cinVal: string) => {
+    const cleanCin = cinVal.trim().toUpperCase();
+    if (cleanCin.length < 10) return;
+    setFetchingCin(true);
+    setCinStatus(null);
+    try {
+      const backendUrl = (import.meta.env.VITE_BACKEND_URL || "http://localhost:5000").replace(
+        /\/$/,
+        "",
+      );
+      const res = await fetch(`${backendUrl}/api/mca/company-details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cin: cleanCin }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.found && data.company) {
+          if (data.company.name) setCompanyName(data.company.name);
+          if (data.company.address || data.company.postalAddress) {
+            setAddress(data.company.address || data.company.postalAddress);
+          }
+          setCinStatus("Details auto-filled from MCA RoC Master Data");
+        } else {
+          setCinStatus(null);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setFetchingCin(false);
+    }
+  };
+
+  const handleCinChange = (val: string) => {
+    const uppercaseVal = val.toUpperCase();
+    setCin(uppercaseVal);
+    setCinStatus(null);
+    if (uppercaseVal.trim().length === 21) {
+      lookupCin(uppercaseVal);
+    }
+  };
 
   // Admin login mode states
   const [adminEmail, setAdminEmail] = useState("");
@@ -450,23 +497,55 @@ function AuthPage() {
                     /* ---- Business User Form ---- */
                     <div className="space-y-3">
                       <div>
-                        <label className="text-[11px] font-medium text-foreground/80 block mb-1.5">
-                          Email Address
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-medium text-foreground/80">
+                            CIN / LLPIN Number
+                          </label>
+                          {fetchingCin ? (
+                            <span className="text-[10px] text-primary flex items-center gap-1">
+                              <Loader2 className="size-3 animate-spin" /> Fetching RoC data…
+                            </span>
+                          ) : cinStatus ? (
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+                              <CheckCircle2 className="size-3" /> MCA Master Data Synced
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">
+                              Auto-fills company details
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 h-11 px-3 rounded-lg bg-input border border-border focus-within:border-primary/60 transition-colors">
-                          <Mail className="size-4 text-muted-foreground" />
+                          <Hash className="size-4 text-muted-foreground" />
                           <input
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            type="email"
-                            placeholder="business@company.com"
-                            className="flex-1 bg-transparent text-sm focus:outline-none"
+                            value={cin}
+                            onChange={(e) => handleCinChange(e.target.value)}
+                            onBlur={() => cin.length >= 10 && lookupCin(cin)}
+                            type="text"
+                            maxLength={21}
+                            placeholder="e.g. U52100HR2015OPC056314"
+                            className="flex-1 bg-transparent text-sm focus:outline-none uppercase font-mono tracking-wider placeholder:font-sans placeholder:tracking-normal"
                           />
+                          {fetchingCin ? (
+                            <Loader2 className="size-4 text-primary animate-spin" />
+                          ) : cinStatus ? (
+                            <CheckCircle2 className="size-4 text-emerald-500" />
+                          ) : (
+                            cin.length >= 10 && (
+                              <button
+                                type="button"
+                                onClick={() => lookupCin(cin)}
+                                className="text-[11px] font-medium text-primary hover:underline cursor-pointer flex items-center gap-1"
+                              >
+                                <Sparkles className="size-3" /> Auto-fill
+                              </button>
+                            )
+                          )}
                         </div>
                       </div>
                       <div>
                         <label className="text-[11px] font-medium text-foreground/80 block mb-1.5">
-                          Company Name
+                          Company Legal Name
                         </label>
                         <div className="flex items-center gap-2 h-11 px-3 rounded-lg bg-input border border-border focus-within:border-primary/60 transition-colors">
                           <Building2 className="size-4 text-muted-foreground" />
@@ -498,16 +577,16 @@ function AuthPage() {
                         </div>
                         <div>
                           <label className="text-[11px] font-medium text-foreground/80 block mb-1.5">
-                            CIN Number
+                            GSTIN (Optional)
                           </label>
                           <div className="flex items-center gap-2 h-11 px-3 rounded-lg bg-input border border-border focus-within:border-primary/60 transition-colors">
-                            <Hash className="size-4 text-muted-foreground" />
+                            <Landmark className="size-4 text-muted-foreground" />
                             <input
-                              value={cin}
-                              onChange={(e) => setCin(e.target.value.toUpperCase())}
+                              value={gst}
+                              onChange={(e) => setGst(e.target.value.toUpperCase())}
                               type="text"
-                              maxLength={21}
-                              placeholder="U72200DL2021PTC123456"
+                              maxLength={15}
+                              placeholder="07AAAAA1111A1Z1"
                               className="flex-1 bg-transparent text-sm focus:outline-none uppercase"
                             />
                           </div>
@@ -515,7 +594,7 @@ function AuthPage() {
                       </div>
                       <div>
                         <label className="text-[11px] font-medium text-foreground/80 block mb-1.5">
-                          Company Address
+                          Registered Office Address
                         </label>
                         <div className="flex items-start gap-2 py-2.5 px-3 rounded-lg bg-input border border-border focus-within:border-primary/60 transition-colors">
                           <MapPin className="size-4 text-muted-foreground mt-0.5" />
@@ -530,22 +609,22 @@ function AuthPage() {
                       </div>
                       <div>
                         <label className="text-[11px] font-medium text-foreground/80 block mb-1.5">
-                          GSTIN (Optional)
+                          Work Email Address (for verification OTP)
                         </label>
                         <div className="flex items-center gap-2 h-11 px-3 rounded-lg bg-input border border-border focus-within:border-primary/60 transition-colors">
-                          <Landmark className="size-4 text-muted-foreground" />
+                          <Mail className="size-4 text-muted-foreground" />
                           <input
-                            value={gst}
-                            onChange={(e) => setGst(e.target.value.toUpperCase())}
-                            type="text"
-                            maxLength={15}
-                            placeholder="07AAAAA1111A1Z1"
-                            className="flex-1 bg-transparent text-sm focus:outline-none uppercase"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            type="email"
+                            placeholder="business@company.com"
+                            className="flex-1 bg-transparent text-sm focus:outline-none"
                           />
                         </div>
                       </div>
                     </div>
                   )}
+
 
                   <button
                     onClick={sendOtp}

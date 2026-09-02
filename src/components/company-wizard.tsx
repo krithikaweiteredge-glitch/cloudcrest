@@ -1352,20 +1352,11 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 </div>
               )}
 
-              {fees && fees.total > 0 && (
-                <div className="pt-2.5 border-t border-border/60">
-                  <div className="text-[11px] text-muted-foreground font-medium">Estimated Total Fee</div>
-                  <div className="text-sm font-bold mono text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    ₹{fees.total.toLocaleString("en-IN")}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Statutory fees + Pro fee + GST</div>
-                </div>
-              )}
-
               <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">
                 Form · {selected.form}
               </div>
             </div>
+
 
             <div className="mt-7">
               <div className="label-eyebrow mb-3">
