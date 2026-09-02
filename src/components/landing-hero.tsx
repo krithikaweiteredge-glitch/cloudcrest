@@ -86,6 +86,13 @@ export function LandingHero() {
     identifier?: string;
   };
 
+  // Existing companies with the searched name, returned by the availability check.
+  const [matches, setMatches] = useState<Company[]>([]);
+  // Already-registered companies whose brand begins with what the user is typing,
+  // fetched live from the MCA index so they can pick a distinctive name.
+  const [similar, setSimilar] = useState<Company[]>([]);
+
+
 
   // Entity type each dropdown option filters the "similar" lookup by.
   const SUFFIX_TYPES = ["private", "llp", "public"];
