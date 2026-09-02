@@ -176,7 +176,7 @@ export function TypePickerPage({
           <h1 className="mt-4 text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
             {hero.title}
           </h1>
-          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed">{hero.subtitle}</p>
+          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed text-justify">{hero.subtitle}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             {hero.highlights.map((h) => (
               <span
@@ -195,7 +195,7 @@ export function TypePickerPage({
         <div className="mb-6">
           <div className="label-eyebrow mb-2 text-primary">{picker.eyebrow}</div>
           <h2 className="text-2xl font-semibold tracking-tight">{picker.heading}</h2>
-          <p className="text-sm text-muted-foreground mt-1.5">{picker.subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-1.5 text-justify">{picker.subtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

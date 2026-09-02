@@ -140,7 +140,7 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
           <h1 className="mt-4 text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
             {config.hero.title}
           </h1>
-          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed">{config.hero.subtitle}</p>
+          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed text-justify">{config.hero.subtitle}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             {config.hero.highlights.map((h) => (
               <span key={h.label} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/12 border border-white/15 text-[12px] text-white/90">
@@ -158,7 +158,7 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
           <div>
             <div className="label-eyebrow mb-2 text-primary">{config.typeStep.eyebrow}</div>
             <h2 className="text-2xl font-semibold tracking-tight">{config.typeStep.heading}</h2>
-            <p className="text-sm text-muted-foreground mt-1.5">{config.typeStep.subtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1.5 text-justify">{config.typeStep.subtitle}</p>
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
               {types!.map((t) => {

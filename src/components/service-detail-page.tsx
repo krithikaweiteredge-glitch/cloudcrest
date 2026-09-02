@@ -336,7 +336,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
                 className="card-in flex items-start gap-2.5 text-sm rounded-lg border border-border/70 bg-panel/40 px-3 py-2.5 hover:border-success/50 hover:bg-success/[0.04] transition-colors"
               >
                 <CheckCircle2 className="size-4 text-success shrink-0 mt-0.5" />
-                <span className="text-foreground/85">{d}</span>
+                <span className="text-foreground/85 text-justify">{d}</span>
               </li>
             ))}
           </ul>
@@ -571,10 +571,10 @@ function SectionHeading({
 /** Admin copy is plain text — preserve their paragraph breaks without allowing HTML. */
 function Prose({ text }: { text: string }) {
   return (
-    <div className="mt-4 space-y-3 text-sm leading-relaxed text-foreground/80">
+    <div className="mt-4 space-y-3 text-sm leading-relaxed text-foreground/80 text-justify">
       {text
         .split(/\n{2,}/)
-        .map((para, i) => <p key={i} className="whitespace-pre-line">{para}</p>)}
+        .map((para, i) => <p key={i} className="whitespace-pre-line text-justify">{para}</p>)}
     </div>
   );
 }
