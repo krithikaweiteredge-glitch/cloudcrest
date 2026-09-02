@@ -328,7 +328,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
       <div>
         <SectionHeading icon={FileText} title="Documents required" tint="accent" />
         {service.documents.length > 0 ? (
-          <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <ul className="mt-4 sm:pl-[3.25rem] grid grid-cols-1 sm:grid-cols-2 gap-2">
             {service.documents.map((d, i) => (
               <li
                 key={d}
@@ -336,7 +336,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
                 className="card-in flex items-start gap-2.5 text-sm rounded-lg border border-border/70 bg-panel/40 px-3 py-2.5 hover:border-success/50 hover:bg-success/[0.04] transition-colors"
               >
                 <CheckCircle2 className="size-4 text-success shrink-0 mt-0.5" />
-                <span className="text-foreground/85 text-justify">{d}</span>
+                <span className="text-foreground/85">{d}</span>
               </li>
             ))}
           </ul>
@@ -354,7 +354,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
         <SectionHeading icon={Gavel} title={tab.title} tint="amber" />
         {tab.content ? <Prose text={tab.content} /> : null}
         {pdfs.length > 0 && (
-          <div className="mt-6 space-y-2">
+          <div className="mt-5 sm:pl-[3.25rem] space-y-2">
             <div className="label-eyebrow text-primary">Downloads</div>
             {pdfs.map((pdf, i) => (
               <a
@@ -380,6 +380,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
 
   const Icon = TAB_ICONS[tab.id] ?? FileText;
   const tint = tab.id === "about" ? "primary" : tab.id === "who" ? "success" : "primary";
+  const isJustified = tab.id === "about" || tab.id === "who";
   return (
     <div>
       <SectionHeading
@@ -387,7 +388,7 @@ function TabPanel({ tab, service }: { tab: ServiceTab; service: CatalogService }
         title={tab.id === "about" ? "About this approval" : tab.title}
         tint={tint}
       />
-      {tab.content ? <Prose text={tab.content} /> : <Empty>Nothing published here yet.</Empty>}
+      {tab.content ? <Prose text={tab.content} justify={isJustified} /> : <Empty>Nothing published here yet.</Empty>}
     </div>
   );
 }
@@ -568,19 +569,62 @@ function SectionHeading({
   );
 }
 
-/** Admin copy is plain text — preserve their paragraph breaks without allowing HTML. */
-function Prose({ text }: { text: string }) {
+/** Admin copy is plain text — preserve paragraph breaks and format bullet points cleanly. */
+function Prose({ text, justify = false }: { text: string; justify?: boolean }) {
+  const paragraphs = text.split(/\n{2,}/);
+
   return (
-    <div className="mt-4 space-y-3 text-sm leading-relaxed text-foreground/80 text-justify">
-      {text
-        .split(/\n{2,}/)
-        .map((para, i) => <p key={i} className="whitespace-pre-line text-justify">{para}</p>)}
+    <div
+      className={
+        "mt-4 pt-1 sm:pl-[3.25rem] space-y-3.5 text-sm leading-relaxed text-foreground/85 " +
+        (justify ? "text-justify" : "")
+      }
+    >
+      {paragraphs.map((para, i) => {
+        const lines = para.split("\n").filter((l) => l.trim().length > 0);
+        // Check if any line in this paragraph starts with a bullet symbol or number
+        const hasBullets = lines.some((l) => /^[•\-\*]\s*|^\d+[\.\)]\s*/.test(l.trim()));
+
+        if (hasBullets) {
+          return (
+            <div key={i} className="space-y-2 my-2">
+              {lines.map((line, lineIdx) => {
+                const match = line.trim().match(/^([•\-\*]|\d+[\.\)])\s*(.*)/);
+                if (match) {
+                  const [, bulletSymbol, bodyText] = match;
+                  return (
+                    <div key={lineIdx} className="flex items-start gap-2.5 my-1.5">
+                      <span className="shrink-0 font-bold text-foreground select-none mt-0.5 min-w-[14px]">
+                        {bulletSymbol === "-" || bulletSymbol === "*" ? "•" : bulletSymbol}
+                      </span>
+                      <span className={"flex-1 leading-relaxed " + (justify ? "text-justify" : "")}>
+                        {bodyText}
+                      </span>
+                    </div>
+                  );
+                }
+                return (
+                  <p key={lineIdx} className={justify ? "text-justify" : ""}>
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        }
+
+        return (
+          <p key={i} className={"whitespace-pre-line " + (justify ? "text-justify" : "")}>
+            {para}
+          </p>
+        );
+      })}
     </div>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="mt-4 text-sm text-muted-foreground italic">{children}</p>;
+  return <p className="mt-4 sm:pl-[3.25rem] text-sm text-muted-foreground italic">{children}</p>;
 }
 
 /** Frosted pill used in the service hero. */
