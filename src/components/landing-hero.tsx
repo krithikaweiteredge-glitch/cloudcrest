@@ -5,8 +5,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import {
-  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown,
+  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown, CheckCircle2, AlertCircle,
 } from "lucide-react";
+
 
 // Backend origin — same convention as the rest of the app. Empty in local dev
 // (Vite proxies /api); set to the backend URL in production. Using it here keeps
@@ -143,16 +144,12 @@ export function LandingHero() {
       }
 
       if (data.available) {
-        // Confirm availability, then route to the wizard for the entity type the
-        // applicant picked (LLP → LLP wizard, Private Limited / Limited → Company).
         const slug = SUFFIX_SLUGS[suffixIdx] ?? "company";
         const dest = slug === "llp" ? "LLP" : "Company";
         setSimilar([]);
-        setOkMsg(`“${finalName}” is available — opening ${dest} registration…`);
-        setTimeout(() => {
-          navigate({ to: "/m/$slug", params: { slug } });
-        }, 300);
+        setOkMsg(`“${finalName}” is available for ${dest} registration!`);
       } else {
+        setSimilar([]);
         setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
         setMatches(Array.isArray(data.matches) ? data.matches : []);
       }
@@ -162,6 +159,13 @@ export function LandingHero() {
     } finally {
       setChecking(false);
     }
+  };
+
+  const resolveFinalName = (raw: string, suffixIdx: number = pick): string => {
+    const trimmed = raw.trim();
+    const suffix = SUFFIXES[suffixIdx] ?? "Private Limited";
+    const hasSuffix = /\b(private limited|pvt\.?\s*ltd\.?|limited liability partnership|limited|ltd\.?|llp|one person company|\(opc\))\b/i.test(trimmed);
+    return hasSuffix ? trimmed : `${trimmed} ${suffix}`;
   };
 
   const filteredModules = q.trim()
@@ -201,7 +205,7 @@ export function LandingHero() {
           {/* Search */}
           <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
             <form
-              onSubmit={(e) => { e.preventDefault(); checkAndGo(`${q.trim()} ${SUFFIXES[pick]}`); }}
+              onSubmit={(e) => { e.preventDefault(); checkAndGo(resolveFinalName(q, pick)); }}
               className="relative flex flex-col sm:flex-row items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
             >
               {/* Sweeping highlight — hidden once the field is in use. */}
@@ -247,7 +251,7 @@ export function LandingHero() {
                     </>
                   ) : (
                     <>
-                      Check &amp; Start
+                      Check &amp; Next
                       <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
                     </>
                   )}
@@ -256,19 +260,13 @@ export function LandingHero() {
 
             {okMsg && (
               <div className="mt-3 text-left">
-                <div className="text-sm text-success bg-success/10 border border-success/20 rounded-xl p-3 flex items-center gap-2.5">
-                  <span className="size-4 rounded-full border-2 border-success/40 border-t-success animate-spin shrink-0" />
-                  <span className="font-medium">{okMsg}</span>
-                </div>
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="mt-3 text-left">
-                <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-2.5">
-                    <span className="font-semibold shrink-0">Status:</span>
-                    <span>{errorMsg}</span>
+                <div className="text-sm bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="size-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="font-semibold text-white">Name Available</div>
+                      <div className="text-xs text-emerald-200 mt-0.5">{okMsg}</div>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -276,9 +274,34 @@ export function LandingHero() {
                       const slug = SUFFIX_SLUGS[pick] ?? "company";
                       navigate({ to: "/m/$slug", params: { slug } });
                     }}
-                    className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30 transition-colors cursor-pointer"
+                    className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 font-sans"
                   >
-                    Open {SUFFIX_SLUGS[pick] === "llp" ? "LLP" : "Company"} Registration →
+                    Proceed to Registration
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="mt-3 text-left">
+                <div className="text-sm bg-destructive/20 border border-rose-400/40 text-rose-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="size-5 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold text-white">Name Restricted / Taken</div>
+                      <div className="text-xs text-rose-200 mt-0.5">{errorMsg}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const slug = SUFFIX_SLUGS[pick] ?? "company";
+                      navigate({ to: "/m/$slug", params: { slug } });
+                    }}
+                    className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
+                  >
+                    Open {SUFFIX_SLUGS[pick] === "llp" ? "LLP" : "Company"} Wizard →
                   </button>
                 </div>
                 {matches.length > 0 && (
@@ -289,6 +312,7 @@ export function LandingHero() {
                         <li key={m.id ?? m.name + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
                           <div className="text-sm font-semibold">{m.name}</div>
                           <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                            {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
                             {m.domain && <span>{m.domain}</span>}
                             {m.industry && <span>{m.industry}</span>}
                             {m.location && <span>{m.location}</span>}
@@ -300,6 +324,7 @@ export function LandingHero() {
                 )}
               </div>
             )}
+
 
             {((similar.length > 0 && !errorMsg && !okMsg && !needAuth) || filteredModules.length > 0) && (
               <div className="mt-3 rounded-xl bg-white text-foreground shadow-elev border border-border text-left overflow-hidden">
