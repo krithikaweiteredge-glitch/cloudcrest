@@ -75,12 +75,17 @@ export function LandingHero() {
   const [okMsg, setOkMsg] = useState<string | null>(null);
   // Set when a signed-out visitor tries to check a name — prompts them to sign in.
   const [needAuth, setNeedAuth] = useState(false);
-  type Company = { id?: number; name: string; domain?: string; industry?: string; location?: string };
-  // Existing companies with the searched name, returned by the availability check.
-  const [matches, setMatches] = useState<Company[]>([]);
-  // Already-registered companies whose brand begins with what the user is typing,
-  // fetched live from the MCA index so they can pick a distinctive name.
-  const [similar, setSimilar] = useState<Company[]>([]);
+  type Company = {
+    id?: number;
+    name: string;
+    domain?: string;
+    industry?: string;
+    location?: string;
+    status?: string;
+    companyStatus?: string;
+    identifier?: string;
+  };
+
 
   // Entity type each dropdown option filters the "similar" lookup by.
   const SUFFIX_TYPES = ["private", "llp", "public"];
@@ -308,17 +313,37 @@ export function LandingHero() {
                   <div className="mt-2 rounded-xl bg-white text-foreground shadow-elev border border-border overflow-hidden">
                     <div className="label-eyebrow px-4 pt-3 pb-1">Existing companies with this name</div>
                     <ul className="pb-1">
-                      {matches.map((m, i) => (
-                        <li key={m.id ?? m.name + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
-                          <div className="text-sm font-semibold">{m.name}</div>
-                          <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                            {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
-                            {m.domain && <span>{m.domain}</span>}
-                            {m.industry && <span>{m.industry}</span>}
-                            {m.location && <span>{m.location}</span>}
-                          </div>
-                        </li>
-                      ))}
+                      {matches.map((m, i) => {
+                        const statusText = m.companyStatus || m.status;
+                        const isStrike = statusText?.toLowerCase().includes("strike") || statusText?.toLowerCase().includes("dissolved");
+                        const isActive = statusText?.toLowerCase().includes("active");
+                        return (
+                          <li key={m.id ?? m.name + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-semibold">{m.name}</div>
+                              {statusText && (
+                                <span
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 border ${
+                                    isStrike
+                                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                                      : isActive
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                      : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
+                                  }`}
+                                >
+                                  {statusText}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                              {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
+                              {m.domain && <span>{m.domain}</span>}
+                              {m.industry && <span>{m.industry}</span>}
+                              {m.location && <span>{m.location}</span>}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -332,18 +357,40 @@ export function LandingHero() {
                   <div>
                     <div className="label-eyebrow px-4 pt-3 pb-1">Similar existing companies</div>
                     <ul className="pb-1">
-                      {similar.map((m, i) => (
-                        <li key={(m.name ?? "") + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
-                          <div className="text-sm font-semibold">{m.name}</div>
-                          <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                            {m.industry && <span>{m.industry}</span>}
-                            {m.location && <span>{m.location}</span>}
-                          </div>
-                        </li>
-                      ))}
+                      {similar.map((m, i) => {
+                        const statusText = m.companyStatus || m.status;
+                        const isStrike = statusText?.toLowerCase().includes("strike") || statusText?.toLowerCase().includes("dissolved");
+                        const isActive = statusText?.toLowerCase().includes("active");
+                        return (
+                          <li key={(m.name ?? "") + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-sm font-semibold">{m.name}</div>
+                              {statusText && (
+                                <span
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 border ${
+                                    isStrike
+                                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                                      : isActive
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                      : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
+                                  }`}
+                                >
+                                  {statusText}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                              {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
+                              {m.industry && <span>{m.industry}</span>}
+                              {m.location && <span>{m.location}</span>}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
+
                 {filteredModules.length > 0 && (
                   <div className={similar.length > 0 && !errorMsg && !okMsg && !needAuth ? "border-t border-border" : ""}>
                     <div className="label-eyebrow px-4 pt-3 pb-1">Matching services</div>
