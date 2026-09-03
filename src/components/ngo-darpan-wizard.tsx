@@ -6,7 +6,7 @@ import { SignInDialog } from "@/components/sign-in-dialog";
 import { useCatalogService, resolveFees } from "@/lib/service-catalog";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import {
-  AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
+  AlertTriangle, Download, ArrowLeft, ArrowRight,
   FileText, Info, ShieldCheck, Zap, Send, Lock, Users,
 } from "lucide-react";
 
@@ -80,9 +80,6 @@ const GOVERNING_DOC: Record<string, string> = {
 
 const ENTITY_DOCS = ["NGO PAN card", "Registration certificate (RC / COI)"];
 const BANK_DOC = "Cancelled cheque / first page of bank statement";
-
-/** What the applicant receives on completion. */
-const DARPAN_CERTIFICATES = ["NGO Darpan Unique ID"];
 
 const HIGHLIGHTS = [
   { icon: ShieldCheck, label: "NITI Aayog Portal Filing" },
@@ -175,7 +172,7 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
   const total = fees.total;
 
   const professionalFee =
-    fees.lines.find((l) => /professional/i.test(l.label))?.amount ?? FEE_FALLBACK.professional;
+    (fees.lines.find((l) => /professional/i.test(l.label))?.amount || 0) || FEE_FALLBACK.professional;
   const gstAmount = fees.lines.find((l) => /gst/i.test(l.label))?.amount ?? 0;
 
   /**
@@ -761,19 +758,11 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
                 <div className="text-sm font-semibold text-foreground mt-0.5">{entityType || "Not selected"}</div>
               </div>
               <div className="pt-2.5 border-t border-border/60">
-                <div className="text-[11px] text-muted-foreground font-medium">{entityConfig.title}s</div>
-                <div className="text-sm font-semibold text-foreground mt-0.5 mono">{members.length}</div>
-              </div>
-              {/* Same source as the Fees step, and hidden until priced. */}
-              {user && professionalFee > 0 && (
-                <div className="pt-2.5 border-t border-border/60">
-                  <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
-                  <div className="text-xs font-semibold mono text-primary mt-0.5">
-                    ₹{professionalFee.toLocaleString("en-IN")}
-                    {gstAmount > 0 && " + GST"}
-                  </div>
+                <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+                <div className="text-xs font-semibold mono text-primary mt-0.5">
+                  ₹{professionalFee.toLocaleString("en-IN")} + 18% GST
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="mt-7">
@@ -787,18 +776,6 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
                 {documents.map((label) => (
                   <li key={label} className="flex items-start gap-2 text-[12px]">
                     <FileText className="size-3.5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-foreground">{label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-7">
-              <div className="label-eyebrow mb-3">Registration Certificates</div>
-              <ul className="space-y-2.5">
-                {DARPAN_CERTIFICATES.map((label) => (
-                  <li key={label} className="flex items-start gap-2 text-[12px]">
-                    <CheckCircle2 className="size-3.5 text-success shrink-0 mt-0.5" />
                     <span className="text-foreground">{label}</span>
                   </li>
                 ))}
