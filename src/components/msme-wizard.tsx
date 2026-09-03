@@ -7,7 +7,7 @@ import { useCatalogService, resolveFees } from "@/lib/service-catalog";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
-  FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock, Factory,
+  FileText, Info, ShieldCheck, Zap, Send, Lock, Factory,
 } from "lucide-react";
 
 /**
@@ -81,8 +81,6 @@ const MSME_CERTIFICATES = ["MSME Certificate"];
 const HIGHLIGHTS = [
   { icon: ShieldCheck, label: "Udyam Portal Filing" },
   { icon: Zap, label: "Certificate in 1 Working Day" },
-  { icon: ClipboardList, label: "Type-wise Documents" },
-  { icon: FileDown, label: "Downloadable Summary" },
 ];
 
 // Fee is a flat professional fee plus GST — Udyam registration carries no
@@ -203,7 +201,7 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
   // sidebar quotes the same figures as the Fees step. Admin-authored fee_lines
   // label them freely ("Gst@18%"), hence the loose match.
   const professionalFee =
-    fees.lines.find((l) => /professional/i.test(l.label))?.amount ?? FEE_FALLBACK.professional;
+    (fees.lines.find((l) => /professional/i.test(l.label))?.amount || 0) || FEE_FALLBACK.professional;
   const gstAmount = fees.lines.find((l) => /gst/i.test(l.label))?.amount ?? 0;
   const total = fees.total;
 
@@ -798,18 +796,12 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
                 <div className="text-[11px] text-muted-foreground font-medium">Type of Organisation</div>
                 <div className="text-sm font-semibold text-foreground mt-0.5">{orgLabel}</div>
               </div>
-              {/* Same numbers as the Fees step — both read `fees`, so admin
-                  pricing on the catalog row can't disagree with this panel. Kept
-                  behind sign-in like every other fee surface in the app. */}
-              {user && (
-                <div className="pt-2.5 border-t border-border/60">
-                  <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
-                  <div className="text-xs font-semibold mono text-primary mt-0.5">
-                    ₹{professionalFee.toLocaleString("en-IN")}
-                    {gstAmount > 0 && " + GST"}
-                  </div>
+              <div className="pt-2.5 border-t border-border/60">
+                <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+                <div className="text-xs font-semibold mono text-primary mt-0.5">
+                  ₹{professionalFee.toLocaleString("en-IN")} + 18% GST
                 </div>
-              )}
+              </div>
               <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">Form · Udyam</div>
             </div>
 
