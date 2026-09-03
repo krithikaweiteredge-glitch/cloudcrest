@@ -847,7 +847,6 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
               </div>
             </div>
 
-
             <div className="mt-7">
               <div className="label-eyebrow mb-3">
                 Registration Certificates
@@ -875,6 +874,8 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
             </div>
           </div>
         </aside>
+
+
       </div>
 
       <RegisterDialog
