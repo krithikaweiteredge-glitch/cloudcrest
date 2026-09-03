@@ -297,12 +297,16 @@ export function resolveFees(
   const gstPercent = fromCatalog ? Number(service!.gstPercent ?? 0) : safeFallback.gstPercent;
   const gst = Math.round((professional * gstPercent) / 100);
 
+  const rawLines = [
+    { label: "Professional Fee", amount: professional },
+    { label: `${authority} Government Fee`, amount: govt },
+    { label: `GST @ ${gstPercent}% (on professional fee)`, amount: gst },
+  ];
+
+  const lines = rawLines.filter((l) => l.amount > 0 || l.label === "Professional Fee");
+
   return {
-    lines: [
-      { label: "Professional Fee", amount: professional },
-      { label: `${authority} Government Fee`, amount: govt },
-      { label: `GST @ ${gstPercent}% (on professional fee)`, amount: gst },
-    ],
+    lines,
     total: professional + govt + gst,
     fromCatalog,
   };
