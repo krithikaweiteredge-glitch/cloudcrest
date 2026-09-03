@@ -344,8 +344,6 @@ export function LandingHero() {
                             </div>
                             <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                               {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
-                              {m.domain && <span>{m.domain}</span>}
-                              {m.industry && <span>{m.industry}</span>}
                               {(() => {
                                 const cleanLoc = m.location && m.identifier
                                   ? m.location.replace(m.identifier, "").replace(/^[ ·-]+|[ ·-]+$/g, "").trim()
@@ -393,7 +391,6 @@ export function LandingHero() {
                             </div>
                             <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                               {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
-                              {m.industry && <span>{m.industry}</span>}
                               {(() => {
                                 const cleanLoc = m.location && m.identifier
                                   ? m.location.replace(m.identifier, "").replace(/^[ ·-]+|[ ·-]+$/g, "").trim()
