@@ -31,7 +31,14 @@ const inr = (n: number) => `₹ ${n.toLocaleString("en-IN")}`;
  * each tab's copy, the checklist, the attachments and the fee lines — is
  * authored by an admin in the catalog panel.
  */
-export function ServiceDetailPage({ slug }: { slug: string }) {
+export function ServiceDetailPage({
+  slug,
+  onStartApplication,
+}: {
+  slug: string;
+  /** See `ServiceDetail` — replaces the inline fee/summary panel. */
+  onStartApplication?: () => void;
+}) {
   const { service, loading } = useCatalogService([slug]);
 
   if (loading) {
@@ -55,7 +62,7 @@ export function ServiceDetailPage({ slug }: { slug: string }) {
     );
   }
 
-  return <ServiceDetail service={service} />;
+  return <ServiceDetail service={service} onStartApplication={onStartApplication} />;
 }
 
 /**
@@ -70,11 +77,18 @@ export function ServiceDetail({
   extraFormData,
   onBack,
   backLabel = "Back",
+  onStartApplication,
 }: {
   service: CatalogService;
   extraFormData?: Record<string, unknown>;
   onBack?: () => void;
   backLabel?: string;
+  /**
+   * Hands Start Application to the caller instead of opening the built-in
+   * fee → summary panel. Services with their own multi-step wizard (MSME) use
+   * this to swap the page for the stepper; the sign-in gate still runs first.
+   */
+  onStartApplication?: () => void;
 }) {
   const { user } = useAuth();
   const tabs = service.tabs;
@@ -132,6 +146,10 @@ export function ServiceDetail({
   const startApplication = () => {
     if (!user) {
       setOpenSignIn(true);
+      return;
+    }
+    if (onStartApplication) {
+      onStartApplication();
       return;
     }
     setStage("fees");
