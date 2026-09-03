@@ -7,6 +7,7 @@ import { HufWizard } from "@/components/huf-wizard";
 import { TrustWizard } from "@/components/trust-wizard";
 import { SoleProprietorshipWizard } from "@/components/sole-proprietorship-wizard";
 import { MsmeModule } from "@/components/msme-wizard";
+import { NgoDarpanModule } from "@/components/ngo-darpan-wizard";
 import { DepartmentPage } from "@/components/department-page";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { DEPARTMENT_SLUGS } from "@/lib/modules";
@@ -26,6 +27,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "trust") return <TrustWizard initialName={initialName} />;
   if (slug === "sole-proprietorship") return <SoleProprietorshipWizard initialName={initialName} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;
+  if (slug === "ngo-darpan") return <NgoDarpanModule initialName={initialName} />;
   if (DEPARTMENT_SLUGS.has(slug)) return <DepartmentPage slug={slug} />;
   return <ServiceDetailPage slug={slug} />;
 }
