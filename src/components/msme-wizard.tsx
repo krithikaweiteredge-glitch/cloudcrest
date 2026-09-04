@@ -391,8 +391,7 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
                   <div className="rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
                     <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
                     <div className="text-[11px] text-foreground/70 leading-relaxed">
-                      The organisation type decides your document checklist — it updates in the panel
-                      on the right as you change it.
+                      The organisation type decides your document checklist.
                     </div>
                   </div>
                 </Section>
