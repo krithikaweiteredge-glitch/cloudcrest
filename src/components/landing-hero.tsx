@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import {
-  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, ChevronDown, CheckCircle2, AlertCircle,
+  Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, CheckCircle2, AlertCircle,
 } from "lucide-react";
 
 
@@ -15,11 +15,13 @@ import {
 // site instead of the frontend's own domain (which 404s).
 const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
-const SUFFIXES = ["Private Limited", "LLP", "Limited"];
-// Which registration wizard each suffix routes to once the name is available:
-// Private Limited & Limited (public) → the Company wizard (it carries the
-// private/public class internally); LLP → the LLP wizard.
-const SUFFIX_SLUGS = ["company", "llp", "company"];
+// The search bar used to carry a Private Limited / LLP / Limited dropdown that
+// both appended a suffix to the typed name and narrowed the "similar existing
+// companies" lookup to that one structure. Both were wrong for a name check: the
+// MCA blocks a brand across every structure at once ("Acme Pvt Ltd" bars "Acme
+// LLP"), so filtering hid the very names that make a choice unavailable. The
+// name is now checked exactly as typed, the results span all structures, and the
+// applicant picks Company or LLP after the name comes back clear.
 
 // Short, customer-facing one-liners per service. Keyed by slug; anything not
 // listed falls back to a sensible template so new catalog services still read
@@ -68,7 +70,6 @@ export function LandingHero() {
       ? navigate({ to: "/admin", search: { service: slug } })
       : navigate({ to: "/m/$slug", params: { slug } });
   const [q, setQ] = useState("");
-  const [pick, setPick] = useState(0);
   const [checking, setChecking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Shown briefly when a name is free, before routing to its registration wizard.
@@ -84,25 +85,30 @@ export function LandingHero() {
     status?: string;
     companyStatus?: string;
     identifier?: string;
+    /** "Private Limited Company" | "Public Limited Company" | "LLP" | … */
+    entityType?: string;
   };
 
   // Existing companies with the searched name, returned by the availability check.
   const [matches, setMatches] = useState<Company[]>([]);
-  // Already-registered companies whose brand begins with what the user is typing,
-  // fetched live from the MCA index so they can pick a distinctive name.
+  // Already-registered companies & LLPs whose brand is close to what the user is
+  // typing — exact, prefix, suffix or contained — fetched live from the MCA index
+  // so they can pick a distinctive name.
   const [similar, setSimilar] = useState<Company[]>([]);
+  /**
+   * How the registry lookup went. Without this the panel simply renders nothing
+   * on an empty result, so "no company is close to this name" (good news, and
+   * the whole point of a name check) looked identical to "the registry is
+   * unreachable" — the failure was swallowed and the user was left guessing.
+   */
+  const [similarState, setSimilarState] = useState<"idle" | "loading" | "done" | "error">("idle");
 
-
-
-  // Entity type each dropdown option filters the "similar" lookup by.
-  const SUFFIX_TYPES = ["private", "llp", "public"];
-
-  // Debounced lookup of similar existing names as the user types — scoped to the
-  // entity type selected in the dropdown (Private Limited / LLP / Limited).
+  // Debounced lookup of similar existing names as the user types. Unfiltered by
+  // entity structure: a taken brand blocks every structure, so the list spans
+  // private, public, LLP and struck-off entities and each row is labelled.
   useEffect(() => {
-    // Editing the name (or switching entity type) invalidates the previous
-    // check's result — clear it so a stale status message doesn't keep the
-    // similar-names panel hidden.
+    // Editing the name invalidates the previous check's result — clear it so a
+    // stale status message doesn't sit above a list that has moved on.
     setErrorMsg(null);
     setOkMsg(null);
     setMatches([]);
@@ -110,31 +116,37 @@ export function LandingHero() {
     const term = q.trim();
     if (term.length < 2) {
       setSimilar([]);
+      setSimilarState("idle");
       return;
     }
-    const type = SUFFIX_TYPES[pick] ?? "private";
+    setSimilarState("loading");
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `${BACKEND}/api/mca/similar?q=${encodeURIComponent(term)}&type=${type}`,
+          `${BACKEND}/api/mca/similar?q=${encodeURIComponent(term)}`,
           { signal: ctrl.signal },
         );
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`Registry lookup failed (${res.status})`);
         const data = await res.json();
         setSimilar(Array.isArray(data.matches) ? data.matches : []);
-      } catch {
-        /* aborted or offline — ignore */
+        setSimilarState("done");
+      } catch (err) {
+        // An abort is just the next keystroke superseding this request — leave
+        // the state alone so the panel doesn't flicker into an error.
+        if ((err as Error)?.name === "AbortError") return;
+        console.error("Similar-names lookup failed:", err);
+        setSimilar([]);
+        setSimilarState("error");
       }
     }, 250);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, pick]);
+  }, [q]);
 
-  const checkAndGo = async (finalName: string, suffixIdx: number = pick) => {
+  const checkAndGo = async (finalName: string) => {
     if (checking || !finalName.trim()) return;
     setChecking(true);
     setErrorMsg(null);
@@ -156,15 +168,13 @@ export function LandingHero() {
       }
 
       if (data.available) {
-        const slug = SUFFIX_SLUGS[suffixIdx] ?? "company";
-        const dest = slug === "llp" ? "LLP" : "Company";
-        setSimilar([]);
-        setOkMsg(`“${finalName}” is available for ${dest} registration!`);
+        setOkMsg(`“${finalName}” appears to be available.`);
       } else {
-        setSimilar([]);
         setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
         setMatches(Array.isArray(data.matches) ? data.matches : []);
       }
+      // The close-matches list deliberately stays on screen either way — even an
+      // available name is worth comparing against the near-misses beside it.
     } catch (err: any) {
       console.error("Name check error:", err);
       setErrorMsg(err.message || "An error occurred while validating name.");
@@ -173,16 +183,22 @@ export function LandingHero() {
     }
   };
 
-  const resolveFinalName = (raw: string, suffixIdx: number = pick): string => {
-    const trimmed = raw.trim();
-    const suffix = SUFFIXES[suffixIdx] ?? "Private Limited";
-    const hasSuffix = /\b(private limited|pvt\.?\s*ltd\.?|limited liability partnership|limited|ltd\.?|llp|one person company|\(opc\))\b/i.test(trimmed);
-    return hasSuffix ? trimmed : `${trimmed} ${suffix}`;
-  };
-
   const filteredModules = q.trim()
     ? allModules.filter((m) => m.title.toLowerCase().includes(q.toLowerCase())).slice(0, 4)
     : [];
+
+  // Close matches stay on screen after a check runs, so the applicant can still
+  // see what is already registered nearby. The exact collisions the check
+  // returned get their own panel above, so drop those from this list rather than
+  // printing the same company twice.
+  const shownKeys = new Set(matches.map((m) => m.name.toLowerCase().replace(/[^a-z0-9]/g, "")));
+  const similarShown = similar.filter(
+    (m) => !shownKeys.has(m.name.toLowerCase().replace(/[^a-z0-9]/g, "")),
+  );
+  // The panel opens as soon as there is something to say — results, "nothing
+  // close", or "couldn't reach the registry" — not only when rows came back.
+  const showSimilar =
+    !needAuth && q.trim().length >= 2 && (similarShown.length > 0 || similarState === "error" || (similarState === "done" && matches.length === 0));
 
   return (
     <div>
@@ -217,7 +233,7 @@ export function LandingHero() {
           {/* Search */}
           <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
             <form
-              onSubmit={(e) => { e.preventDefault(); checkAndGo(resolveFinalName(q, pick)); }}
+              onSubmit={(e) => { e.preventDefault(); checkAndGo(q.trim()); }}
               className="relative flex flex-col sm:flex-row items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
             >
               {/* Sweeping highlight — hidden once the field is in use. */}
@@ -236,21 +252,6 @@ export function LandingHero() {
                 className="relative flex-1 min-w-0 py-4 px-3 text-foreground text-sm sm:text-base placeholder:text-muted-foreground bg-transparent focus:outline-none"
               />
 
-              <div className="relative flex items-center shrink-0 border-t sm:border-t-0 sm:border-l border-border/80 bg-slate-50/90 hover:bg-slate-100/90 transition-colors">
-                <select
-                  disabled={checking}
-                  value={pick}
-                  onChange={(e) => setPick(Number(e.target.value))}
-                  className="appearance-none relative z-10 shrink-0 text-foreground font-semibold text-xs sm:text-sm pl-4 pr-9 py-4 cursor-pointer focus:outline-none bg-transparent"
-                >
-                  {SUFFIXES.map((s, i) => (
-                    <option key={s} value={i} className="text-slate-900 bg-white font-medium py-2">
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 size-4 text-slate-500 pointer-events-none z-20" />
-              </div>
                 <button
                   type="submit"
                   disabled={checking}
@@ -280,17 +281,26 @@ export function LandingHero() {
                       <div className="text-xs text-emerald-200 mt-0.5">{okMsg}</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const slug = SUFFIX_SLUGS[pick] ?? "company";
-                      navigate({ to: "/m/$slug", params: { slug } });
-                    }}
-                    className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 font-sans"
-                  >
-                    Proceed to Registration
-                    <ArrowRight className="size-3.5" />
-                  </button>
+                  {/* The structure is chosen here rather than in the search bar —
+                      the name check itself is the same for both. */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "company" } })}
+                      className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 font-sans"
+                    >
+                      Register as Company
+                      <ArrowRight className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "llp" } })}
+                      className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/25 hover:bg-emerald-500/40 text-white border border-emerald-400/40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 font-sans"
+                    >
+                      Register as LLP
+                      <ArrowRight className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -305,16 +315,22 @@ export function LandingHero() {
                       <div className="text-xs text-rose-200 mt-0.5">{errorMsg}</div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const slug = SUFFIX_SLUGS[pick] ?? "company";
-                      navigate({ to: "/m/$slug", params: { slug } });
-                    }}
-                    className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
-                  >
-                    Open {SUFFIX_SLUGS[pick] === "llp" ? "LLP" : "Company"} Wizard →
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "company" } })}
+                      className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
+                    >
+                      Company Wizard →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "llp" } })}
+                      className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
+                    >
+                      LLP Wizard →
+                    </button>
+                  </div>
                 </div>
                 {matches.length > 0 && (
                   <div className="mt-2 rounded-xl bg-white text-foreground shadow-elev border border-border overflow-hidden">
@@ -343,6 +359,7 @@ export function LandingHero() {
                               )}
                             </div>
                             <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                              {m.entityType && <span className="font-medium text-foreground/70">{m.entityType}</span>}
                               {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
                               {(() => {
                                 const cleanLoc = m.location && m.identifier
@@ -361,13 +378,39 @@ export function LandingHero() {
             )}
 
 
-            {((similar.length > 0 && !errorMsg && !okMsg && !needAuth) || filteredModules.length > 0) && (
+            {(showSimilar || filteredModules.length > 0) && (
               <div className="mt-3 rounded-xl bg-white text-foreground shadow-elev border border-border text-left overflow-hidden">
-                {similar.length > 0 && !errorMsg && !okMsg && !needAuth && (
+                {showSimilar && (
                   <div>
-                    <div className="label-eyebrow px-4 pt-3 pb-1">Similar existing companies</div>
-                    <ul className="pb-1">
-                      {similar.map((m, i) => {
+                    <div className="label-eyebrow px-4 pt-3 pb-1">
+                      Close &amp; exact existing names
+                      <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
+                        ({similarShown.length}) · companies, LLPs and struck-off entities
+                      </span>
+                    </div>
+
+                    {similarState === "error" && (
+                      <div className="px-4 py-3 text-[13px] text-rose-600 flex items-start gap-2">
+                        <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                        <span>
+                          Couldn&apos;t reach the MCA registry, so existing names can&apos;t be shown
+                          right now. Check your connection and try again.
+                        </span>
+                      </div>
+                    )}
+
+                    {similarState === "done" && similarShown.length === 0 && (
+                      <div className="px-4 py-3 text-[13px] text-muted-foreground flex items-start gap-2">
+                        <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
+                        <span>
+                          No registered company or LLP has a name close to “{q.trim()}”.
+                        </span>
+                      </div>
+                    )}
+                    {/* Capped in height so a long list of near-misses doesn't push
+                        the rest of the page off screen. */}
+                    <ul className="pb-1 max-h-[26rem] overflow-y-auto">
+                      {similarShown.map((m, i) => {
                         const statusText = m.companyStatus || m.status;
                         const isStrike = statusText?.toLowerCase().includes("strike") || statusText?.toLowerCase().includes("dissolved");
                         const isActive = statusText?.toLowerCase().includes("active");
@@ -390,6 +433,9 @@ export function LandingHero() {
                               )}
                             </div>
                             <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                              {/* The structure filter is gone from the search bar,
+                                  so the row says which structure this one is. */}
+                              {m.entityType && <span className="font-medium text-foreground/70">{m.entityType}</span>}
                               {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
                               {(() => {
                                 const cleanLoc = m.location && m.identifier
@@ -406,7 +452,7 @@ export function LandingHero() {
                 )}
 
                 {filteredModules.length > 0 && (
-                  <div className={similar.length > 0 && !errorMsg && !okMsg && !needAuth ? "border-t border-border" : ""}>
+                  <div className={showSimilar ? "border-t border-border" : ""}>
                     <div className="label-eyebrow px-4 pt-3 pb-1">Matching services</div>
                     <ul className="pb-2">
                       {filteredModules.map((m) => {
