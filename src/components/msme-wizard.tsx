@@ -806,23 +806,6 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
             </div>
 
             <div className="mt-7">
-              <div className="label-eyebrow mb-3">
-                Documents Required
-                <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
-                  (for {orgLabel})
-                </span>
-              </div>
-              <ul className="space-y-2.5">
-                {documents.map((label) => (
-                  <li key={label} className="flex items-start gap-2 text-[12px]">
-                    <FileText className="size-3.5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-foreground">{label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-7">
               <div className="label-eyebrow mb-3">Registration Certificates</div>
               <ul className="space-y-2.5">
                 {MSME_CERTIFICATES.map((label) => (

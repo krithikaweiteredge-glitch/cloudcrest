@@ -16,18 +16,18 @@ import {
  * Mirrors the MSME wizard: the tabbed service page stays as the landing view and
  * "Start Application" swaps it for this stepper. Steps follow the four cards of
  * "Updated Darpaan.html" in order, plus the Fees / Summary pair every wizard has:
- *   1 Profile & Operations · 2 Bank Details · 3 Governing Body · 4 Documents
+ *   1 Profile & Operations · 2 Bank Details · 3 Governing Body
  *
  * The HTML collects member PAN/Aadhaar and the entity documents as <input
  * type="file"> inline. This app uploads after submission instead — RegisterDialog
- * turns the `documents` checklist into one upload control per entry — so step 4
- * reviews the generated checklist rather than duplicating the file inputs.
+ * turns the `documents` checklist into one upload control per entry. The wizard
+ * never renders that checklist itself, as a step or beside one: the applicant
+ * sees it where the files actually go.
  */
 const STEPS = [
   { key: "profile", label: "Profile" },
   { key: "bank", label: "Bank" },
   { key: "governing", label: "Governing Body" },
-  { key: "documents", label: "Documents" },
   { key: "fees", label: "Fees" },
   { key: "summary", label: "Summary" },
 ];
@@ -570,32 +570,7 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
                 </Section>
               )}
 
-              {/* STEP 4 — DOCUMENTS */}
-              {stepKey === "documents" && (
-                <Section
-                  title="Documents to Upload"
-                  desc="Built from your entity type, bank choice and governing body. You'll upload these right after submitting — clear PDFs or images, under 2 MB each."
-                >
-                  <ul className="space-y-2.5">
-                    {documents.map((label) => (
-                      <li key={label} className="flex items-start gap-2 text-[13px]">
-                        <FileText className="size-3.5 text-primary shrink-0 mt-0.5" />
-                        <span className="text-foreground">{label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
-                    <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-foreground/70 leading-relaxed">
-                      Nothing to upload here — the upload panel opens when you submit, with one slot
-                      per item above. Go back and change your entity type, bank choice or member
-                      count and this list updates.
-                    </div>
-                  </div>
-                </Section>
-              )}
-
-              {/* STEP 5 — FEES */}
+              {/* STEP 4 — FEES */}
               {stepKey === "fees" && (
                 !user ? (
                   <div className="rounded-xl border border-border bg-surface shadow-card p-6">
@@ -700,10 +675,6 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
                       <dt className="text-muted-foreground">Core Activities</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{activities || "—"}</dd>
                     </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-muted-foreground">Documents to upload</dt>
-                      <dd className="font-semibold text-foreground mt-0.5 mono">{documents.length}</dd>
-                    </div>
                   </dl>
                 </div>
               )}
@@ -765,22 +736,10 @@ export function NgoDarpanWizard({ initialName, onBack: onExit }: { initialName?:
               </div>
             </div>
 
-            <div className="mt-7">
-              <div className="label-eyebrow mb-3">
-                Documents Required
-                <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
-                  ({documents.length})
-                </span>
-              </div>
-              <ul className="space-y-2.5">
-                {documents.map((label) => (
-                  <li key={label} className="flex items-start gap-2 text-[12px]">
-                    <FileText className="size-3.5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-foreground">{label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {/* No document checklist here: it belongs in the upload panel at
+                submit, where the slots actually are, rather than as read-only
+                text beside every step. Same convention as the DIN / IEC / LEI /
+                RERA wizards. */}
           </div>
         </aside>
       </div>
