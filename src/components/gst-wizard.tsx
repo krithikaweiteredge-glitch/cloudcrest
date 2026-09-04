@@ -187,7 +187,7 @@ export function GstWizard(_props: { initialName?: string }) {
       catalogSlug="gst"
       titlePrefix="GST Registration — "
       formDataKey="gstType"
-      backLabel="All GST registration types"
+      backLabel="Change type"
       hero={{
         badge: "GSTN · CBIC · GST Registration Desk",
         title: "GST Registration",

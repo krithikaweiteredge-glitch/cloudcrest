@@ -63,17 +63,9 @@ export function DepartmentPage({ slug }: { slug: string }) {
         />
         <div className="hero-grid" />
         <div className="relative px-6 md:px-10 py-12 max-w-5xl mx-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
-            <Landmark className="size-3.5 text-primary" /> Industry Specific
-          </span>
-          <h1 className="mt-4 text-3xl md:text-[40px] font-semibold font-display tracking-tight leading-[1.06]">
+          <h1 className="text-3xl md:text-[40px] font-semibold font-display tracking-tight leading-[1.06]">
             {dept?.title}
           </h1>
-          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed">
-            {dept?.description?.trim()
-              ? dept.description
-              : "Select a registration to see who can apply, the documents required and to start your application."}
-          </p>
         </div>
       </section>
 

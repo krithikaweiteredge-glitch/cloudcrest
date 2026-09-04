@@ -36,7 +36,7 @@ export function TrustWizard(_props: { initialName?: string }) {
         baseTitle: "Trust Registration",
         typeFormDataKey: "trustType",
         types: TRUST_TYPES,
-        changeLabel: "Change type / state",
+        changeLabel: "Change type",
         hero: {
           eyebrow: "Charity Commissioner · Indian Trusts Act, 1882",
           title: "Trust Registration",

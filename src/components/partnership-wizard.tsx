@@ -36,7 +36,7 @@ export function PartnershipWizard(_props: { initialName?: string }) {
         baseTitle: "Partnership Registration",
         typeFormDataKey: "partnershipType",
         types: PARTNERSHIP_TYPES,
-        changeLabel: "Change type / state",
+        changeLabel: "Change type",
         hero: {
           eyebrow: "Registrar of Firms · Indian Partnership Act, 1932",
           title: "Partnership Registration",

@@ -114,7 +114,7 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
         service={{ ...service, title }}
         extraFormData={extraFormData}
         onBack={() => setStarted(false)}
-        backLabel={config.changeLabel ?? (hasTypes ? "Change type / state" : "Change state")}
+        backLabel={config.changeLabel ?? "Change type"}
       />
     );
   }
@@ -134,13 +134,9 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
         />
         <div className="hero-grid" />
         <div className="relative px-6 md:px-10 py-12 max-w-5xl mx-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
-            <span className="size-1.5 rounded-full bg-primary live-dot" /> {config.hero.eyebrow}
-          </span>
-          <h1 className="mt-4 text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
+          <h1 className="text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
             {config.hero.title}
           </h1>
-          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed text-justify">{config.hero.subtitle}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             {config.hero.highlights.map((h) => (
               <span key={h.label} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/12 border border-white/15 text-[12px] text-white/90">

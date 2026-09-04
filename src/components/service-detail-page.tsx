@@ -76,7 +76,7 @@ export function ServiceDetail({
   service,
   extraFormData,
   onBack,
-  backLabel = "Back",
+  backLabel = "Change type",
   onStartApplication,
 }: {
   service: CatalogService;
@@ -183,22 +183,12 @@ export function ServiceDetail({
               <ArrowLeft className="size-4" /> {backLabel}
             </button>
           )}
-          <div className="rise-in label-eyebrow text-white/60" style={{ "--i": 0 } as React.CSSProperties}>
-            Registration Desk
-          </div>
           <h1
-            className="rise-in mt-3 text-3xl md:text-5xl font-display font-semibold tracking-tight leading-[1.05] max-w-3xl"
+            className="rise-in text-3xl md:text-5xl font-display font-semibold tracking-tight leading-[1.05] max-w-3xl"
             style={{ "--i": 1 } as React.CSSProperties}
           >
             {service.title}
           </h1>
-          <p
-            className="rise-in mt-4 text-[15px] text-white/75 max-w-2xl leading-relaxed"
-            style={{ "--i": 2 } as React.CSSProperties}
-          >
-            End-to-end {service.title.toLowerCase()} handled by Cloudcrest BM associates — document
-            verification, filing and post-approval support.
-          </p>
 
           <div
             className="rise-in mt-6 flex flex-wrap gap-2"
@@ -223,14 +213,6 @@ export function ServiceDetail({
               role="tablist"
               className="sticky top-16 z-10 flex flex-wrap items-center gap-1 border-b border-border bg-surface/98 px-2 md:px-4 rounded-t-xl"
             >
-              {onBack && (
-                <button
-                  onClick={onBack}
-                  className="flex items-center gap-1.5 mr-1 pl-1 pr-3 py-4 text-sm font-medium whitespace-nowrap text-primary hover:text-primary/80 transition-colors"
-                >
-                  <ArrowLeft className="size-4" /> Change type
-                </button>
-              )}
               {tabs.map((tab) => {
                 const Icon = TAB_ICONS[tab.id] ?? FileText;
                 const active = tab.id === activeTab;

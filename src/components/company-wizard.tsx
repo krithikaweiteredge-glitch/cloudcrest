@@ -623,19 +623,9 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
         {/* Panning technical grid — the same mesh the home hero uses. */}
         <div className="hero-grid" />
         <div className="relative px-10 py-10 max-w-5xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[11px] mono uppercase tracking-widest text-white/90">
-            <span className="size-1.5 rounded-full bg-primary live-dot" />
-            MCA · Tax · Labour · Municipal · IP Registration Desk
-          </span>
-          <h1 className="mt-4 text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
-            Business Registration <br />
-            {/* <span className="text-primary">Compliance Wizard</span> */}
+          <h1 className="text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
+            Business Registration
           </h1>
-          <p className="mt-3 text-white/70 max-w-2xl text-[15px] leading-relaxed">
-            A guided Cloudcrest BM workspace for Company, LLP, tax registrations,
-            labour law, municipal licences, industry licences and intellectual
-            property filings.
-          </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {HIGHLIGHTS.map((h) => (
               <span

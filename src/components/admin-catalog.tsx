@@ -534,7 +534,6 @@ function ServiceDialog({
     typeof initialRules.popular === "boolean" && svc?.wizardRules ? initialRules.popular : !!defaultTypeInfo?.popular;
 
   const [name, setName] = useState(svc?.name || "");
-  const [description, setDescription] = useState(svc?.description || "");
   const [active, setActive] = useState(svc ? !!svc.active : true);
   const [slug, setSlug] = useState(svc?.slug || "");
   // Wizard-type incorporation rules (variants only). Seeded from the service's
@@ -712,9 +711,6 @@ function ServiceDialog({
       <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
         <Field label="Name">
           <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
-        </Field>
-        <Field label="Description">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
         </Field>
         {/* Fee breakdown — the single place fees are managed */}
         {isWizardLauncher ? (
@@ -914,14 +910,16 @@ function ServiceDialog({
               <input value={formNo} onChange={(e) => setFormNo(e.target.value)} placeholder="GI-1" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Home-card turnaround (e.g. 7–10 Days)">
-              <input value={timelineDays} onChange={(e) => setTimelineDays(e.target.value)} placeholder="7–10 Days" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
-            </Field>
-            <Field label="Home-card document count">
-              <input value={documentsCount} onChange={(e) => setDocumentsCount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="15" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono" />
-            </Field>
-          </div>
+          {!isLauncherVariant && (
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Home-card turnaround (e.g. 7–10 Days)">
+                <input value={timelineDays} onChange={(e) => setTimelineDays(e.target.value)} placeholder="7–10 Days" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
+              </Field>
+              <Field label="Home-card document count">
+                <input value={documentsCount} onChange={(e) => setDocumentsCount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="15" className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono" />
+              </Field>
+            </div>
+          )}
           <Field label="Icon (lucide name, e.g. Award, Shield, Wallet)">
             <input
               value={icon}
@@ -1083,10 +1081,15 @@ function ServiceDialog({
         </div>
         )}
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="size-4" />
-          Active (available to customers)
-        </label>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="size-4 rounded border-border" />
+            Active (available to customers)
+          </label>
+          <p className="text-xs text-muted-foreground pl-6">
+            When active, this service will be visible as a separate service in the sidebar navigation and catalog for customers.
+          </p>
+        </div>
         {err && <div className="text-xs text-destructive">{err}</div>}
       </div>
       <div className="px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-2">

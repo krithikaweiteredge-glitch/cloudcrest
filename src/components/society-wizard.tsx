@@ -43,7 +43,7 @@ export function SocietyWizard() {
         baseTitle: "Society Registration",
         typeFormDataKey: "societyType",
         types: SOCIETY_TYPES,
-        changeLabel: "Change type / state",
+        changeLabel: "Change type",
         hero: {
           eyebrow: "Registrar of Societies",
           title: "Society Registration",
