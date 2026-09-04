@@ -713,15 +713,13 @@ function ServiceDialog({
           <input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
         </Field>
         {/* Fee breakdown — the single place fees are managed */}
-        {isWizardLauncher ? (
+        {hasVariants ? (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
               Fees
             </div>
             <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 p-3 leading-relaxed">
-              This is the wizard launcher — each entity type is priced on its own row
-              (Private Limited, OPC, …), so there&apos;s no fee to set here. Edit a
-              type below to change its price.
+              This service has sub-types priced below — each entity type or state is priced on its own row, so there&apos;s no fee to set here. Edit a type below to change its price.
             </p>
           </div>
         ) : (
@@ -930,17 +928,25 @@ function ServiceDialog({
           </Field>
         </div>
 
-        {isWizardService ? (
+        {hasVariants || isWizardService ? (
           <div className="pt-3 mt-1 border-t border-border">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
               Service Page Tabs
             </div>
             <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 p-3 leading-relaxed">
-              This is a <span className="font-medium text-foreground">wizard-driven registration</span> (the Company / LLP
-              incorporation wizard), not the standard tabbed page — so About / Who can Apply / Acts &amp; Rules tabs
-              aren&apos;t shown to customers and aren&apos;t editable here. The
-              {" "}<span className="font-medium text-foreground">fees</span> and
-              {" "}<span className="font-medium text-foreground">document checklist</span> above are what the wizard uses.
+              {hasVariants ? (
+                <>
+                  This service has sub-types priced below — tabs and content are configured on the individual sub-types below, not on this launcher row.
+                </>
+              ) : (
+                <>
+                  This is a <span className="font-medium text-foreground">wizard-driven registration</span> (the Company / LLP
+                  incorporation wizard), not the standard tabbed page — so About / Who can Apply / Acts &amp; Rules tabs
+                  aren&apos;t shown to customers and aren&apos;t editable here. The
+                  {" "}<span className="font-medium text-foreground">fees</span> and
+                  {" "}<span className="font-medium text-foreground">document checklist</span> above are what the wizard uses.
+                </>
+              )}
             </p>
           </div>
         ) : (
