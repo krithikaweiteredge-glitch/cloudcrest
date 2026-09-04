@@ -87,8 +87,6 @@ const HIGHLIGHTS = [
 // government fee. Overridden by admin pricing on the `msme` catalog row.
 const FEE_FALLBACK = { professional: 1000, govt: 0, gstPercent: 18 };
 
-const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-
 function format10DigitPhone(phoneStr?: string | null): string {
   if (!phoneStr) return "";
   let cleaned = phoneStr.trim();
@@ -120,13 +118,8 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
   // Step 1 — Enterprise & legal profile (HTML §2).
   const [enterpriseName, setEnterpriseName] = useState(initialName || "");
   const [orgType, setOrgType] = useState("Proprietary");
-  const [pan, setPan] = useState("");
-  const [incorporationDate, setIncorporationDate] = useState("");
-  const [commencementDate, setCommencementDate] = useState("");
 
   // Step 2 — Entrepreneur / applicant (HTML §1).
-  const [aadhaar, setAadhaar] = useState("");
-  const [applicantName, setApplicantName] = useState("");
   const [socialCategory, setSocialCategory] = useState("");
   const [gender, setGender] = useState("");
   const [speciallyAbled, setSpeciallyAbled] = useState("No");
@@ -219,16 +212,7 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
     if (currentStep === 0) {
       if (!enterpriseName.trim()) fail("enterpriseName", "Please enter the name of the enterprise.");
       if (!orgType) fail("orgType", "Please select the type of organisation.");
-      if (!pan.trim()) fail("pan", "PAN is required.");
-      else if (!PAN_RE.test(pan.trim().toUpperCase())) fail("pan", "Enter a valid 10-character PAN (e.g. ABCDE1234F).");
-      if (!incorporationDate) fail("incorporationDate", "Date of incorporation / registration is required.");
-      if (!commencementDate) fail("commencementDate", "Date of commencement of business is required.");
-      if (incorporationDate && commencementDate && commencementDate < incorporationDate) {
-        fail("commencementDate", "Commencement cannot be earlier than incorporation.");
-      }
     } else if (currentStep === 1) {
-      if (!/^\d{12}$/.test(aadhaar.replace(/\s/g, ""))) fail("aadhaar", "Enter a valid 12-digit Aadhaar number.");
-      if (!applicantName.trim()) fail("applicantName", "Name of entrepreneur (as per Aadhaar) is required.");
       if (!socialCategory) fail("socialCategory", "Please select a social category.");
       if (!gender) fail("gender", "Please select a gender.");
       if (!speciallyAbled) fail("speciallyAbled", "Please indicate specially abled (Divyangjan) status.");
@@ -380,14 +364,6 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
               </div>
             )}
 
-            <div className="mt-6 rounded-xl border border-warning/25 bg-warning/8 p-4 flex gap-3">
-              <AlertTriangle className="size-4 text-warning shrink-0 mt-0.5" />
-              <div className="text-xs text-foreground/80">
-                <span className="font-semibold text-foreground">Aadhaar &amp; PAN required · </span>
-                Udyam registration is Aadhaar-linked. Details must match the Aadhaar and PAN records exactly.
-              </div>
-            </div>
-
             <div key={step} className="mt-8 animate-in-up">
               {/* STEP 1 — ENTERPRISE (HTML §2) */}
               {stepKey === "enterprise" && (
@@ -404,29 +380,13 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
                     />
                   </Field>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Type of Organisation *" error={errors.orgType}>
-                      <Select value={orgType} onChange={setOrgType} error={errors.orgType}>
-                        {ORG_TYPES.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </Select>
-                    </Field>
-                    <Field label="PAN (organisation or individual) *" error={errors.pan}>
-                      <Input
-                        value={pan}
-                        onChange={(v) => setPan(v.toUpperCase())}
-                        placeholder="ABCDE1234F"
-                        error={errors.pan}
-                      />
-                    </Field>
-                    <Field label="Date of Incorporation / Registration *" error={errors.incorporationDate}>
-                      <DateInput value={incorporationDate} onChange={setIncorporationDate} error={errors.incorporationDate} />
-                    </Field>
-                    <Field label="Date of Commencement of Business *" error={errors.commencementDate}>
-                      <DateInput value={commencementDate} onChange={setCommencementDate} error={errors.commencementDate} />
-                    </Field>
-                  </div>
+                  <Field label="Type of Organisation *" error={errors.orgType}>
+                    <Select value={orgType} onChange={setOrgType} error={errors.orgType}>
+                      {ORG_TYPES.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </Select>
+                  </Field>
 
                   <div className="rounded-lg border border-accent/25 bg-accent/6 p-3 flex gap-2">
                     <Info className="size-3.5 text-accent shrink-0 mt-0.5" />
@@ -442,20 +402,9 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
               {stepKey === "applicant" && (
                 <Section
                   title="Entrepreneur / Applicant Details"
-                  desc="Entered strictly as printed on the Aadhaar of the proprietor, karta, partner, director or authorised signatory."
+                  desc="Details of the proprietor, karta, partner, director or authorised signatory."
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Aadhaar Number *" error={errors.aadhaar}>
-                      <Input
-                        value={aadhaar}
-                        onChange={(v) => setAadhaar(v.replace(/[^\d]/g, "").slice(0, 12))}
-                        placeholder="12-digit Aadhaar"
-                        error={errors.aadhaar}
-                      />
-                    </Field>
-                    <Field label="Name of Entrepreneur (as per Aadhaar) *" error={errors.applicantName}>
-                      <Input value={applicantName} onChange={setApplicantName} error={errors.applicantName} />
-                    </Field>
                     <Field label="Social Category *" error={errors.socialCategory}>
                       <Select value={socialCategory} onChange={setSocialCategory} error={errors.socialCategory}>
                         <option value="">— Select category —</option>
@@ -697,23 +646,9 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
                       <dt className="text-muted-foreground">Enterprise</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{enterpriseName || "—"}</dd>
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                       <dt className="text-muted-foreground">Type of Organisation</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{orgLabel}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">PAN</dt>
-                      <dd className="font-semibold text-foreground mt-0.5 mono">{pan || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Entrepreneur</dt>
-                      <dd className="font-semibold text-foreground mt-0.5">{applicantName || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Aadhaar</dt>
-                      <dd className="font-semibold text-foreground mt-0.5 mono">
-                        {aadhaar ? `XXXX XXXX ${aadhaar.slice(-4)}` : "—"}
-                      </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Major Activity</dt>
@@ -841,11 +776,6 @@ export function MsmeWizard({ initialName, onBack: onExit }: { initialName?: stri
           enterpriseName,
           orgType,
           orgTypeLabel: orgLabel,
-          pan: pan.toUpperCase(),
-          incorporationDate,
-          commencementDate,
-          aadhaarLast4: aadhaar.slice(-4),
-          applicantName,
           socialCategory,
           gender,
           speciallyAbled,
@@ -952,10 +882,6 @@ function Input({ value, onChange, placeholder, error }: { value: string; onChang
       className={fieldClass(error)}
     />
   );
-}
-
-function DateInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
-  return <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={fieldClass(error)} />;
 }
 
 function TextArea({ value, onChange, placeholder, error }: { value: string; onChange: (v: string) => void; placeholder?: string; error?: string }) {

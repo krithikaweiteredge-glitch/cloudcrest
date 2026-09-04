@@ -117,11 +117,6 @@ export function AdminCatalogPanel() {
   >(null);
   const [manageId, setManageId] = useState<number | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
-  // By default the admin catalog mirrors the customer frontend: only active,
-  // listed services. Hidden rows (wizard types like `company-pvt`, and the
-  // industry department sub-heads) are inactive by design — showing them all the
-  // time confuses the catalog, so they're revealed only via this toggle.
-  const [showHidden, setShowHidden] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-catalog"],
@@ -150,15 +145,6 @@ export function AdminCatalogPanel() {
           Manage the service catalog: categories, services, fees, page tabs and document checklists.
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showHidden}
-              onChange={(e) => setShowHidden(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Show hidden (wizard types &amp; inactive)
-          </label>
           <button
           type="button"
           onClick={() =>
@@ -262,8 +248,13 @@ export function AdminCatalogPanel() {
                         </div>
 
                         {subOpen && (() => {
+                          // The catalog mirrors the customer frontend: active
+                          // services, plus every variant nested under its
+                          // launcher (wizard types like `company-pvt`, society
+                          // state steps) so each type can still be priced. An
+                          // inactive standalone row stays out of the tree.
                           const organized = organizeServicesWithVariants(sub.services).filter(
-                            (e) => showHidden || e.svc.active || e.isVariant,
+                            (e) => e.svc.active || e.isVariant,
                           );
                           return (
                           <ul className="pl-14 pr-4 pb-2 space-y-1">
