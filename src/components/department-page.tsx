@@ -62,7 +62,7 @@ export function DepartmentPage({ slug }: { slug: string }) {
           }}
         />
         <div className="hero-grid" />
-        <div className="relative px-6 md:px-10 py-12 max-w-5xl mx-auto">
+        <div className="relative px-10 py-10 max-w-5xl">
           <h1 className="text-3xl md:text-[40px] font-semibold font-display tracking-tight leading-[1.06]">
             {dept?.title}
           </h1>

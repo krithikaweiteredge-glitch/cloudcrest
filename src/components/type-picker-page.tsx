@@ -168,7 +168,7 @@ export function TypePickerPage({
           }}
         />
         <div className="hero-grid" />
-        <div className="relative px-6 md:px-10 py-12 max-w-5xl mx-auto">
+        <div className="relative px-10 py-10 max-w-5xl">
           <h1 className="text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
             {hero.title}
           </h1>

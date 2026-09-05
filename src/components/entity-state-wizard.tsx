@@ -133,13 +133,16 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
           }}
         />
         <div className="hero-grid" />
-        <div className="relative px-6 md:px-10 py-12 max-w-5xl mx-auto">
+        <div className="relative px-10 py-10 max-w-5xl">
           <h1 className="text-4xl md:text-[42px] font-semibold font-display tracking-tight leading-[1.05]">
             {config.hero.title}
           </h1>
           <div className="mt-6 flex flex-wrap gap-2">
             {config.hero.highlights.map((h) => (
-              <span key={h.label} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/12 border border-white/15 text-[12px] text-white/90">
+              <span
+                key={h.label}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/12 border border-white/15 text-[12px] text-white/90 hover:bg-white/20 transition-colors"
+              >
                 <h.icon className="size-3.5 text-primary" />
                 {h.label}
               </span>
