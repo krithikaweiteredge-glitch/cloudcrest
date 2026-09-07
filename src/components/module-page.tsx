@@ -25,11 +25,11 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "company") return <CompanyWizard initialName={initialName} />;
   if (slug === "llp") return <LlpWizard initialName={initialName} />;
   if (slug === "gst") return <GstWizard initialName={initialName} />;
-  if (slug === "partnership") return <PartnershipWizard initialName={initialName} />;
-  if (slug === "society") return <SocietyWizard />;
+  if (slug === "partnership" || slug.startsWith("partnership-")) return <PartnershipWizard initialName={initialName} slug={slug} />;
+  if (slug === "society" || slug.startsWith("society-")) return <SocietyWizard initialName={initialName} slug={slug} />;
   if (slug === "huf") return <HufWizard initialName={initialName} />;
-  if (slug === "trust") return <TrustWizard initialName={initialName} />;
-  if (slug === "sole-proprietorship") return <SoleProprietorshipWizard initialName={initialName} />;
+  if (slug === "trust" || slug.startsWith("trust-")) return <TrustWizard initialName={initialName} slug={slug} />;
+  if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-")) return <SoleProprietorshipWizard initialName={initialName} slug={slug} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;
   if (slug === "ngo-darpan") return <NgoDarpanModule initialName={initialName} />;
   if (slug === "din") return <DinModule initialName={initialName} />;

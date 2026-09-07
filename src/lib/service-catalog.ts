@@ -179,25 +179,65 @@ export async function fetchService(slug: string): Promise<CatalogService | null>
   }
 }
 
+export async function fetchServiceChain(slugs: string[]): Promise<CatalogService | null> {
+  const list: CatalogService[] = [];
+  for (const slug of slugs) {
+    if (!slug) continue;
+    const found = await fetchService(slug);
+    if (found) list.push(found);
+  }
+  if (list.length === 0) return null;
+
+  // Merge from base/parent (end of list) down to most specific (front of list)
+  // so specific authored fields win, while unauthored fields (like empty fee lines or 0 fees)
+  // inherit from parent rows where the admin configured them.
+  const base = list[list.length - 1];
+  let merged: CatalogService = { ...base };
+
+  for (let i = list.length - 2; i >= 0; i--) {
+    const cur = list[i];
+    const hasFeeLines = Array.isArray(cur.feeLines) && cur.feeLines.length > 0;
+    const hasProfFee = typeof cur.professionalFee === "number" && cur.professionalFee > 0;
+    const hasGovtFee = typeof cur.govtFee === "number" && cur.govtFee > 0;
+    const hasDocs = Array.isArray(cur.documents) && cur.documents.length > 0;
+    const hasDesc = !!cur.description?.trim();
+    const hasWho = !!cur.whoCanApply?.trim();
+    const hasActs = !!cur.actsRules?.trim();
+    const hasTabs = Array.isArray(cur.tabs) && cur.tabs.length > 0;
+    const hasPdfs = Array.isArray(cur.actsRulesPdfs) && cur.actsRulesPdfs.length > 0;
+
+    merged = {
+      ...merged,
+      slug: cur.slug || merged.slug,
+      title: cur.title || merged.title,
+      short: cur.short || merged.short,
+      authority: cur.authority || merged.authority,
+      form: cur.form || merged.form,
+      description: hasDesc ? cur.description : merged.description,
+      whoCanApply: hasWho ? cur.whoCanApply : merged.whoCanApply,
+      actsRules: hasActs ? cur.actsRules : merged.actsRules,
+      documents: hasDocs ? cur.documents : merged.documents,
+      tabs: hasTabs ? cur.tabs : merged.tabs,
+      actsRulesPdfs: hasPdfs ? cur.actsRulesPdfs : merged.actsRulesPdfs,
+      feeLines: hasFeeLines ? cur.feeLines : merged.feeLines,
+      professionalFee: hasFeeLines || hasProfFee ? cur.professionalFee : merged.professionalFee,
+      govtFee: hasFeeLines || hasGovtFee ? cur.govtFee : merged.govtFee,
+      gstPercent: hasFeeLines || hasProfFee ? cur.gstPercent : merged.gstPercent,
+    };
+  }
+
+  return merged;
+}
+
 /**
- * Resolve the first slug that exists in the catalog. Wizards pass a
- * variant-specific slug first (e.g. `company-pvt`) and the base service second
- * (`company`), so an admin can price individual entity types without having to.
+ * Resolve the service hierarchy for a list of fallback slugs (e.g. combo -> type -> base).
+ * Inherits admin-authored fees, documents and copy from parent rows if child rows are bare.
  */
 export function useCatalogService(slugs: string[]) {
   const key = slugs.join("|");
-  // Cached per slug set so revisiting a wizard doesn't re-hit the backend.
-  // `undefined` = still loading, `null` = not in the catalog.
   const { data, isLoading } = useQuery({
     queryKey: ["catalog-service", key],
-    queryFn: async () => {
-      for (const slug of slugs) {
-        if (!slug) continue;
-        const found = await fetchService(slug);
-        if (found) return found;
-      }
-      return null;
-    },
+    queryFn: async () => fetchServiceChain(slugs),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

@@ -824,11 +824,11 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                 <div className="text-sm font-semibold text-foreground mt-0.5">{selected.title}</div>
               </div>
 
-              {typeof selected.professionalFee === "number" && selected.professionalFee > 0 && (
+              {typeof fees?.total === "number" && fees.total > 0 && (
                 <div className="pt-2.5 border-t border-border/60">
-                  <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+                  <div className="text-[11px] text-muted-foreground font-medium">Estimated Total Fee</div>
                   <div className="text-xs font-semibold mono text-primary mt-0.5">
-                    ₹{selected.professionalFee.toLocaleString("en-IN")} + 18% GST
+                    ₹{fees.total.toLocaleString("en-IN")}
                   </div>
                 </div>
               )}

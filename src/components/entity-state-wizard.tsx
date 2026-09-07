@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ServiceDetail } from "@/components/service-detail-page";
-import { useCatalogService } from "@/lib/service-catalog";
+import { useCatalogService, type CatalogService } from "@/lib/service-catalog";
 import { ArrowRight, Loader2, MapPin, Check } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -51,6 +51,19 @@ export type EntityStateWizardConfig = {
   stateStep?: { heading?: string; subtitle?: string };
   /** Label on the "back" control of the service page. */
   changeLabel?: string;
+  initialTypeKey?: string;
+  initialName?: string;
+  /**
+   * Custom multi-step wizard to launch when clicking 'Start Application'
+   * on the service detail page, instead of opening the inline fees panel.
+   */
+  renderWizard?: (context: {
+    type: StateWizardType | null;
+    state: string;
+    service: CatalogService;
+    onBack: () => void;
+    initialName?: string;
+  }) => React.ReactNode;
 };
 
 // Registration is handled state-wise, and every combination has its own catalog
@@ -63,12 +76,13 @@ export const REGISTRATION_STATES = [
 ];
 
 export function EntityStateWizard({ config }: { config: EntityStateWizardConfig }) {
-  const { types } = config;
+  const { types, renderWizard } = config;
   const hasTypes = !!types && types.length > 0;
 
-  const [typeKey, setTypeKey] = useState<string | null>(null);
+  const [typeKey, setTypeKey] = useState<string | null>(config.initialTypeKey ?? null);
   const [stateSel, setStateSel] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
+  const [inWizard, setInWizard] = useState(false);
 
   const selectedType = hasTypes ? types!.find((t) => t.key === typeKey) ?? null : null;
   const stateSlug = REGISTRATION_STATES.find((s) => s.name === stateSel)?.slug ?? null;
@@ -107,14 +121,27 @@ export function EntityStateWizard({ config }: { config: EntityStateWizardConfig 
       );
     }
     const title = selectedType ? `${selectedType.title} — ${stateSel}` : `${config.baseTitle} — ${stateSel}`;
+    const resolvedService = { ...service, title };
     const extraFormData: Record<string, unknown> = { state: stateSel };
     if (selectedType && config.typeFormDataKey) extraFormData[config.typeFormDataKey] = selectedType.title;
+
+    if (inWizard && renderWizard) {
+      return renderWizard({
+        type: selectedType,
+        state: stateSel,
+        service: resolvedService,
+        onBack: () => setInWizard(false),
+        initialName: config.initialName,
+      });
+    }
+
     return (
       <ServiceDetail
-        service={{ ...service, title }}
+        service={resolvedService}
         extraFormData={extraFormData}
         onBack={() => setStarted(false)}
         backLabel={config.changeLabel ?? "Change type"}
+        onStartApplication={renderWizard ? () => setInWizard(true) : undefined}
       />
     );
   }
