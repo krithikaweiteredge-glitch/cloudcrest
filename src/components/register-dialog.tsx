@@ -172,7 +172,10 @@ export function RegisterDialog({
       // Whatever the wizard collected is filed as-is. Partners and capital are
       // already inside formData for the services that ask for them, so there is
       // nothing to merge in from this dialog any more.
-      const mergedFormData = { ...(formData ?? {}) };
+      const mergedFormData = {
+        ...(formData ?? {}),
+        requiredDocuments: documents && documents.length > 0 ? documents : undefined,
+      };
 
       const response = await fetch(`${BACKEND_URL}/api/requests`, {
         method: "POST",

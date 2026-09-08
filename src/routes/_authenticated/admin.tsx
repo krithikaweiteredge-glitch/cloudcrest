@@ -335,72 +335,81 @@ function getRequiredDocumentsForRequest(request: any): string[] {
     } catch (_) {}
   }
 
-  if (title.includes("dsc") || slug.startsWith("dsc") || form.includes("class 3")) {
-    const isCombo = title.includes("combo") || slug.includes("combo") || fd.dscType?.toLowerCase().includes("combo");
+  if (fd.requiredDocuments && Array.isArray(fd.requiredDocuments) && fd.requiredDocuments.length > 0) {
+    return fd.requiredDocuments;
+  }
+
+  if (title.includes("society") || slug.startsWith("society")) {
     return [
-      "PAN Card (mandatory)",
-      "Aadhaar Card (for eKYC verification)",
-      "Recent passport-size colour photograph",
-      ...(isCombo ? ["GST Certificate"] : []),
+      "Proposed Memorandum of Association (MoA) signed by all promoters",
+      "Proposed Rules and Regulations (Bye-laws) signed by all promoters",
+      "List of all initial Members / Promoters with address and contact details",
+      "Registered Office Address proof (Electricity Bill / Property Tax Receipt)",
+      "NOC from owner of the premises with Identity proof of owner",
+      "PAN and Aadhaar copies of all Executive Committee / Governing Body Members",
     ];
   }
 
-  if (title.includes("din") || slug.startsWith("din") || form.includes("dir-3")) {
-    const isForeign = fd.citizenship === "foreign";
-    return isForeign
-      ? [
-          "Passport (mandatory)",
-          "Address proof of residential address outside India",
-          "Passport-size colour photograph",
-          "Notarised and apostilled ID & address proofs",
-          "Digital Signature Certificate (DSC)",
-        ]
-      : [
-          "Passport-size colour photograph",
-          "PAN card (mandatory)",
-          "Aadhaar card",
-          "Address proof (utility bill < 2 mo)",
-          "Digital Signature Certificate (DSC)",
-        ];
+  if (title.includes("trust") || slug.startsWith("trust")) {
+    return [
+      "Trust Deed printed on non-judicial stamp paper of appropriate value",
+      "PAN Card and Aadhaar Card of Settlor and all Trustees",
+      "Passport-size photographs of Settlor and all Trustees",
+      "Address proof of Registered Office of the Trust",
+      "NOC from Property Owner along with Electricity Bill or Municipal Tax Receipt",
+      "ID Proof and Address Proof of two independent Witnesses",
+      "Proof of initial Trust Corpus fund (Bank statement / Cheque copy)",
+    ];
   }
 
-  if (title.includes("huf") || slug.startsWith("huf") || form.includes("huf deed")) {
+  if (title.includes("huf") || slug.startsWith("huf")) {
     return [
       "PAN Card of Karta",
-      "Aadhaar Card of Karta & Family Members",
-      "Address Proof of HUF Principal Place",
-      "HUF Declaration / Deed",
+      "Aadhaar Card of Karta and all Coparceners / Members",
+      "Passport-size photograph of Karta",
+      "HUF Declaration / Deed on State Stamp Paper",
+      "Address Proof of HUF / Karta (Electricity Bill / Bank Statement / Rent Agreement)",
     ];
   }
 
-  if (title.includes("msme") || slug.startsWith("msme") || form.includes("udyam")) {
+  if (title.includes("sole proprietorship") || slug.startsWith("sole-proprietorship") || title.includes("proprietor")) {
     return [
-      "Aadhaar Card of Applicant",
-      "PAN Card of Entity / Proprietor",
-      "Bank Account Proof (Cancelled Cheque / Passbook)",
+      "PAN Card of Proprietor",
+      "Aadhaar Card of Proprietor",
+      "Passport-size photograph of Proprietor",
+      "Business Premises Address Proof (Electricity Bill / Rent Agreement)",
+      "Bank Account Proof (Cancelled Cheque / Bank Statement)",
+    ];
+  }
+
+  if (title.includes("partnership") || slug.startsWith("partnership")) {
+    return [
+      "PAN Card of all Partners",
+      "Aadhaar Card / ID Proof of all Partners",
+      "Partnership Deed on Stamp Paper",
+      "Principal Place of Business Address Proof",
+      "NOC from Property Owner (if rented / leased)",
+    ];
+  }
+
+  if (title.includes("digital signature") || title.includes("dsc") || slug.startsWith("dsc")) {
+    return [
+      "PAN Card (mandatory)",
+      "Aadhaar Card (for eKYC)",
+      "Recent passport-size photograph",
+    ];
+  }
+
+  if (title.includes("msme") || title.includes("udyam") || slug.startsWith("msme")) {
+    return [
+      "Aadhaar of Proprietor / Partner / Director linked to mobile",
+      "PAN of Business Entity / Proprietor",
+      "Bank Account Details (Cancelled Cheque)",
       "Business Address Proof",
     ];
   }
 
-  if (title.includes("iec") || slug.startsWith("iec") || form.includes("anf-2a")) {
-    return [
-      "Firm / Entity PAN Card",
-      "Business Address Proof (Utility Bill / Rent Agreement)",
-      "Authorised Signatory Aadhaar & PAN Card",
-      "Bank Account Proof (Cancelled Cheque / Statement)",
-    ];
-  }
-
-  if (title.includes("lei") || slug.startsWith("lei")) {
-    return [
-      "Certificate of Incorporation / Registration Certificate",
-      "Entity PAN Card",
-      "Authorised Signatory Identity Proof",
-      "Board Resolution / Authorisation Letter",
-    ];
-  }
-
-  if (title.includes("company") || title.includes("incorporation") || form.includes("spice") || slug === "company") {
+  if (title.includes("company") || title.includes("incorporation") || form.includes("spice") || slug.startsWith("company")) {
     const isSec8 = title.includes("section 8") || title.includes("foundation") || fd.entity === "sec8";
     const isOpc = title.includes("one person") || title.includes("opc") || fd.entity === "opc";
     return [
@@ -416,7 +425,7 @@ function getRequiredDocumentsForRequest(request: any): string[] {
     ];
   }
 
-  if (title.includes("llp") || title.includes("limited liability partnership") || form.includes("fillip") || slug === "llp") {
+  if (title.includes("llp") || title.includes("limited liability partnership") || form.includes("fillip") || slug.startsWith("llp")) {
     return [
       "PAN & Aadhaar of all partners",
       "Passport-size photographs",
@@ -435,24 +444,6 @@ function getRequiredDocumentsForRequest(request: any): string[] {
       "Business Premises Address Proof (Electricity Bill / Rent Agreement)",
       "Bank Account Proof (Cancelled Cheque / Passbook)",
       "Owner NOC / Rent Agreement",
-    ];
-  }
-
-  if (title.includes("partnership") || slug.startsWith("partnership")) {
-    return [
-      "PAN Card of all Partners",
-      "Aadhaar Card / ID Proof of Partners",
-      "Partnership Deed",
-      "Principal Place of Business Address Proof",
-    ];
-  }
-
-  if (title.includes("trust") || title.includes("society") || title.includes("ngo") || slug.startsWith("trust") || slug.startsWith("society")) {
-    return [
-      "PAN Card of Trust / Trustees / Members",
-      "Aadhaar Card / ID Proof of Trustees",
-      "Trust Deed / Society Rules & Bye-laws",
-      "Registered Office Address Proof",
     ];
   }
 
@@ -480,13 +471,15 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
     return { matches, unclaimedDocs: uploadedDocs || [] };
   }
 
+  const cleanString = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
   // Pass 1: Explicit Label Matches
   for (const reqDoc of requiredDocs) {
-    const reqNorm = reqDoc.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const reqNorm = cleanString(reqDoc);
     for (const doc of uploadedDocs) {
       if (claimedDocIds.has(doc.id)) continue;
       const parsed = parseDocLabel(doc.name);
-      const parsedNorm = parsed.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const parsedNorm = cleanString(parsed.label);
 
       if (
         parsed.label !== "Uploaded Document" &&
@@ -507,40 +500,36 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
 
     for (const doc of uploadedDocs) {
       if (claimedDocIds.has(doc.id)) continue;
-      const docText = (doc.name || "").toLowerCase();
       const parsed = parseDocLabel(doc.name);
-      const labelText = parsed.label.toLowerCase();
-      const combined = `${labelText} ${docText}`;
+      const docText = `${parsed.label} ${parsed.fileName} ${doc.name}`.toLowerCase();
 
       let isMatch = false;
 
-      if (reqLower.includes("pan") && /\bpan\b/.test(combined)) {
+      if ((reqLower.includes("moa") || reqLower.includes("memorandum")) && /\b(moa|memorandum)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("aadhaar") || reqLower.includes("adhar") || reqLower.includes("photo id") || reqLower.includes("identity")) && /\b(aadhaar|adhar|voter|passport|identity|id)\b/.test(combined)) {
+      } else if ((reqLower.includes("bye-laws") || reqLower.includes("byelaws") || reqLower.includes("rules")) && /\b(byelaws|bye-laws|rules|regulations)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("photograph") || reqLower.includes("photo") || reqLower.includes("passport-size")) && /\b(photograph|photo|pic|picture|passport)\b/.test(combined)) {
+      } else if ((reqLower.includes("member") || reqLower.includes("promoter")) && /\b(member|members|promoter|promoters|list)\b/.test(docText)) {
         isMatch = true;
-      } else if (reqLower.includes("address proof") && /\b(address|utility|bill|electricity|water|gas)\b/.test(combined)) {
+      } else if (reqLower.includes("pan") && /\bpan\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("office") || reqLower.includes("premises") || reqLower.includes("ownership")) && /\b(office|premises|property|tax|electricity|utility)\b/.test(combined)) {
+      } else if ((reqLower.includes("aadhaar") || reqLower.includes("adhar") || reqLower.includes("ekyc") || reqLower.includes("identity")) && /\b(aadhaar|adhar|identity|id|ekyc|voter|passport)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("rent") || reqLower.includes("noc")) && /\b(rent|lease|noc|agreement|owner)\b/.test(combined)) {
+      } else if ((reqLower.includes("photograph") || reqLower.includes("photo") || reqLower.includes("pic")) && /\b(photograph|photo|pic|passport)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("dsc") || reqLower.includes("signature")) && /\b(dsc|signature|digital)\b/.test(combined)) {
+      } else if ((reqLower.includes("address proof") || reqLower.includes("premises") || reqLower.includes("office") || reqLower.includes("electricity") || reqLower.includes("tax receipt")) && /\b(address|office|premises|electricity|tax|utility|bill)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("moa") || reqLower.includes("aoa")) && /\b(moa|aoa|memorandum|articles|draft)\b/.test(combined)) {
+      } else if ((reqLower.includes("noc") || reqLower.includes("rent") || reqLower.includes("owner")) && /\b(noc|rent|lease|owner|agreement)\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("cheque") || reqLower.includes("bank") || reqLower.includes("passbook")) && /\b(cheque|bank|passbook|statement)\b/.test(combined)) {
+      } else if ((reqLower.includes("deed") || reqLower.includes("declaration") || reqLower.includes("stamp")) && /\b(deed|declaration|stamp|trust)\b/.test(docText)) {
         isMatch = true;
-      } else if (reqLower.includes("gst") && /\bgst\b/.test(combined)) {
+      } else if (reqLower.includes("witness") && /\bwitness\b/.test(docText)) {
         isMatch = true;
-      } else if ((reqLower.includes("deed") || reqLower.includes("declaration") || reqLower.includes("trust deed")) && /\b(deed|declaration|agreement|trust|stamp)\b/.test(combined)) {
+      } else if ((reqLower.includes("corpus") || reqLower.includes("cheque") || reqLower.includes("bank")) && /\b(corpus|cheque|bank|statement|fund|passbook)\b/.test(docText)) {
         isMatch = true;
-      } else if (reqLower.includes("witness") && /\bwitness\b/.test(combined)) {
+      } else if (reqLower.includes("dsc") && /\b(dsc|digital|signature)\b/.test(docText)) {
         isMatch = true;
-      } else if (reqLower.includes("corpus") && /\b(corpus|valuation|property|cash|bank)\b/.test(combined)) {
-        isMatch = true;
-      } else if ((reqLower.includes("title") || reqLower.includes("valuation")) && /\b(title|valuation|property)\b/.test(combined)) {
+      } else if (reqLower.includes("gst") && /\bgst\b/.test(docText)) {
         isMatch = true;
       }
 
@@ -552,10 +541,42 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
     }
   }
 
-  // Pass 3: If only 1 required document and 1 uploaded document, pair them up
-  if (requiredDocs.length === 1 && uploadedDocs.length === 1 && !matches[requiredDocs[0]]) {
-    matches[requiredDocs[0]] = uploadedDocs[0];
-    claimedDocIds.add(uploadedDocs[0].id);
+  // Pass 3: Token Overlap Matching
+  for (const reqDoc of requiredDocs) {
+    if (matches[reqDoc]) continue;
+    const reqTokens = reqDoc.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+
+    let bestDoc: any = null;
+    let maxOverlap = 0;
+
+    for (const doc of uploadedDocs) {
+      if (claimedDocIds.has(doc.id)) continue;
+      const parsed = parseDocLabel(doc.name);
+      const docText = `${parsed.label} ${parsed.fileName} ${doc.name}`.toLowerCase();
+
+      let overlap = 0;
+      for (const token of reqTokens) {
+        if (docText.includes(token)) overlap++;
+      }
+
+      if (overlap > maxOverlap && overlap >= 1) {
+        maxOverlap = overlap;
+        bestDoc = doc;
+      }
+    }
+
+    if (bestDoc && maxOverlap >= 1) {
+      matches[reqDoc] = bestDoc;
+      claimedDocIds.add(bestDoc.id);
+    }
+  }
+
+  // Pass 4: Fallback slot matching to allocate any remaining uploaded documents
+  const unclaimed = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
+  const unassignedReqs = requiredDocs.filter((req) => !matches[req]);
+  for (let i = 0; i < Math.min(unclaimed.length, unassignedReqs.length); i++) {
+    matches[unassignedReqs[i]] = unclaimed[i];
+    claimedDocIds.add(unclaimed[i].id);
   }
 
   const unclaimedDocs = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
@@ -817,9 +838,9 @@ function AdminDetailDialog({
 
               {/* Documents Section with Required Documents Checklist */}
               {(() => {
-                const requiredDocs = r.requiredDocuments && r.requiredDocuments.length > 0
-                  ? r.requiredDocuments
-                  : getRequiredDocumentsForRequest(r);
+                const requiredDocs = (fd.requiredDocuments && Array.isArray(fd.requiredDocuments) && fd.requiredDocuments.length > 0)
+                  ? fd.requiredDocuments
+                  : (r.requiredDocuments && r.requiredDocuments.length > 0 ? r.requiredDocuments : getRequiredDocumentsForRequest(r));
                 const uploadedList = r.documents || [];
                 const { matches, unclaimedDocs } = computeDocumentChecklistMatches(requiredDocs, uploadedList);
                 const uploadedCount = Object.keys(matches).length;
