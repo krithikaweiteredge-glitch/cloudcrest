@@ -67,7 +67,6 @@ const DOCS_COMBO = [
   "PAN Card (mandatory)",
   "Aadhaar Card (for eKYC verification)",
   "Recent passport-size colour photograph",
-  "GST Certificate (extra required for organisation combo DSC)",
 ];
 
 const HIGHLIGHTS = [
