@@ -33,10 +33,63 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   // The hamburger button toggles it from there.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => !pathname.startsWith("/m/"));
 
+  /**
+   * The sidebar greets an arriving visitor open, so the service catalog is the
+   * first thing they see, then folds itself away after this long to give the
+   * page its full width back.
+   */
+  const AUTO_COLLAPSE_MS = 10_000;
+  const autoCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Drop the opening timer. Called by every manual open/close: once someone has
+   * expressed a preference, a timer set before they touched anything must not
+   * overrule it — otherwise the sidebar they just opened snaps shut under them.
+   */
+  const cancelAutoCollapse = () => {
+    if (autoCollapseTimer.current) {
+      clearTimeout(autoCollapseTimer.current);
+      autoCollapseTimer.current = null;
+    }
+  };
+
+  /** Manual toggle: cancels the greeting, then flips the sidebar. */
+  const toggleSidebar = () => {
+    cancelAutoCollapse();
+    setSidebarCollapsed((v) => !v);
+  };
+
+  /** Manual close (backdrop, drawer's X). Also cancels the greeting. */
+  const closeSidebar = () => {
+    cancelAutoCollapse();
+    setSidebarCollapsed(true);
+  };
+
+  // Empty deps: this runs once per page load, not on every navigation, so the
+  // sidebar greets a visitor when they arrive rather than re-opening itself
+  // every time they click through to another service.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Phones overlay the sidebar across the whole page behind a backdrop, so
+    // auto-opening it would bury the content someone just came to read for ten
+    // seconds. The greeting is desktop/tablet only; phones keep today's
+    // behaviour of opening only when the hamburger is tapped.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+
+    setSidebarCollapsed(false);
+    autoCollapseTimer.current = setTimeout(() => {
+      setSidebarCollapsed(true);
+      autoCollapseTimer.current = null;
+    }, AUTO_COLLAPSE_MS);
+
+    return cancelAutoCollapse;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // On phones the sidebar overlays the page, so hide it once a service is picked.
   const closeSidebarOnMobile = () => {
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      setSidebarCollapsed(true);
+      closeSidebar();
     }
   };
 
@@ -115,7 +168,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
           {/* Hamburger — toggles the sidebar between the icon rail and full catalog. */}
           <button
             type="button"
-            onClick={() => setSidebarCollapsed((v) => !v)}
+            onClick={toggleSidebar}
             title={sidebarCollapsed ? "Open sidebar" : "Collapse sidebar"}
             aria-label={sidebarCollapsed ? "Open sidebar" : "Collapse sidebar"}
             aria-expanded={!sidebarCollapsed}
@@ -185,7 +238,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         {!sidebarCollapsed && (
           <div
             className="md:hidden fixed inset-0 bg-slate-950/60 z-40"
-            onClick={() => setSidebarCollapsed(true)}
+            onClick={closeSidebar}
             aria-hidden="true"
           />
         )}
@@ -204,7 +257,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
             <span className="text-sm font-semibold text-foreground">Menu</span>
             <button
               type="button"
-              onClick={() => setSidebarCollapsed(true)}
+              onClick={closeSidebar}
               aria-label="Close menu"
               className="size-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
