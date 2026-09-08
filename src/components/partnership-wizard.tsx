@@ -185,6 +185,7 @@ export function PartnershipStepperWizard({
 
   // Tab 3: Nature of Business
   const [businessNature, setBusinessNature] = useState<string>("Manufacturing");
+  const [businessDescription, setBusinessDescription] = useState("");
 
   const [openReg, setOpenReg] = useState(false);
   const [openSignIn, setOpenSignIn] = useState(false);
@@ -341,7 +342,7 @@ export function PartnershipStepperWizard({
           city,
           state: officeState || state,
           pincode,
-          objects: `Nature of Business: ${businessNature}`,
+          objects: `Nature of Business: ${businessNature}${businessDescription ? `\nBusiness / Product Description: ${businessDescription}` : ""}`,
           fees: fees.lines,
           total,
         }),
@@ -676,13 +677,13 @@ export function PartnershipStepperWizard({
                   <div>
                     <h3 className="text-base font-semibold tracking-tight">Nature of Business</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Select the primary business category for your partnership firm.
+                      Select the primary business category and provide a brief description for your partnership firm.
                     </p>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-foreground/90 block">
-                      4. Nature of Business *
+                      7. Nature of Business *
                     </label>
                     <select
                       value={businessNature}
@@ -699,6 +700,22 @@ export function PartnershipStepperWizard({
                     {errors.businessNature && (
                       <p className="text-[11px] text-destructive mt-1">{errors.businessNature}</p>
                     )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground/90 block">
+                      8. Brief Description of Business / Product
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={businessDescription}
+                      onChange={(e) => setBusinessDescription(e.target.value)}
+                      placeholder="Briefly describe your business activities, products manufactured/traded, or services provided..."
+                      className="w-full bg-input border border-border rounded-lg px-3.5 py-2.5 text-sm ring-focus transition-shadow"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Briefly describe your firm's products, services, or core activities.
+                    </p>
                   </div>
                 </div>
               )}
@@ -812,6 +829,13 @@ export function PartnershipStepperWizard({
                       <dt className="text-muted-foreground">Nature of Business</dt>
                       <dd className="font-semibold text-foreground mt-0.5">{businessNature || "—"}</dd>
                     </div>
+
+                    {businessDescription && (
+                      <div className="sm:col-span-2 rounded-lg border border-border/70 bg-panel/40 p-3">
+                        <dt className="text-muted-foreground">Business / Product Description</dt>
+                        <dd className="font-semibold text-foreground mt-0.5 leading-relaxed">{businessDescription}</dd>
+                      </div>
+                    )}
 
                     <div className="sm:col-span-2 rounded-lg border border-border/70 bg-panel/40 p-3">
                       <dt className="text-muted-foreground">Registered Office Address</dt>
@@ -939,6 +963,8 @@ export function PartnershipStepperWizard({
           state: officeState || state,
           businessNature,
           natureOfBusiness: businessNature,
+          businessDescription,
+          objects: `Nature of Business: ${businessNature}${businessDescription ? `\nBusiness / Product Description: ${businessDescription}` : ""}`,
           partnershipType: type?.title || "Registered Partnership Firm",
         }}
         fees={fees.lines}

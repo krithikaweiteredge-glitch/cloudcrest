@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from "react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
-import { useAuth } from "@/hooks/use-auth";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { AdvisorProceedDialog } from "@/components/advisor-proceed-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { useCatalogService, resolveDocuments, type ResolvedFees } from "@/lib/service-catalog";
 import { useFeeEstimate, type FeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
@@ -148,17 +149,17 @@ function useMcaNameCheck(rawName: string, suffix: string) {
         } else {
           setResult({
             ok: false,
-            msg: data.reason || `“${fullName}” is already registered or restricted on MCA.`,
+            msg: `“${fullName}” is already registered or closely resembles an existing entity. Try a different name.`,
           });
         }
       } catch (err: any) {
-        if (err.name !== "AbortError") {
+        if (err?.name !== "AbortError") {
           setResult({ ok: true, msg: "Preliminary check passed — reserve via RUN-LLP / FiLLiP." });
         }
       } finally {
         setChecking(false);
       }
-    }, 350);
+    }, 450);
 
     return () => {
       clearTimeout(timer);
@@ -171,22 +172,22 @@ function useMcaNameCheck(rawName: string, suffix: string) {
 
 export function LlpWizard({ initialName }: { initialName?: string }) {
   const { user } = useAuth();
-
   const [step, setStep] = useState(0);
-  const [typeValue, setTypeValue] = useState("Indian LLP");
+
+  // Form State
+  const [typeValue, setTypeValue] = useState<string>("Indian LLP");
   const [jurisdiction, setJurisdiction] = useState<"indian" | "foreign">("indian");
   const [foreignCountry, setForeignCountry] = useState("");
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
-  const [state, setState] = useState("Telangana");
-  const [partners, setPartners] = useState(2);
-  const [capital, setCapital] = useState(100000);
-  const [paidCapital, setPaidCapital] = useState(100000);
-  const [objects, setObjects] = useState("");
   const [industryType, setIndustryType] = useState("");
   const [industryOther, setIndustryOther] = useState("");
-  const effectiveIndustry = industryType === "Other" ? industryOther.trim() : industryType;
+  const [objects, setObjects] = useState("");
+  const [partners, setPartners] = useState<number>(2);
+  const [capital, setCapital] = useState<number>(100000);
+  const [paidCapital, setPaidCapital] = useState<number>(100000);
   const [address, setAddress] = useState("");
+  const [state, setState] = useState("Telangana");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
@@ -210,9 +211,11 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
 
   const [openReg, setOpenReg] = useState(false);
   const [openSignIn, setOpenSignIn] = useState(false);
+  const [proceedOpen, setProceedOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stepError, setStepError] = useState<string | null>(null);
 
+  const effectiveIndustry = industryType === "Other" ? industryOther.trim() : industryType;
   const isForeign = jurisdiction === "foreign";
   const stepKey = STEPS[step]?.key;
 
@@ -801,7 +804,13 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
                     </div>
                   ) : (
                     <button
-                      onClick={next}
+                      onClick={() => {
+                        if (stepKey === "type") {
+                          setProceedOpen(true);
+                        } else {
+                          next();
+                        }
+                      }}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-brand text-white text-sm font-semibold shadow-brand hover:shadow-elev transition-all cursor-pointer"
                     >
                       Next · {STEPS[step + 1].label}
@@ -901,6 +910,13 @@ export function LlpWizard({ initialName }: { initialName?: string }) {
         fees={fees.lines}
         feeTotal={fees.total}
         feeContext={feeContext}
+      />
+
+      <AdvisorProceedDialog
+        open={proceedOpen}
+        onClose={() => setProceedOpen(false)}
+        onFillOnYourOwn={next}
+        title={selected.title}
       />
 
       <SignInDialog

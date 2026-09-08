@@ -8,6 +8,7 @@ import {
 } from "@/lib/service-catalog";
 import { RegisterDialog } from "@/components/register-dialog";
 import { SignInDialog } from "@/components/sign-in-dialog";
+import { AdvisorProceedDialog } from "@/components/advisor-proceed-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Info, CheckCircle2, FileText, Gavel, Download, ArrowRight, ArrowLeft,
@@ -28,55 +29,68 @@ const inr = (n: number) => `₹ ${n.toLocaleString("en-IN")}`;
 
 /**
  * Customer-facing page for a catalog service. Everything on it — the tab set,
- * each tab's copy, the checklist, the attachments and the fee lines — is
- * authored by an admin in the catalog panel.
+ * who-can-apply bullet list, document checklist and acts — is driven by the
+ * catalog service record.
  */
 export function ServiceDetailPage({
   slug,
+  onBack,
+  backLabel,
   onStartApplication,
 }: {
   slug: string;
-  /** See `ServiceDetail` — replaces the inline fee/summary panel. */
+  onBack?: () => void;
+  backLabel?: string;
   onStartApplication?: () => void;
 }) {
-  const { service, loading } = useCatalogService([slug]);
+  const { service, loading, error } = useCatalogService(slug);
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] grid place-items-center">
-        <Loader2 className="size-6 animate-spin text-primary" />
+      <div className="py-24 text-center text-muted-foreground flex items-center justify-center gap-2 text-sm">
+        <Loader2 className="size-4 animate-spin text-primary" /> Loading service details…
       </div>
     );
   }
 
-  if (!service) {
+  if (error || !service) {
     return (
-      <div className="min-h-[60vh] grid place-items-center px-6 text-center">
-        <div>
-          <h1 className="text-xl font-display font-semibold">Service not found</h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            This service is not published in the catalog yet.
-          </p>
-        </div>
+      <div className="py-24 text-center max-w-md mx-auto px-6">
+        <h2 className="text-lg font-semibold mb-2">Service not found</h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          The service you requested doesn't exist or isn't published yet.
+        </p>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+          >
+            <ArrowLeft className="size-3.5" /> Back
+          </button>
+        )}
       </div>
     );
   }
 
-  return <ServiceDetail service={service} onStartApplication={onStartApplication} />;
+  return (
+    <ServiceDetail
+      service={service}
+      onBack={onBack}
+      backLabel={backLabel}
+      onStartApplication={onStartApplication}
+    />
+  );
 }
 
 /**
- * The tabbed service page (hero + About / Who can apply / Documents / Acts &
- * Rules + the Start Application flow). Reused by the GST wizard, which builds a
- * per-type synthetic service and passes `extraFormData` so the chosen GST
- * registration type is carried onto the submitted request, plus `onBack` to
- * return to the type picker.
+ * Renders the service detail layout for a pre-loaded catalog service (e.g. one
+ * resolved from a state/entity picker).
  */
 export function ServiceDetail({
   service,
   extraFormData,
   onBack,
-  backLabel = "Change type",
+  backLabel,
   onStartApplication,
 }: {
   service: CatalogService;
@@ -97,6 +111,7 @@ export function ServiceDetail({
   const [stage, setStage] = useState<"fees" | "summary" | null>(null);
   const [openReg, setOpenReg] = useState(false);
   const [openSignIn, setOpenSignIn] = useState(false);
+  const [proceedOpen, setProceedOpen] = useState(false);
 
   // Every tab renders as a section stacked on the page; the tab bar scrolls to
   // the matching one. A scroll-spy keeps the active tab in sync as you scroll.
@@ -144,6 +159,10 @@ export function ServiceDetail({
   });
 
   const startApplication = () => {
+    setProceedOpen(true);
+  };
+
+  const handleFillOnYourOwn = () => {
     if (!user) {
       setOpenSignIn(true);
       return;
@@ -309,6 +328,13 @@ export function ServiceDetail({
         formData={extraFormData}
         fees={fees.lines}
         feeTotal={fees.total}
+      />
+
+      <AdvisorProceedDialog
+        open={proceedOpen}
+        onClose={() => setProceedOpen(false)}
+        onFillOnYourOwn={handleFillOnYourOwn}
+        title={service.title}
       />
 
       <SignInDialog
