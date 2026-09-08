@@ -383,7 +383,7 @@ export function DscWizard({
               {stepKey === "details" && (
                 <Section
                   title="1. Applicant Contact Details"
-                  desc={`Applying for ${selectedType.title} (Class 3 · 2 Years Validity)`}
+                  desc={`Applying for ${selectedType.title}`}
                 >
                   <div className="space-y-4">
                     <Field label="Applicant Full Name *" error={errors.applicantName}>
@@ -464,18 +464,11 @@ export function DscWizard({
                     </div>
 
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <div className="rounded-lg border border-border/70 bg-panel/40 p-3">
+                      <div className="rounded-lg border border-border/70 bg-panel/40 p-3 sm:col-span-2">
                         <dt className="text-muted-foreground">DSC Plan</dt>
                         <dd className="font-semibold text-foreground text-sm mt-0.5 flex items-center justify-between">
                           <span>{selectedType.title}</span>
                           <span className="mono text-primary">{inr(selectedType.price)}</span>
-                        </dd>
-                      </div>
-
-                      <div className="rounded-lg border border-border/70 bg-panel/40 p-3">
-                        <dt className="text-muted-foreground">Validity & Token</dt>
-                        <dd className="font-semibold text-foreground mt-0.5">
-                          2 Years Validity · USB Crypto Token Included
                         </dd>
                       </div>
 
