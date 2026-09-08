@@ -209,39 +209,49 @@ export function RegisterDialog({
       // Device uploads. When "save to vault" is on, send them to the vault (so
       // they're reusable) and link them to this request; otherwise attach them to
       // the request only.
+      // Device uploads with their exact checklist headings.
       if (uploads.length > 0) {
-        if (saveToVault) {
-          const vaultForm = new FormData();
-          uploads.forEach((f) => vaultForm.append("file", f));
-          const vaultRes = await fetch(`${BACKEND_URL}/api/requests/vault`, {
-            method: "POST",
-            credentials: "include",
-            body: vaultForm,
-          });
-          if (!vaultRes.ok) {
-            const e = await vaultRes.json();
-            throw new Error(e.error || "Failed to save documents to your vault");
-          }
-          const { documents: savedVaultDocs } = await vaultRes.json();
-          const newIds = (savedVaultDocs ?? []).map((d: VaultDoc) => d.id);
-          await fetch(`${BACKEND_URL}/api/requests/${req.id}/link-vault-docs`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ docIds: newIds }),
-          });
-        } else {
-          for (const f of uploads) {
-            const upload = new FormData();
-            upload.append("file", f);
-            const docRes = await fetch(`${BACKEND_URL}/api/requests/${req.id}/documents`, {
-              method: "POST",
-              credentials: "include",
-              body: upload,
-            });
-            if (!docRes.ok) {
-              const docErr = await docRes.json();
-              throw new Error(docErr.error || `Failed to upload document ${f.name}`);
+        for (const [docHeading, files] of Object.entries(docFiles)) {
+          if (!files || files.length === 0) continue;
+          const headingLabel = docHeading === OTHER_DOCS_KEY ? "Additional Document" : docHeading;
+
+          if (saveToVault) {
+            for (const f of files) {
+              const vaultForm = new FormData();
+              vaultForm.append("file", f);
+              vaultForm.append("label", headingLabel);
+              const vaultRes = await fetch(`${BACKEND_URL}/api/requests/vault`, {
+                method: "POST",
+                credentials: "include",
+                body: vaultForm,
+              });
+              if (vaultRes.ok) {
+                const { documents: savedVaultDocs } = await vaultRes.json();
+                const newIds = (savedVaultDocs ?? []).map((d: VaultDoc) => d.id);
+                if (newIds.length > 0) {
+                  await fetch(`${BACKEND_URL}/api/requests/${req.id}/link-vault-docs`, {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ docIds: newIds, label: headingLabel }),
+                  });
+                }
+              }
+            }
+          } else {
+            for (const f of files) {
+              const upload = new FormData();
+              upload.append("file", f);
+              upload.append("label", headingLabel);
+              const docRes = await fetch(`${BACKEND_URL}/api/requests/${req.id}/documents`, {
+                method: "POST",
+                credentials: "include",
+                body: upload,
+              });
+              if (!docRes.ok) {
+                const docErr = await docRes.json();
+                throw new Error(docErr.error || `Failed to upload document ${f.name}`);
+              }
             }
           }
         }

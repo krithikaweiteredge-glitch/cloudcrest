@@ -779,6 +779,10 @@ function RegistrationDetailDialog({
                     <ul className="grid grid-cols-1 gap-2">
                       {uploadedList.map((doc: any) => {
                         const parsed = parseDocLabel(doc.name);
+                        const matchedReqHeading = Object.entries(matches).find(([_, d]) => d?.id === doc.id)?.[0];
+                        const displayHeading = matchedReqHeading || (parsed.label !== "Uploaded Document" && parsed.label !== parsed.fileName ? parsed.label : parsed.fileName);
+                        const displayFileName = parsed.fileName && parsed.fileName !== displayHeading ? parsed.fileName : null;
+
                         return (
                           <li
                             key={doc.id}
@@ -790,8 +794,8 @@ function RegistrationDetailDialog({
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-xs text-foreground truncate">{parsed.label}</span>
-                                  <span className="text-[10px] text-muted-foreground">({parsed.fileName})</span>
+                                  <span className="font-semibold text-xs text-foreground truncate">{displayHeading}</span>
+                                  {displayFileName && <span className="text-[10px] text-muted-foreground">({displayFileName})</span>}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                   {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
