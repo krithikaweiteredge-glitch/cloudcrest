@@ -8,6 +8,12 @@ import { StatusPill, EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
 import { splitRequestNotes } from "@/lib/request-notes";
 import { renderExtraFormFields } from "@/lib/request-fields";
+import {
+  matchDocumentsToChecklist,
+  parseDocLabel,
+  documentFileName,
+  type ChecklistDoc,
+} from "@/lib/request-documents";
 
 export const Route = createFileRoute("/_authenticated/profile/requests")({
   validateSearch: (s: Record<string, unknown>): { ref?: string } => ({
@@ -15,29 +21,6 @@ export const Route = createFileRoute("/_authenticated/profile/requests")({
   }),
   component: RequestsPage,
 });
-
-function parseDocLabel(name: string): { label: string; fileName: string } {
-  if (!name) return { label: "Uploaded Document", fileName: "document" };
-
-  const trimmed = name.trim();
-
-  // Split on explicit backend/vault label delimiters (e.g. "Label :: filename.ext")
-  if (trimmed.includes(" :: ")) {
-    const parts = trimmed.split(" :: ");
-    const label = parts[0].trim();
-    const fileName = parts.slice(1).join(" :: ").trim();
-    return { label: label || "Uploaded Document", fileName: fileName || name };
-  }
-
-  if (trimmed.includes(" __FILE__ ")) {
-    const parts = trimmed.split(" __FILE__ ");
-    const label = parts[0].trim();
-    const fileName = parts.slice(1).join(" __FILE__ ").trim();
-    return { label: label || "Uploaded Document", fileName: fileName || name };
-  }
-
-  return { label: trimmed, fileName: trimmed };
-}
 
 function formatDateTime(dateStr: string | Date) {
   if (!dateStr) return "—";
@@ -201,126 +184,6 @@ function getRequiredDocumentsForRequest(request: any): string[] {
   ];
 }
 
-function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: any[]) {
-  const claimedDocIds = new Set<number | string>();
-  const matches: Record<string, any> = {};
-
-  if (!requiredDocs || !uploadedDocs || uploadedDocs.length === 0) {
-    return { matches, unclaimedDocs: uploadedDocs || [] };
-  }
-
-  const cleanString = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-  // Pass 1: Explicit Label Matches
-  for (const reqDoc of requiredDocs) {
-    const reqNorm = cleanString(reqDoc);
-    for (const doc of uploadedDocs) {
-      if (claimedDocIds.has(doc.id)) continue;
-      const parsed = parseDocLabel(doc.name);
-      const parsedNorm = cleanString(parsed.label);
-
-      if (
-        parsed.label !== "Uploaded Document" &&
-        parsedNorm.length >= 3 &&
-        (parsedNorm === reqNorm || reqNorm.includes(parsedNorm) || parsedNorm.includes(reqNorm))
-      ) {
-        matches[reqDoc] = doc;
-        claimedDocIds.add(doc.id);
-        break;
-      }
-    }
-  }
-
-  // Pass 2: Keyword Matching for unclaimed required docs
-  for (const reqDoc of requiredDocs) {
-    if (matches[reqDoc]) continue;
-    const reqLower = reqDoc.toLowerCase();
-
-    for (const doc of uploadedDocs) {
-      if (claimedDocIds.has(doc.id)) continue;
-      const parsed = parseDocLabel(doc.name);
-      const docText = `${parsed.label} ${parsed.fileName} ${doc.name}`.toLowerCase();
-
-      let isMatch = false;
-
-      if ((reqLower.includes("moa") || reqLower.includes("memorandum")) && /\b(moa|memorandum)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("bye-laws") || reqLower.includes("byelaws") || reqLower.includes("rules")) && /\b(byelaws|bye-laws|rules|regulations)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("member") || reqLower.includes("promoter")) && /\b(member|members|promoter|promoters|list)\b/.test(docText)) {
-        isMatch = true;
-      } else if (reqLower.includes("pan") && /\bpan\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("aadhaar") || reqLower.includes("adhar") || reqLower.includes("ekyc") || reqLower.includes("identity")) && /\b(aadhaar|adhar|identity|id|ekyc|voter|passport)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("photograph") || reqLower.includes("photo") || reqLower.includes("pic")) && /\b(photograph|photo|pic|passport)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("address proof") || reqLower.includes("premises") || reqLower.includes("office") || reqLower.includes("electricity") || reqLower.includes("tax receipt")) && /\b(address|office|premises|electricity|tax|utility|bill)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("noc") || reqLower.includes("rent") || reqLower.includes("owner")) && /\b(noc|rent|lease|owner|agreement)\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("deed") || reqLower.includes("declaration") || reqLower.includes("stamp")) && /\b(deed|declaration|stamp|trust)\b/.test(docText)) {
-        isMatch = true;
-      } else if (reqLower.includes("witness") && /\bwitness\b/.test(docText)) {
-        isMatch = true;
-      } else if ((reqLower.includes("corpus") || reqLower.includes("cheque") || reqLower.includes("bank")) && /\b(corpus|cheque|bank|statement|fund|passbook)\b/.test(docText)) {
-        isMatch = true;
-      } else if (reqLower.includes("dsc") && /\b(dsc|digital|signature)\b/.test(docText)) {
-        isMatch = true;
-      } else if (reqLower.includes("gst") && /\bgst\b/.test(docText)) {
-        isMatch = true;
-      }
-
-      if (isMatch) {
-        matches[reqDoc] = doc;
-        claimedDocIds.add(doc.id);
-        break;
-      }
-    }
-  }
-
-  // Pass 3: Token Overlap Matching
-  for (const reqDoc of requiredDocs) {
-    if (matches[reqDoc]) continue;
-    const reqTokens = reqDoc.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2);
-
-    let bestDoc: any = null;
-    let maxOverlap = 0;
-
-    for (const doc of uploadedDocs) {
-      if (claimedDocIds.has(doc.id)) continue;
-      const parsed = parseDocLabel(doc.name);
-      const docText = `${parsed.label} ${parsed.fileName} ${doc.name}`.toLowerCase();
-
-      let overlap = 0;
-      for (const token of reqTokens) {
-        if (docText.includes(token)) overlap++;
-      }
-
-      if (overlap > maxOverlap && overlap >= 1) {
-        maxOverlap = overlap;
-        bestDoc = doc;
-      }
-    }
-
-    if (bestDoc && maxOverlap >= 1) {
-      matches[reqDoc] = bestDoc;
-      claimedDocIds.add(bestDoc.id);
-    }
-  }
-
-  // Pass 4: Fallback slot matching to allocate any remaining uploaded documents
-  const unclaimed = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
-  const unassignedReqs = requiredDocs.filter((req) => !matches[req]);
-  for (let i = 0; i < Math.min(unclaimed.length, unassignedReqs.length); i++) {
-    matches[unassignedReqs[i]] = unclaimed[i];
-    claimedDocIds.add(unclaimed[i].id);
-  }
-
-  const unclaimedDocs = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
-  return { matches, unclaimedDocs };
-}
-
 function RequestsPage() {
   const queryClient = useQueryClient();
   const { ref } = Route.useSearch();
@@ -480,7 +343,8 @@ function RegistrationDetailDialog({
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [targetVaultDocLabel, setTargetVaultDocLabel] = useState<string | undefined>(undefined);
 
-  const openDoc = (path: string) => {
+  const openDoc = (path?: string) => {
+    if (!path) return;
     window.open(assetUrl(path), "_blank", "noopener");
   };
 
@@ -633,22 +497,29 @@ function RegistrationDetailDialog({
             </div>
           </div>
 
-          {/* Registered Office Address Card */}
-          {(fd.address || fd.city || fd.state) && (
+          {/* Registered Office Address Card — each field under its own name, so
+              the applicant can confirm exactly what was filed for each one. */}
+          {(fd.address || fd.city || fd.state || fd.pincode) && (
             <div className="p-4 rounded-xl border border-border/70 bg-card space-y-2 shadow-sm">
               <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
                 <Building2 className="size-3.5" /> Registered Office Address
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
-                <div>
+                <div className="sm:col-span-2">
                   <span className="text-[11px] text-muted-foreground block">Address Line</span>
-                  <span className="font-medium text-foreground">{fd.address || "—"}</span>
+                  <span className="font-medium text-foreground break-words">{fd.address || "—"}</span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted-foreground block">City, State & PIN Code</span>
-                  <span className="font-medium text-foreground">
-                    {[fd.city, fd.state].filter(Boolean).join(", ")} {fd.pincode ? `- ${fd.pincode}` : ""}
-                  </span>
+                  <span className="text-[11px] text-muted-foreground block">City</span>
+                  <span className="font-medium text-foreground break-words">{fd.city || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-muted-foreground block">State</span>
+                  <span className="font-medium text-foreground break-words">{fd.state || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] text-muted-foreground block">PIN Code</span>
+                  <span className="font-medium text-foreground break-words">{fd.pincode || "—"}</span>
                 </div>
               </div>
             </div>
@@ -709,10 +580,9 @@ function RegistrationDetailDialog({
             const requiredDocs = request.requiredDocuments && request.requiredDocuments.length > 0
               ? request.requiredDocuments
               : getRequiredDocumentsForRequest(request);
-            const uploadedList = request.documents || [];
-            const { matches, unclaimedDocs } = computeDocumentChecklistMatches(requiredDocs, uploadedList);
-            const uploadedCount = Object.keys(matches).length;
-            const progressPct = requiredDocs.length > 0 ? Math.round((uploadedCount / requiredDocs.length) * 100) : 0;
+            const uploadedList: ChecklistDoc[] = request.documents || [];
+            const { matches, unclaimedDocs, uploadedCount, pendingCount, progressPct } =
+              matchDocumentsToChecklist(requiredDocs, uploadedList);
 
             return (
               <div className="space-y-4 pt-4 border-t border-border">
@@ -752,7 +622,8 @@ function RegistrationDetailDialog({
                   <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 space-y-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-semibold text-foreground">
-                        Document Upload Progress ({uploadedCount} of {requiredDocs.length} uploaded)
+                        Document Upload Progress ({uploadedCount} of {requiredDocs.length} uploaded
+                        {pendingCount > 0 ? `, ${pendingCount} pending` : ""})
                       </span>
                       <span className="mono text-[11px] font-bold text-primary">{progressPct}% Complete</span>
                     </div>
@@ -785,9 +656,9 @@ function RegistrationDetailDialog({
                     </div>
                     <div className="grid grid-cols-1 gap-2">
                       {requiredDocs.map((reqDoc: string, idx: number) => {
-                        const matchedDoc = matches[reqDoc];
+                        const matchedDocs = matches[reqDoc] ?? [];
+                        const matchedDoc = matchedDocs[0];
                         const isUploaded = !!matchedDoc;
-                        const parsedMatch = matchedDoc ? parseDocLabel(matchedDoc.name) : null;
 
                         return (
                           <div
@@ -812,9 +683,10 @@ function RegistrationDetailDialog({
                                 <div className="text-xs font-semibold text-foreground truncate">{reqDoc}</div>
                                 {isUploaded ? (
                                   <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mt-0.5 truncate">
-                                    <span className="font-medium truncate">{parsedMatch?.fileName || matchedDoc.name}</span>
+                                    <span className="font-medium truncate">{documentFileName(matchedDoc)}</span>
+                                    {matchedDocs.length > 1 && <span>+{matchedDocs.length - 1} more</span>}
                                     <span>·</span>
-                                    <span>Uploaded {formatDateTime(matchedDoc.createdAt)}</span>
+                                    <span>Uploaded {formatDateTime(matchedDoc.createdAt as string)}</span>
                                   </div>
                                 ) : (
                                   <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
@@ -865,18 +737,23 @@ function RegistrationDetailDialog({
                   </div>
                 )}
 
-                {/* All Uploaded Files */}
-                {uploadedList.length > 0 && (
+                {/* Only the files that don't belong to a checklist row. Each
+                    required document is already listed above with its own file
+                    and View action, so repeating them here says nothing new. */}
+                {unclaimedDocs.length > 0 && (
                   <div className="space-y-2 pt-2">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      All Attached Files ({uploadedList.length})
+                      Additional Documents ({unclaimedDocs.length})
                     </div>
                     <ul className="grid grid-cols-1 gap-2">
-                      {uploadedList.map((doc: any) => {
+                      {unclaimedDocs.map((doc) => {
                         const parsed = parseDocLabel(doc.name);
-                        const matchedReqHeading = Object.entries(matches).find(([_, d]) => d?.id === doc.id)?.[0];
-                        const displayHeading = matchedReqHeading || (parsed.label !== "Uploaded Document" && parsed.label !== parsed.fileName ? parsed.label : parsed.fileName);
-                        const displayFileName = parsed.fileName && parsed.fileName !== displayHeading ? parsed.fileName : null;
+                        const displayHeading =
+                          parsed.label !== "Uploaded Document" && parsed.label !== parsed.fileName
+                            ? parsed.label
+                            : parsed.fileName;
+                        const displayFileName =
+                          parsed.fileName && parsed.fileName !== displayHeading ? parsed.fileName : null;
 
                         return (
                           <li
@@ -893,9 +770,9 @@ function RegistrationDetailDialog({
                                   {displayFileName && <span className="text-[10px] text-muted-foreground">({displayFileName})</span>}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                  {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
+                                  {doc.sizeBytes ? <span>{(Number(doc.sizeBytes) / 1024).toFixed(0)} KB</span> : null}
                                   {doc.sizeBytes ? <span>·</span> : null}
-                                  <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                                  <span>Uploaded {formatDateTime(doc.createdAt as string)}</span>
                                 </div>
                               </div>
                             </div>

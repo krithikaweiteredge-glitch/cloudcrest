@@ -150,19 +150,13 @@ export function RegisterDialog({
       return;
     }
 
-    // Flatten the per-document selections into files to upload, tagging each with
-    // its document label in the filename so the advisor sees which requirement it
-    // satisfies (extras under OTHER_DOCS_KEY keep their original name).
-    const uploads = Object.entries(docFiles).flatMap(([label, arr]) =>
-      arr.map((f) =>
-        label === OTHER_DOCS_KEY
-          ? f.file
-          : new File([f.file], `${label} - ${f.file.name}`, { type: f.file.type }),
-      ),
-    );
+    // The heading each file is filed against travels to the server as a field,
+    // and the server stores it on the document row — that is what drives the
+    // uploaded/pending checklist in the applicant's and the advisor's views.
+    const totalPicked = Object.values(docFiles).reduce((n, arr) => n + arr.length, 0);
 
     // Require at least one document — either a fresh upload or a vault selection.
-    if (uploads.length === 0 && selectedVaultIds.length === 0) {
+    if (totalPicked === 0 && selectedVaultIds.length === 0) {
       setError("Please upload at least one document to submit your application.");
       return;
     }
@@ -209,42 +203,49 @@ export function RegisterDialog({
 
       const req = await response.json();
 
-      // Device uploads. When "save to vault" is on, send them to the vault (so
-      // they're reusable) and link them to this request; otherwise attach them to
-      // the request only.
-      // Device uploads with their exact checklist headings.
-      if (uploads.length > 0) {
+      // Device uploads, each tagged with the exact checklist heading it was
+      // picked under. When "save to vault" is on they go to the reusable vault
+      // and are linked to this request under the same heading; otherwise they
+      // attach to the request only.
+      if (totalPicked > 0) {
         for (const [docHeading, files] of Object.entries(docFiles)) {
           if (!files || files.length === 0) continue;
           const headingLabel = docHeading === OTHER_DOCS_KEY ? "Additional Document" : docHeading;
 
-          if (saveToVault) {
-            for (const f of files) {
+          for (const picked of files) {
+            // `picked` wraps the browser File — send `picked.file`, otherwise
+            // FormData serialises the wrapper as "[object Object]" and the
+            // server receives no file at all.
+            if (saveToVault) {
               const vaultForm = new FormData();
-              vaultForm.append("file", f);
+              vaultForm.append("file", picked.file, picked.name);
               vaultForm.append("label", headingLabel);
               const vaultRes = await fetch(`${BACKEND_URL}/api/requests/vault`, {
                 method: "POST",
                 credentials: "include",
                 body: vaultForm,
               });
-              if (vaultRes.ok) {
-                const { documents: savedVaultDocs } = await vaultRes.json();
-                const newIds = (savedVaultDocs ?? []).map((d: VaultDoc) => d.id);
-                if (newIds.length > 0) {
-                  await fetch(`${BACKEND_URL}/api/requests/${req.id}/link-vault-docs`, {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ docIds: newIds, label: headingLabel }),
-                  });
+              if (!vaultRes.ok) {
+                const vaultErr = await vaultRes.json().catch(() => ({}));
+                throw new Error(vaultErr.error || `Failed to upload document ${picked.name}`);
+              }
+              const { documents: savedVaultDocs } = await vaultRes.json();
+              const newIds = (savedVaultDocs ?? []).map((d: VaultDoc) => d.id);
+              if (newIds.length > 0) {
+                const linkRes = await fetch(`${BACKEND_URL}/api/requests/${req.id}/link-vault-docs`, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ docIds: newIds, label: headingLabel }),
+                });
+                if (!linkRes.ok) {
+                  const linkErr = await linkRes.json().catch(() => ({}));
+                  throw new Error(linkErr.error || `Failed to attach document ${picked.name}`);
                 }
               }
-            }
-          } else {
-            for (const f of files) {
+            } else {
               const upload = new FormData();
-              upload.append("file", f);
+              upload.append("file", picked.file, picked.name);
               upload.append("label", headingLabel);
               const docRes = await fetch(`${BACKEND_URL}/api/requests/${req.id}/documents`, {
                 method: "POST",
@@ -252,8 +253,8 @@ export function RegisterDialog({
                 body: upload,
               });
               if (!docRes.ok) {
-                const docErr = await docRes.json();
-                throw new Error(docErr.error || `Failed to upload document ${f.name}`);
+                const docErr = await docRes.json().catch(() => ({}));
+                throw new Error(docErr.error || `Failed to upload document ${picked.name}`);
               }
             }
           }

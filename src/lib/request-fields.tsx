@@ -10,8 +10,13 @@
  * visible for the user and the admin".
  */
 
-/** Keys already shown in a dedicated field/card (Applicant contact, Registered office, Objects), so the catch-all skips them. */
+/**
+ * Keys already shown in a dedicated field/card (Applicant contact, Registered
+ * office, Objects) or rendered as their own section (the required-document
+ * checklist), so the catch-all skips them rather than repeating them.
+ */
 const KNOWN_FORM_KEYS = new Set([
+  "requiredDocuments",
   "applicantName",
   "applicantMobile",
   "applicantEmail",
@@ -25,6 +30,26 @@ const KNOWN_FORM_KEYS = new Set([
   "pincode",
   "objects",
 ]);
+
+/**
+ * Wizards that ask the applicant to pick from a list send both the stored code
+ * and the label the applicant actually saw (`entityType` + `entityTypeLabel`).
+ * When both are present only the label is worth showing, under the plain name —
+ * otherwise the same answer appears twice, once as an internal code.
+ */
+function collapseCodeLabelPairs(fd: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...fd };
+  for (const key of Object.keys(fd)) {
+    if (!key.endsWith("Label")) continue;
+    const base = key.slice(0, -"Label".length);
+    if (!(base in out)) continue;
+    const label = out[key];
+    if (label == null || label === "") continue;
+    out[base] = label;
+    delete out[key];
+  }
+  return out;
+}
 
 /** Acronyms and specific field name overrides. */
 const LABEL_OVERRIDES: Record<string, string> = {
@@ -82,6 +107,72 @@ const LABEL_OVERRIDES: Record<string, string> = {
   huf: "HUF",
   total: "Total Estimated Fee",
   dsc: "DSC",
+  // Entity type / class, as each wizard names it
+  entitytype: "Entity Type",
+  entitytypelabel: "Entity Type",
+  entitystatus: "Entity Status",
+  orgtype: "Organisation Type",
+  orgtypelabel: "Organisation Type",
+  promotertype: "Promoter Type",
+  projecttype: "Project Type",
+  citizenship: "Applicant Type / Citizenship",
+  // Registered office
+  state: "State",
+  city: "City",
+  pincode: "PIN Code",
+  address: "Registered Office Address",
+  officestate: "State of Registered Office",
+  // People and counts
+  trusteescount: "Number of Trustees",
+  committeecount: "Executive Committee Members",
+  governingbodycount: "Governing Body Members",
+  governingbodytitle: "Governing Body Designation",
+  governingbody: "Governing Body Members",
+  settlorname: "Settlor Name",
+  settlordetails: "Settlor Details",
+  trustees: "Trustees",
+  signatoryname: "Authorised Signatory",
+  signatoryisofficer: "Signatory Is An Officer Of The Entity",
+  hasdirectparent: "Has A Direct Parent Entity",
+  designation: "Designation",
+  // Activity / nature of business
+  category: "Activity Category",
+  sector: "Sector",
+  activities: "Activities",
+  natureactivities: "Nature of Activities",
+  natureofoperations: "Nature of Operations",
+  natureofbusiness: "Nature of Business",
+  businessnature: "Nature of Business",
+  businessdescription: "Business Description",
+  majoractivity: "Major Activity",
+  societyobjects: "Objects of the Society",
+  trustobjects: "Objects of the Trust",
+  // Registration / statutory identifiers
+  registrationauthority: "Registration Authority",
+  registrationnumber: "Registration Number",
+  reraauthority: "RERA Authority",
+  projectname: "Project Name",
+  commencementdate: "Commencement Date",
+  completiondate: "Proposed Completion Date",
+  corpusvalue: "Corpus Value",
+  // Applicant demographics (MSME / Udyam)
+  socialcategory: "Social Category",
+  gender: "Gender",
+  speciallyabled: "Specially Abled",
+  employmentmale: "Employment — Male",
+  employmentfemale: "Employment — Female",
+  employmentothers: "Employment — Others",
+  employmenttotal: "Employment — Total",
+  // Banking and contact
+  bankmode: "Bank Account Mode",
+  accountnumber: "Account Number",
+  ifsc: "IFSC Code",
+  officialemail: "Official Email",
+  officialphone: "Official Phone",
+  authorisedemail: "Authorised Email",
+  authorisedphone: "Authorised Phone",
+  email: "Email",
+  phone: "Phone",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
@@ -124,12 +215,51 @@ export function formatFieldValue(key: string, value: unknown): string {
 }
 
 /**
+ * Flatten one object's fields into `[label path, value]` pairs, descending into
+ * nested objects so nothing the applicant entered is hidden. Keys keep their
+ * stored names; nested ones read as "Parent → Child".
+ */
+function flattenEntries(
+  obj: Record<string, unknown>,
+  prefix = "",
+  depth = 0
+): [string, unknown][] {
+  if (depth > 3) return [];
+  const out: [string, unknown][] = [];
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value == null || value === "") continue;
+    const label = prefix ? `${prefix} \u2192 ${humanizeFieldKey(key)}` : humanizeFieldKey(key);
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      if (typeof value[0] === "object" && value[0] !== null) {
+        value.forEach((entry, i) => {
+          out.push(
+            ...flattenEntries(entry as Record<string, unknown>, `${label} ${i + 1}`, depth + 1)
+          );
+        });
+      } else {
+        out.push([label, value]);
+      }
+    } else if (typeof value === "object") {
+      out.push(...flattenEntries(value as Record<string, unknown>, label, depth + 1));
+    } else {
+      out.push([label, value]);
+    }
+  }
+
+  return out;
+}
+
+/**
  * Render an "Additional Details" card listing all captured form values
  * from the wizard stepper (including nested settlor/trustee/partner objects and arrays)
  * not already surfaced in a dedicated card.
  */
-export function renderExtraFormFields(fd: Record<string, unknown> | null | undefined) {
-  if (!fd || typeof fd !== "object") return null;
+export function renderExtraFormFields(raw: Record<string, unknown> | null | undefined) {
+  if (!raw || typeof raw !== "object") return null;
+  const fd = collapseCodeLabelPairs(raw);
 
   // Deduplication check
   const duplicateValues = new Set<string>();
@@ -245,9 +375,10 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
 
       {/* Nested detail objects (e.g. Settlor Details) */}
       {nestedObjects.map(([k, obj]) => {
-        const objEntries = Object.entries(obj).filter(
-          ([_, val]) => val != null && val !== "" && typeof val !== "object"
-        );
+        // Nested objects and arrays used to be dropped here, which silently hid
+        // whatever the applicant entered under them. Everything non-empty is
+        // rendered now; a nested structure is flattened into "Parent → Child".
+        const objEntries = flattenEntries(obj);
         if (objEntries.length === 0) return null;
         return (
           <div key={k} className="p-3 rounded-lg border border-border/60 bg-muted/20 space-y-2 mt-2">
@@ -257,7 +388,7 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
               {objEntries.map(([ik, iv]) => (
                 <div key={ik}>
-                  <span className="text-[11px] text-muted-foreground block">{humanizeFieldKey(ik)}</span>
+                  <span className="text-[11px] text-muted-foreground block">{ik}</span>
                   <span className="font-semibold text-foreground break-words">{formatFieldValue(ik, iv)}</span>
                 </div>
               ))}
@@ -288,12 +419,14 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
-                    {Object.entries(item)
-                      .filter(([ik, iv]) => !["fullName", "name", "designation"].includes(ik) && iv != null && iv !== "")
+                    {flattenEntries(item)
+                      .filter(([ik]) => !["Full Name", "Name", "Designation"].includes(ik))
                       .map(([ik, iv]) => (
                         <div key={ik}>
-                          <span className="text-muted-foreground block">{humanizeFieldKey(ik)}</span>
-                          <span className="font-medium text-foreground truncate block">{String(iv)}</span>
+                          <span className="text-muted-foreground block">{ik}</span>
+                          <span className="font-medium text-foreground truncate block">
+                            {formatFieldValue(ik, iv)}
+                          </span>
                         </div>
                       ))}
                   </div>
