@@ -974,27 +974,30 @@ function AdminDetailDialog({
                       </div>
                     )}
 
-                    {/* Additional Unclaimed Uploaded Documents */}
-                    {unclaimedDocs.length > 0 && (
+                    {/* All Attached Files */}
+                    {uploadedList.length > 0 && (
                       <div className="space-y-2 pt-2">
                         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Additional Uploaded Documents ({unclaimedDocs.length})
+                          All Attached Files ({uploadedList.length})
                         </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {unclaimedDocs.map((doc: any) => {
+                        <ul className="grid grid-cols-1 gap-2">
+                          {uploadedList.map((doc: any) => {
                             const parsed = parseDocLabel(doc.name);
                             return (
-                              <div
+                              <li
                                 key={doc.id}
-                                className="p-3 rounded-xl border border-border/70 bg-card flex items-center justify-between gap-3 shadow-sm"
+                                className="rounded-xl border border-border/70 bg-card p-3 shadow-sm flex items-center justify-between gap-3 hover:border-primary/40 transition-colors"
                               >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
                                     <FileText className="size-4 text-muted-foreground" />
                                   </div>
-                                  <div className="min-w-0 space-y-0.5">
-                                    <div className="font-semibold text-xs text-foreground truncate">{parsed.fileName}</div>
-                                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-semibold text-xs text-foreground truncate">{parsed.label}</span>
+                                      <span className="text-[10px] text-muted-foreground">({parsed.fileName})</span>
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                       {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
                                       {doc.sizeBytes ? <span>·</span> : null}
                                       <span>Uploaded {formatDateTime(doc.createdAt)}</span>
@@ -1017,10 +1020,10 @@ function AdminDetailDialog({
                                     <Download className="size-3" /> Download
                                   </button>
                                 </div>
-                              </div>
+                              </li>
                             );
                           })}
-                        </div>
+                        </ul>
                       </div>
                     )}
                   </div>
