@@ -628,18 +628,6 @@ export function HufStepperWizard({
                   address={fullAddress}
                   fees={fees}
                 />
-
-                <div className="rounded-xl border border-border bg-panel/40 p-4 space-y-2">
-                  <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Sparkles className="size-4 text-primary" />
-                    <span>Next Steps After Submission:</span>
-                  </div>
-                  <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
-                    <li>Execution of HUF Declaration / Deed on relevant State Stamp Paper.</li>
-                    <li>Application for exclusive HUF Permanent Account Number (PAN).</li>
-                    <li>Opening of HUF Bank Account using PAN and Deed.</li>
-                  </ul>
-                </div>
               </div>
             )}
           </div>
