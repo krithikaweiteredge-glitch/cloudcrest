@@ -58,8 +58,27 @@ export function RegisterDialog({
   const [email, setEmail] = useState(initialEmail ?? "");
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [notes, setNotes] = useState("");
-  const [partners, setPartners] = useState("");
-  const [totalCapital, setTotalCapital] = useState(capital ? String(capital) : "");
+  /**
+   * Partners and capital are NOT asked for here. They belong to the services
+   * whose own form collects them — LLP and Partnership ask for a partner count,
+   * Company / LLP / Partnership / Trust ask for capital — and every other
+   * service (MSME, GST, DIN, IEC, LEI, RERA, NGO Darpan, HUF, …) has no such
+   * field at all.
+   *
+   * They used to render as two empty inputs on every service, which meant an
+   * IEC applicant was asked for a partner count their application has no use
+   * for, and a Company applicant was asked to retype capital they had already
+   * entered in the wizard. Both are now read back from what the wizard
+   * collected and shown only when that wizard actually supplied them.
+   */
+  const num = (v: unknown): number | undefined => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+  /** LLP and Partnership both file the count under `partnersCount`. */
+  const wizardPartners = num(formData?.partnersCount) ?? num(formData?.partners);
+  /** Company/LLP/Trust pass `capital` as a prop; Partnership folds it in too. */
+  const wizardCapital = num(capital) ?? num(formData?.totalCapital);
   // Files chosen per required document, keyed by the document label. Each named
   // document has its own upload control; `OTHER_DOCS_KEY` holds extras.
   const [docFiles, setDocFiles] = useState<Record<string, UploadedFile[]>>({});
@@ -147,13 +166,10 @@ export function RegisterDialog({
 
     setSubmitting(true);
     try {
-      // Fold the manually-entered partners / capital into the stored form data
-      // alongside anything a wizard already collected.
-      const mergedFormData = {
-        ...(formData ?? {}),
-        ...(partners ? { partners: Number(partners) } : {}),
-        ...(totalCapital ? { totalCapital: Number(totalCapital) } : {}),
-      };
+      // Whatever the wizard collected is filed as-is. Partners and capital are
+      // already inside formData for the services that ask for them, so there is
+      // nothing to merge in from this dialog any more.
+      const mergedFormData = { ...(formData ?? {}) };
 
       const response = await fetch(`${BACKEND_URL}/api/requests`, {
         method: "POST",
@@ -169,7 +185,7 @@ export function RegisterDialog({
           contactEmail: email,
           contactPhone: phone,
           notes: notes || null,
-          authorisedCapital: capital ?? (totalCapital ? Number(totalCapital) : null),
+          authorisedCapital: capital ?? wizardCapital ?? null,
           paidCapital: paidCapital ?? null,
           formData: Object.keys(mergedFormData).length ? mergedFormData : null,
           // Fees are recomputed server-side from feeContext; these are sent only
@@ -261,12 +277,12 @@ export function RegisterDialog({
           title: serviceTitle,
           form,
           authority,
-          capital: totalCapital ? Number(totalCapital) : capital ?? undefined,
+          capital: wizardCapital,
           documents,
           // The admin-configured fee lines + total so the PDF shows exact fees.
           fees: fees ?? [],
           total: feeTotal,
-          ...(partners ? { partners: Number(partners) } : {}),
+          ...(wizardPartners !== undefined ? { partners: wizardPartners } : {}),
           ...(formData ?? {}),
         }),
       });
@@ -290,7 +306,6 @@ export function RegisterDialog({
   const reset = () => {
     setSubmitted(false);
     setName(""); setBusiness(""); setEmail(""); setPhone(""); setNotes("");
-    setPartners(""); setTotalCapital(capital ? String(capital) : "");
     setDocFiles({}); setSelectedVaultIds([]); setSaveToVault(true); setError(null);
     onClose();
   };
@@ -375,32 +390,31 @@ export function RegisterDialog({
               </FieldLabel>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldLabel label="Number of partners">
-                <div className="flex items-center gap-2 bg-input border border-border rounded-lg px-3 focus-within:border-primary/60 transition-colors">
-                  <Users className="size-4 text-muted-foreground shrink-0" />
-                  <input
-                    value={partners}
-                    onChange={(e) => setPartners(e.target.value.replace(/\D/g, ""))}
-                    inputMode="numeric"
-                    placeholder="e.g. 2"
-                    className="w-full bg-transparent py-2.5 text-sm focus:outline-none"
-                  />
-                </div>
-              </FieldLabel>
-              <FieldLabel label="Total capital (₹)">
-                <div className="flex items-center gap-2 bg-input border border-border rounded-lg px-3 focus-within:border-primary/60 transition-colors">
-                  <Coins className="size-4 text-muted-foreground shrink-0" />
-                  <input
-                    value={totalCapital}
-                    onChange={(e) => setTotalCapital(e.target.value.replace(/\D/g, ""))}
-                    inputMode="numeric"
-                    placeholder="e.g. 100000"
-                    className="w-full bg-transparent py-2.5 text-sm focus:outline-none"
-                  />
-                </div>
-              </FieldLabel>
-            </div>
+            {/* Read-only echo of what the wizard already collected, and only for
+                the services that collect it. Nothing to re-enter — these are
+                shown so the applicant can confirm what is being filed. */}
+            {(wizardPartners !== undefined || wizardCapital !== undefined) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {wizardPartners !== undefined && (
+                  <FieldLabel label="Number of partners">
+                    <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2.5">
+                      <Users className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium">{wizardPartners}</span>
+                    </div>
+                  </FieldLabel>
+                )}
+                {wizardCapital !== undefined && (
+                  <FieldLabel label="Total capital (₹)">
+                    <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg px-3 py-2.5">
+                      <Coins className="size-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium mono">
+                        ₹ {wizardCapital.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </FieldLabel>
+                )}
+              </div>
+            )}
 
             <FieldLabel label="Anything we should know?">
               <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="State of operation, urgency, prior filings, etc." className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus" />
