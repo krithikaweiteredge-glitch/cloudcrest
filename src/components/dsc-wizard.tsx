@@ -323,13 +323,8 @@ export function DscWizard({
         title: `Digital Signature Certificate (${selectedType.title})`,
         name1: applicantName,
         form: "Class 3 DSC",
-        directors: 1,
-        capital: 0,
         address: "India",
-        city: "",
         state: "All India (CCA)",
-        pincode: "",
-        objects: `DSC Type: ${selectedType.title}\nApplicant: ${applicantName}\nPhone: ${applicantMobile}\nEmail: ${applicantEmail}`,
         fees: fees.lines,
         total,
       },
@@ -538,17 +533,12 @@ export function DscWizard({
         authority="Certifying Authority (CCA)"
         form="Class 3 DSC"
         documents={activeDocuments}
+        initialName={applicantName}
         initialEmail={applicantEmail}
         initialPhone={applicantMobile}
         formData={{
-          applicantName,
-          name1: applicantName,
-          applicantMobile,
-          applicantEmail,
           dscType: selectedType.title,
           dscPlan: selectedType.key,
-          price: selectedType.price,
-          objects: `DSC Type: ${selectedType.title}\nApplicant: ${applicantName}\nPhone: ${applicantMobile}\nEmail: ${applicantEmail}`,
         }}
         fees={fees.lines}
         feeTotal={fees.total}

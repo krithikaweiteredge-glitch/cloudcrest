@@ -562,17 +562,29 @@ function AdminDetailDialog({
                     <Building2 className="size-3.5" /> Entity & Filing
                   </div>
                   <div className="space-y-2 text-xs">
-                    {fd.gstType && <DetailRow icon={FileText} label="GST Registration Type" value={fd.gstType} />}
-                    {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
-                    {fd.trustType && <DetailRow icon={FileText} label="Trust Type" value={fd.trustType} />}
-                    <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
-                    {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={fd.name2} />}
-                    {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={fd.suffix} />}
-                    {fd.llpType && <DetailRow icon={Building2} label="LLP Type" value={fd.llpType} />}
-                    {fd.foreignCountry && <DetailRow icon={Building2} label="Country of Incorporation" value={fd.foreignCountry} />}
-                    {fd.entityClass && <DetailRow icon={Building2} label="Company Class" value={fd.entityClass} />}
-                    {fd.liability && <DetailRow icon={Building2} label="Liability" value={fd.liability} />}
-                    {fd.industryType && <DetailRow icon={Building2} label="Industry Type" value={fd.industryType} />}
+                    {fd.dscType && <DetailRow icon={FileText} label="DSC Type" value={String(fd.dscType)} />}
+                    {fd.gstType && <DetailRow icon={FileText} label="GST Registration Type" value={String(fd.gstType)} />}
+                    {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={String(fd.partnershipType)} />}
+                    {fd.trustType && <DetailRow icon={FileText} label="Trust Type" value={String(fd.trustType)} />}
+                    {fd.societyType && <DetailRow icon={FileText} label="Society Type" value={String(fd.societyType)} />}
+                    {fd.enterpriseName && <DetailRow icon={Building2} label="Enterprise Name" value={String(fd.enterpriseName)} />}
+                    {fd.firmName && <DetailRow icon={Building2} label="Firm Name" value={String(fd.firmName)} />}
+                    {fd.legalName && <DetailRow icon={Building2} label="Legal Entity Name" value={String(fd.legalName)} />}
+                    {fd.societyName && <DetailRow icon={Building2} label="Society Name" value={String(fd.societyName)} />}
+                    {fd.trustName && <DetailRow icon={Building2} label="Trust Name" value={String(fd.trustName)} />}
+                    {fd.citizenshipLabel && <DetailRow icon={User} label="Applicant Type" value={String(fd.citizenshipLabel)} />}
+                    {(fd.name1 || fd.name2 || fd.suffix || fd.llpType || fd.entityClass) ? (
+                      <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
+                    ) : (r.businessName && !r.serviceSlug?.startsWith("dsc") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName) ? (
+                      <DetailRow icon={Building2} label="Business / Entity Name" value={r.businessName} />
+                    ) : null}
+                    {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={String(fd.name2)} />}
+                    {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={String(fd.suffix)} />}
+                    {fd.llpType && <DetailRow icon={Building2} label="LLP Type" value={String(fd.llpType)} />}
+                    {fd.foreignCountry && <DetailRow icon={Building2} label="Country of Incorporation" value={String(fd.foreignCountry)} />}
+                    {fd.entityClass && <DetailRow icon={Building2} label="Company Class" value={String(fd.entityClass)} />}
+                    {fd.liability && <DetailRow icon={Building2} label="Liability" value={String(fd.liability)} />}
+                    {fd.industryType && <DetailRow icon={Building2} label="Industry Type" value={String(fd.industryType)} />}
                     {r.form && <DetailRow icon={FileText} label="Filing Form" value={r.form} />}
                     {/* Guarantee companies have no share capital — show members instead. */}
                     {authorisedCapital != null && <DetailRow icon={Coins} label="Authorised Capital" value={inr(authorisedCapital)} />}
@@ -608,7 +620,7 @@ function AdminDetailDialog({
               )}
 
               {/* Object / nature of business */}
-              {fd.objects && (
+              {fd.objects && !String(fd.objects).startsWith("DSC Type:") && (
                 <div className="p-4 rounded-xl border border-border/70 bg-card space-y-1.5 shadow-sm">
                   <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
                     <Building2 className="size-3.5" /> Object / Nature of Business

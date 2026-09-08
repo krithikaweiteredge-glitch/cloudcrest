@@ -20,6 +20,7 @@ export function RegisterDialog({
   authority,
   form,
   documents,
+  initialName,
   initialEmail,
   initialPhone,
   capital,
@@ -37,6 +38,7 @@ export function RegisterDialog({
   form?: string;
   documents: string[];
   /** Contact details already collected by a wizard, used to prefill the form. */
+  initialName?: string;
   initialEmail?: string;
   initialPhone?: string;
   /** Capital figures from the incorporation wizards, filed with the request. */
@@ -53,7 +55,7 @@ export function RegisterDialog({
 }) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
   const [business, setBusiness] = useState("");
   const [email, setEmail] = useState(initialEmail ?? "");
   const [phone, setPhone] = useState(initialPhone ?? "");
@@ -97,16 +99,17 @@ export function RegisterDialog({
   // account address never clobbers what the customer just typed.
   useEffect(() => {
     if (!open || !user) return;
-    setEmail((e) => e || user.email || "");
-    setPhone((p) => p || user.phone || "");
+    if (initialName) setName((n) => n || initialName);
+    setEmail((e) => e || initialEmail || user.email || "");
+    setPhone((p) => p || initialPhone || user.phone || "");
     fetch(`${BACKEND_URL}/api/profiles/me`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
           const businessRecord = data.businesses?.[0] || {};
-          setName((n) => n || `${data.user?.firstName || ""} ${data.user?.lastName || ""}`.trim());
+          setName((n) => n || initialName || `${data.user?.firstName || ""} ${data.user?.lastName || ""}`.trim());
           setBusiness((b) => b || businessRecord.businessName || "");
-          setPhone((p) => p || data.user?.phone || "");
+          setPhone((p) => p || initialPhone || data.user?.phone || "");
         }
       })
       .catch((err) => console.error("Error prefilling form profile:", err));

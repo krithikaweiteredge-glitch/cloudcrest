@@ -496,7 +496,7 @@ function RegistrationDetailDialog({
   const isCompanyReg =
     (request.serviceTitle && request.serviceTitle.toLowerCase().includes("company")) ||
     (request.form && request.form.toLowerCase().includes("spice")) ||
-    Boolean(request.businessName || capitalVal || fd.name1 || fd.address);
+    Boolean(request.businessName || capitalVal || fd.name1 || fd.address || fd.dscType || fd.gstType || fd.partnershipType || fd.trustType);
 
   const content = (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in-0 duration-200">
@@ -586,17 +586,29 @@ function RegistrationDetailDialog({
                   <Building2 className="size-3.5" /> Entity & Filing Details
                 </div>
                 <div className="space-y-2 text-xs">
-                  {fd.gstType && <DetailLine icon={FileText} label="GST Registration Type" value={fd.gstType} />}
-                  {fd.partnershipType && <DetailLine icon={FileText} label="Partnership Type" value={fd.partnershipType} />}
-                  {fd.trustType && <DetailLine icon={FileText} label="Trust Type" value={fd.trustType} />}
-                  <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
-                  {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={fd.name2} />}
-                  {fd.suffix && <DetailLine icon={Building2} label="Entity Suffix" value={fd.suffix} />}
-                  {fd.llpType && <DetailLine icon={Building2} label="LLP Type" value={fd.llpType} />}
-                  {fd.foreignCountry && <DetailLine icon={Building2} label="Country of Incorporation" value={fd.foreignCountry} />}
-                  {fd.entityClass && <DetailLine icon={Building2} label="Company Class" value={fd.entityClass} />}
-                  {fd.liability && <DetailLine icon={Building2} label="Liability" value={fd.liability} />}
-                  {fd.industryType && <DetailLine icon={Building2} label="Industry Type" value={fd.industryType} />}
+                  {fd.dscType && <DetailLine icon={FileText} label="DSC Type" value={String(fd.dscType)} />}
+                  {fd.gstType && <DetailLine icon={FileText} label="GST Registration Type" value={String(fd.gstType)} />}
+                  {fd.partnershipType && <DetailLine icon={FileText} label="Partnership Type" value={String(fd.partnershipType)} />}
+                  {fd.trustType && <DetailLine icon={FileText} label="Trust Type" value={String(fd.trustType)} />}
+                  {fd.societyType && <DetailLine icon={FileText} label="Society Type" value={String(fd.societyType)} />}
+                  {fd.enterpriseName && <DetailLine icon={Building2} label="Enterprise Name" value={String(fd.enterpriseName)} />}
+                  {fd.firmName && <DetailLine icon={Building2} label="Firm Name" value={String(fd.firmName)} />}
+                  {fd.legalName && <DetailLine icon={Building2} label="Legal Entity Name" value={String(fd.legalName)} />}
+                  {fd.societyName && <DetailLine icon={Building2} label="Society Name" value={String(fd.societyName)} />}
+                  {fd.trustName && <DetailLine icon={Building2} label="Trust Name" value={String(fd.trustName)} />}
+                  {fd.citizenshipLabel && <DetailLine icon={User} label="Applicant Type" value={String(fd.citizenshipLabel)} />}
+                  {(fd.name1 || fd.name2 || fd.suffix || fd.llpType || fd.entityClass) ? (
+                    <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
+                  ) : (request.businessName && !request.serviceSlug?.startsWith("dsc") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName) ? (
+                    <DetailLine icon={Building2} label="Business / Entity Name" value={request.businessName} />
+                  ) : null}
+                  {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={String(fd.name2)} />}
+                  {fd.suffix && <DetailLine icon={Building2} label="Entity Suffix" value={String(fd.suffix)} />}
+                  {fd.llpType && <DetailLine icon={Building2} label="LLP Type" value={String(fd.llpType)} />}
+                  {fd.foreignCountry && <DetailLine icon={Building2} label="Country of Incorporation" value={String(fd.foreignCountry)} />}
+                  {fd.entityClass && <DetailLine icon={Building2} label="Company Class" value={String(fd.entityClass)} />}
+                  {fd.liability && <DetailLine icon={Building2} label="Liability" value={String(fd.liability)} />}
+                  {fd.industryType && <DetailLine icon={Building2} label="Industry Type" value={String(fd.industryType)} />}
                   {request.form && <DetailLine icon={FileText} label="Filing Form" value={request.form} />}
                   {/* Guarantee companies have no share capital — show members instead. */}
                   {authorisedCapital != null && <DetailLine icon={Coins} label="Authorised Capital" value={inr(authorisedCapital)} />}
@@ -633,7 +645,7 @@ function RegistrationDetailDialog({
           )}
 
           {/* Object / nature of business */}
-          {fd.objects && (
+          {fd.objects && !String(fd.objects).startsWith("DSC Type:") && (
             <div className="p-4 rounded-xl border border-border/70 bg-card space-y-1.5 shadow-sm">
               <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
                 <Building2 className="size-3.5" /> Object / Nature of Business
