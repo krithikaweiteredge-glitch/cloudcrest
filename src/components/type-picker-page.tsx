@@ -48,6 +48,9 @@ export function TypePickerPage({
   hero,
   picker,
   types,
+  initialKey,
+  onSelectKey,
+  onStartApplication,
 }: {
   catalogSlug: string;
   /** Prefix for the detail-page title, e.g. "GST Registration — ". */
@@ -59,8 +62,16 @@ export function TypePickerPage({
   hero: { badge: string; title: string; subtitle: string; highlights: HeroHighlight[] };
   picker: { eyebrow: string; heading: string; subtitle: string };
   types: RegistrationType[];
+  initialKey?: string;
+  onSelectKey?: (key: string | null) => void;
+  onStartApplication?: (selectedKey: string) => void;
 }) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [internalKey, setInternalKey] = useState<string | null>(initialKey ?? null);
+  const selectedKey = initialKey !== undefined ? initialKey : internalKey;
+  const setSelectedKey = (k: string | null) => {
+    setInternalKey(k);
+    onSelectKey?.(k);
+  };
   const variantSlugs = useMemo(
     () => (selectedKey ? [`${catalogSlug}-${selectedKey}`, catalogSlug] : [catalogSlug]),
     [catalogSlug, selectedKey]
@@ -82,15 +93,15 @@ export function TypePickerPage({
     const docs = catalog?.documents && catalog.documents.length > 0 ? catalog.documents : selected.docs;
     const actsRules = catalog?.actsRules ?? "";
 
-    // Standard 4 tabs like all other service pages (About, Who can Apply, Documents, Acts & Rules)
+    // Standard tabs: About, Who can Apply, Documents — and Acts & Rules only if content exists
     const defaultTabs = [
       { id: "about", title: "About", content: descText, visible: true },
       { id: "who", title: "Who can Apply", content: whoText, visible: true },
       { id: "documents", title: "Documents", content: "", visible: true },
-      { id: "acts", title: "Acts and Rules", content: actsRules, visible: true },
+      ...(actsRules.trim() ? [{ id: "acts", title: "Acts and Rules", content: actsRules, visible: true }] : []),
     ];
 
-    const tabs =
+    const tabs = (
       catalog?.tabs && catalog.tabs.length > 0
         ? catalog.tabs.map((t) => {
             if (t.id === "about" && !t.content?.trim()) return { ...t, content: descText };
@@ -98,7 +109,8 @@ export function TypePickerPage({
             if (t.id === "acts" && !t.content?.trim()) return { ...t, content: actsRules };
             return t;
           })
-        : defaultTabs;
+        : defaultTabs
+    ).filter((t) => t.visible && (t.id !== "acts" || !!t.content?.trim() || !!actsRules.trim()));
 
     return {
       slug: catalog?.slug || `${catalogSlug}-${selected.key}`,
@@ -151,6 +163,7 @@ export function TypePickerPage({
           extraFormData={{ [formDataKey]: selected.title }}
           onBack={() => setSelectedKey(null)}
           backLabel={backLabel}
+          onStartApplication={onStartApplication ? () => onStartApplication(selected.key) : undefined}
         />
       );
     }

@@ -12,6 +12,7 @@ import { DinModule } from "@/components/din-wizard";
 import { IecModule } from "@/components/iec-wizard";
 import { LeiModule } from "@/components/lei-wizard";
 import { ReraModule } from "@/components/rera-wizard";
+import { DscModule } from "@/components/dsc-wizard";
 import { DepartmentPage } from "@/components/department-page";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { DEPARTMENT_SLUGS } from "@/lib/modules";
@@ -36,6 +37,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "iec") return <IecModule initialName={initialName} />;
   if (slug === "lei") return <LeiModule initialName={initialName} />;
   if (slug === "rera") return <ReraModule initialName={initialName} />;
+  if (slug === "dsc" || slug.startsWith("dsc-")) return <DscModule initialName={initialName} slug={slug} />;
   if (DEPARTMENT_SLUGS.has(slug)) return <DepartmentPage slug={slug} />;
   return <ServiceDetailPage slug={slug} />;
 }

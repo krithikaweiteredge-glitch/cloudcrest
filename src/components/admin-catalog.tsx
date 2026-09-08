@@ -18,7 +18,7 @@ const WIZARD_SLUGS = new Set(["company", "llp"]);
 // seeding a variant's rule defaults in the service dialog). Grouping/nesting in
 // the tree is generic (see organizeServicesWithVariants); this list only scopes
 // the wizard-rule seeding to the incorporation-style launchers.
-const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership", "trust"]);
+const LAUNCHER_SLUGS = new Set(["company", "llp", "gst", "partnership", "trust", "dsc"]);
 
 /** A service in display order, tagged with its nesting depth and family role. */
 type OrganizedService = {
@@ -321,6 +321,20 @@ export function AdminCatalogPanel() {
                                     <span className="text-[10px] mono text-muted-foreground shrink-0">/{svc.slug}</span>
                                   )}
                                   <div className="flex items-center gap-1 shrink-0">
+                                    {(isLauncher || (svc.slug && LAUNCHER_SLUGS.has(svc.slug))) && (
+                                      <IconBtn
+                                        title={`Add type under ${svc.name}`}
+                                        onClick={() =>
+                                          setServiceDialog({
+                                            mode: "create",
+                                            subcategoryId: sub.id,
+                                            parentSlug: svc.slug,
+                                          })
+                                        }
+                                      >
+                                        <Plus className="size-3.5 text-primary" />
+                                      </IconBtn>
+                                    )}
                                     <IconBtn title="Document checklist" onClick={() => setManageId(svc.id)}>
                                       <Settings2 className="size-3.5" />
                                     </IconBtn>
@@ -507,6 +521,8 @@ const DEFAULT_TYPE_TAGS: Record<string, { tags: string[]; popular?: boolean }> =
   other: { tags: ["SEZ / Special"] },
   registered: { tags: ["ROF Registered", "Legal Standing"], popular: true },
   unregistered: { tags: ["Deed Only", "Quick Setup"] },
+  normal: { tags: ["Class 3", "Signing"], popular: true },
+  combo: { tags: ["Sign + Encrypt", "e-Tendering & GST"] },
 };
 
 function ServiceDialog({
@@ -514,14 +530,17 @@ function ServiceDialog({
   onClose,
   onSaved,
 }: {
-  state: { mode: "create"; subcategoryId: number } | { mode: "edit"; service: any; hasVariants?: boolean };
+  state:
+    | { mode: "create"; subcategoryId: number; parentSlug?: string }
+    | { mode: "edit"; service: any; hasVariants?: boolean };
   onClose: () => void;
   onSaved: () => void;
 }) {
   const svc = state.mode === "edit" ? state.service : null;
+  const parentSlug = state.mode === "create" ? state.parentSlug : undefined;
   // Entity key of a variant slug for seeding its rule defaults (company-pvt -> pvt, gst-regular -> regular).
   const initialWizardKey = (() => {
-    const s = (svc?.slug || "").trim();
+    const s = (svc?.slug || parentSlug || "").trim();
     const launcher = [...LAUNCHER_SLUGS].find((x) => s.startsWith(x + "-"));
     return launcher ? s.slice(launcher.length + 1) : "";
   })();
@@ -534,8 +553,8 @@ function ServiceDialog({
     typeof initialRules.popular === "boolean" && svc?.wizardRules ? initialRules.popular : !!defaultTypeInfo?.popular;
 
   const [name, setName] = useState(svc?.name || "");
-  const [active, setActive] = useState(svc ? !!svc.active : true);
-  const [slug, setSlug] = useState(svc?.slug || "");
+  const [active, setActive] = useState(svc ? !!svc.active : !parentSlug);
+  const [slug, setSlug] = useState(svc?.slug || (parentSlug ? `${parentSlug}-` : ""));
   // Wizard-type incorporation rules (variants only). Seeded from the service's
   // saved rules, falling back to the built-in defaults for its entity key.
   const [wizSuffix, setWizSuffix] = useState(initialRules.suffix);

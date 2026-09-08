@@ -113,6 +113,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   }, [activeSlug, groups]);
 
   const toggleGroup = (label: string) => {
+    cancelAutoCollapse();
     setOpenGroups((prev) => {
       const isCurrentlyOpen = !!prev[label];
       const next: Record<string, boolean> = {};
@@ -245,6 +246,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         {/* Sidebar — full-height drawer over the page on phones, sticky push-panel
             from tablet up. */}
         <aside
+          onMouseEnter={cancelAutoCollapse}
+          onMouseMove={cancelAutoCollapse}
+          onFocusCapture={cancelAutoCollapse}
+          onClickCapture={cancelAutoCollapse}
+          onTouchStart={cancelAutoCollapse}
+          onScrollCapture={cancelAutoCollapse}
           className={
             "flex-shrink-0 bg-surface flex flex-col fixed md:sticky top-0 md:top-16 left-0 h-screen md:h-[calc(100vh-4rem)] self-start transition-[width] duration-200 overflow-hidden z-50 md:z-30 " +
             (sidebarCollapsed ? "w-0 border-r-0" : "w-72 max-w-[85vw] border-r border-border")
@@ -271,7 +278,10 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 className="bg-transparent text-xs placeholder:text-muted-foreground focus:outline-none flex-1"
                 placeholder="Search modules…"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  cancelAutoCollapse();
+                  setSearchQuery(e.target.value);
+                }}
               />
               {searchQuery ? (
                 <button

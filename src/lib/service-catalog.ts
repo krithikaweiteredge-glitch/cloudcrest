@@ -50,7 +50,7 @@ export function defaultTabs(s: {
     { id: "about", title: "About", content: s.description ?? "", visible: true },
     { id: "who", title: "Who can Apply", content: s.whoCanApply ?? "", visible: true },
     { id: "documents", title: "Documents", content: "", visible: true },
-    { id: "acts", title: "Acts and Rules", content: s.actsRules ?? "", visible: true },
+    { id: "acts", title: "Acts and Rules", content: s.actsRules ?? "", visible: !!s.actsRules?.trim() },
   ];
 }
 
@@ -233,11 +233,12 @@ export async function fetchServiceChain(slugs: string[]): Promise<CatalogService
  * Resolve the service hierarchy for a list of fallback slugs (e.g. combo -> type -> base).
  * Inherits admin-authored fees, documents and copy from parent rows if child rows are bare.
  */
-export function useCatalogService(slugs: string[]) {
-  const key = slugs.join("|");
+export function useCatalogService(slugs: string[] | string) {
+  const slugList = Array.isArray(slugs) ? slugs : [slugs];
+  const key = slugList.join("|");
   const { data, isLoading } = useQuery({
     queryKey: ["catalog-service", key],
-    queryFn: async () => fetchServiceChain(slugs),
+    queryFn: async () => fetchServiceChain(slugList),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

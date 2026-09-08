@@ -381,15 +381,15 @@ export function WizardActions({
  * the applicant has to scroll past on every step.
  */
 export function WizardSidebar({
-  selection,
-  professionalFee,
-  gstPercent,
+  selection = [],
+  professionalFee = 0,
+  gstPercent = 18,
   formNo,
   certificates,
 }: {
-  selection: { label: string; value: string }[];
-  professionalFee: number;
-  gstPercent: number;
+  selection?: { label: string; value: string }[];
+  professionalFee?: number;
+  gstPercent?: number;
   formNo?: string;
   certificates?: string[];
 }) {
