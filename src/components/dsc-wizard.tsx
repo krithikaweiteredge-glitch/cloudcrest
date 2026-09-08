@@ -28,7 +28,7 @@ import { AlertTriangle, ArrowLeft, KeyRound, ShieldCheck, Sparkles, Zap, FileChe
  */
 
 const STEPS = [
-  { key: "details", label: "Applicant & Plan" },
+  { key: "details", label: "Applicant" },
   { key: "fees", label: "Fees" },
   { key: "summary", label: "Summary" },
 ];
@@ -260,7 +260,6 @@ export function DscWizard({
     };
 
     if (currentStep === 0) {
-      if (!dscType) fail("dscType", "Please choose a DSC type.");
       if (!applicantName.trim()) fail("applicantName", "Please enter applicant full name.");
       else if (applicantName.trim().length < 2) fail("applicantName", "Name is too short.");
 
@@ -380,93 +379,58 @@ export function DscWizard({
             )}
 
             <div key={step} className="mt-8 animate-in-up">
-              {/* STEP 1: Applicant & Plan */}
+              {/* STEP 1: Applicant Details */}
               {stepKey === "details" && (
-                <Section title="1. Choose DSC Type & Enter Applicant Contact">
+                <Section
+                  title="1. Applicant Contact Details"
+                  desc={`Applying for ${selectedType.title} (Class 3 · 2 Years Validity)`}
+                >
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-foreground/90 block mb-2">
-                        Select DSC Type *
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        {DSC_TYPES.map((t) => {
-                          const active = dscType === t.key;
-                          return (
-                            <button
-                              key={t.key}
-                              type="button"
-                              onClick={() => {
-                                setDscType(t.key);
-                                setErrors((prev) => ({ ...prev, dscType: "" }));
-                              }}
-                              className={
-                                "text-left p-4 rounded-xl border transition-all hover-lift ring-focus " +
-                                (active
-                                  ? "border-primary ring-2 ring-primary/25 bg-primary/[0.05] shadow-card"
-                                  : "border-border bg-surface hover:border-primary/50 shadow-card")
-                              }
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-semibold text-sm text-foreground">
-                                  {t.title}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {errors.dscType && (
-                        <p className="text-[11px] text-destructive mt-1.5">{errors.dscType}</p>
-                      )}
-                    </div>
+                    <Field label="Applicant Full Name *" error={errors.applicantName}>
+                      <Input
+                        value={applicantName}
+                        onChange={(v) => {
+                          setApplicantName(v);
+                          setErrors((prev) => ({ ...prev, applicantName: "" }));
+                        }}
+                        placeholder="e.g. Rajesh Sharma (as per PAN / Aadhaar)"
+                        error={errors.applicantName}
+                      />
+                    </Field>
 
-                    <div className="pt-2 border-t border-border/70 space-y-4">
-                      <Field label="Applicant Full Name *" error={errors.applicantName}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Field
+                        label="Applicant Mobile Number *"
+                        error={errors.applicantMobile}
+                      >
                         <Input
-                          value={applicantName}
+                          type="tel"
+                          maxLength={10}
+                          value={applicantMobile}
                           onChange={(v) => {
-                            setApplicantName(v);
-                            setErrors((prev) => ({ ...prev, applicantName: "" }));
+                            setApplicantMobile(v.replace(/\D/g, "").slice(0, 10));
+                            setErrors((prev) => ({ ...prev, applicantMobile: "" }));
                           }}
-                          placeholder="e.g. Rajesh Sharma (as per PAN / Aadhaar)"
-                          error={errors.applicantName}
+                          placeholder="10-digit mobile number"
+                          error={errors.applicantMobile}
                         />
                       </Field>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field
-                          label="Applicant Mobile Number *"
-                          error={errors.applicantMobile}
-                        >
-                          <Input
-                            type="tel"
-                            maxLength={10}
-                            value={applicantMobile}
-                            onChange={(v) => {
-                              setApplicantMobile(v.replace(/\D/g, "").slice(0, 10));
-                              setErrors((prev) => ({ ...prev, applicantMobile: "" }));
-                            }}
-                            placeholder="10-digit mobile number"
-                            error={errors.applicantMobile}
-                          />
-                        </Field>
-
-                        <Field
-                          label="Applicant Email ID *"
+                      <Field
+                        label="Applicant Email ID *"
+                        error={errors.applicantEmail}
+                      >
+                        <Input
+                          type="email"
+                          value={applicantEmail}
+                          onChange={(v) => {
+                            setApplicantEmail(v);
+                            setErrors((prev) => ({ ...prev, applicantEmail: "" }));
+                          }}
+                          placeholder="e.g. rajesh@example.com"
                           error={errors.applicantEmail}
-                        >
-                          <Input
-                            type="email"
-                            value={applicantEmail}
-                            onChange={(v) => {
-                              setApplicantEmail(v);
-                              setErrors((prev) => ({ ...prev, applicantEmail: "" }));
-                            }}
-                            placeholder="e.g. rajesh@example.com"
-                            error={errors.applicantEmail}
-                          />
-                        </Field>
-                      </div>
+                        />
+                      </Field>
                     </div>
                   </div>
                 </Section>
