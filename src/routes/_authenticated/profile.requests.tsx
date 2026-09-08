@@ -506,33 +506,41 @@ function RegistrationDetailDialog({
             <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
               <User className="size-3.5" /> Contact Information
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="flex items-start gap-2">
-                <User className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 flex items-start gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+                  <User className="size-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <span className="text-[11px] text-muted-foreground block">Full Name</span>
-                  <span className="font-semibold text-foreground">{request.contactName || "—"}</span>
+                  <span className="font-semibold text-foreground break-words block">{request.contactName || "—"}</span>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Mail className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
+              <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 flex items-start gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+                  <Mail className="size-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <span className="text-[11px] text-muted-foreground block">Email Address</span>
-                  <span className="font-medium text-foreground">{request.contactEmail || "—"}</span>
+                  <span className="font-medium text-foreground break-all block">{request.contactEmail || "—"}</span>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Phone className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
+              <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 flex items-start gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+                  <Phone className="size-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <span className="text-[11px] text-muted-foreground block">Mobile Number</span>
-                  <span className="font-medium text-foreground">{request.contactPhone || "—"}</span>
+                  <span className="font-medium text-foreground break-words block">{request.contactPhone || "—"}</span>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Calendar className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
+              <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 flex items-start gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+                  <Calendar className="size-3.5" />
+                </div>
+                <div className="min-w-0 flex-1">
                   <span className="text-[11px] text-muted-foreground block">Submission Timestamp</span>
-                  <span className="font-medium text-foreground">{formatDateTime(request.createdAt)}</span>
+                  <span className="font-medium text-foreground break-words block">{formatDateTime(request.createdAt)}</span>
                 </div>
               </div>
             </div>

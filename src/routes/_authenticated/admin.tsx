@@ -739,11 +739,11 @@ function AdminDetailDialog({
                 <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
                   <User className="size-3.5" /> Applicant Details
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <DetailRow icon={User} label="Full Name" value={r.contactName || (r.applicant ? `${r.applicant.firstName ?? ""} ${r.applicant.lastName ?? ""}`.trim() : "—")} />
-                  <DetailRow icon={Mail} label="Email" value={r.contactEmail || r.applicant?.email || "—"} />
-                  <DetailRow icon={Phone} label="Mobile" value={r.contactPhone || r.applicant?.phone || "—"} />
-                  <DetailRow icon={Calendar} label="Submitted" value={formatDateTime(r.createdAt)} />
+                  <DetailRow icon={Mail} label="Email Address" value={r.contactEmail || r.applicant?.email || "—"} isEmail />
+                  <DetailRow icon={Phone} label="Mobile Number" value={r.contactPhone || r.applicant?.phone || "—"} />
+                  <DetailRow icon={Calendar} label="Submission Timestamp" value={formatDateTime(r.createdAt)} />
                 </div>
               </div>
 
@@ -1700,13 +1700,25 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+  isEmail,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  isEmail?: boolean;
+}) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon className="size-3.5 text-muted-foreground mt-0.5 shrink-0" />
-      <div className="min-w-0">
+    <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20 flex items-start gap-2.5 min-w-0">
+      <div className="p-1.5 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+        <Icon className="size-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
         <span className="text-[11px] text-muted-foreground block">{label}</span>
-        <span className="font-medium text-foreground break-words">{value}</span>
+        <span className={`font-medium text-foreground block ${isEmail ? "break-all" : "break-words"}`}>{value}</span>
       </div>
     </div>
   );
