@@ -155,11 +155,27 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
   const primitives: [string, unknown][] = [];
   const nestedObjects: [string, Record<string, unknown>][] = [];
   const objectArrays: [string, any[]][] = [];
+  const feeBreakdowns: [string, any[]][] = [];
+
+  const hasFeeBreakdown = entries.some(
+    ([k, v]) =>
+      Array.isArray(v) &&
+      v.length > 0 &&
+      typeof v[0] === "object" &&
+      v[0] !== null &&
+      ("label" in v[0] || "amount" in v[0] || k.toLowerCase().includes("fee"))
+  );
 
   for (const [k, v] of entries) {
+    if (k === "total" && hasFeeBreakdown) continue;
+
     if (Array.isArray(v)) {
       if (v.length > 0 && typeof v[0] === "object" && v[0] !== null) {
-        objectArrays.push([k, v]);
+        if (k.toLowerCase().includes("fee") || ("label" in v[0] && "amount" in v[0])) {
+          feeBreakdowns.push([k, v]);
+        } else {
+          objectArrays.push([k, v]);
+        }
       } else {
         primitives.push([k, v]);
       }
@@ -187,6 +203,45 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
           ))}
         </div>
       )}
+
+      {/* Fee Breakdown (e.g. fees, feeLines) */}
+      {feeBreakdowns.map(([k, arr]) => {
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+        const totalSum = arr.reduce((acc, item) => acc + (Number(item?.amount) || 0), 0);
+        const displayTotal =
+          fd.total != null && Number(fd.total) > 0 ? Number(fd.total) : totalSum;
+        return (
+          <div key={k} className="p-3.5 rounded-lg border border-border/60 bg-muted/20 space-y-2 mt-2">
+            <div className="flex items-center justify-between border-b border-border/40 pb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary block">
+                Fee Breakdown
+              </span>
+              <span className="text-[10px] text-muted-foreground">Estimated</span>
+            </div>
+            <div className="space-y-1.5 text-xs pt-0.5">
+              {arr.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between py-1 border-b border-border/20 last:border-0"
+                >
+                  <span className="text-foreground/90 font-medium">{item.label || `Fee Line ${idx + 1}`}</span>
+                  <span className="font-semibold text-foreground mono">
+                    ₹{Number(item.amount || 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              ))}
+              {displayTotal > 0 && (
+                <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/60 font-bold text-xs">
+                  <span className="text-foreground">Total Fee</span>
+                  <span className="text-primary mono text-sm font-bold">
+                    ₹{displayTotal.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
 
       {/* Nested detail objects (e.g. Settlor Details) */}
       {nestedObjects.map(([k, obj]) => {
