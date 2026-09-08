@@ -715,9 +715,6 @@ function AdminDetailDialog({
     }
   }
 
-  const authorisedCapital = r?.authorisedCapital ?? fd.capital ?? fd.totalCapital;
-  const paidCapital = r?.paidCapital ?? fd.paidCapital;
-  const inr = (v: any) => `₹${Number(v).toLocaleString("en-IN")}`;
   const docs: any[] = r?.documents || [];
 
   const content = (
@@ -769,63 +766,16 @@ function AdminDetailDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Applicant */}
-                <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3 shadow-sm">
-                  <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
-                    <User className="size-3.5" /> Applicant
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    <DetailRow icon={User} label="Full Name" value={r.contactName || (r.applicant ? `${r.applicant.firstName ?? ""} ${r.applicant.lastName ?? ""}`.trim() : "—")} />
-                    <DetailRow icon={Mail} label="Email" value={r.contactEmail || r.applicant?.email || "—"} />
-                    <DetailRow icon={Phone} label="Mobile" value={r.contactPhone || r.applicant?.phone || "—"} />
-                    <DetailRow icon={Calendar} label="Submitted" value={formatDateTime(r.createdAt)} />
-                  </div>
+              {/* Applicant */}
+              <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3 shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
+                  <User className="size-3.5" /> Applicant Details
                 </div>
-
-                {/* Entity / filing */}
-                <div className="p-4 rounded-xl border border-border/70 bg-card space-y-3 shadow-sm">
-                  <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2 border-b border-border/60 pb-2">
-                    <Building2 className="size-3.5" /> Entity & Filing
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    {fd.dscType && <DetailRow icon={FileText} label="DSC Type" value={String(fd.dscType)} />}
-                    {fd.gstType && <DetailRow icon={FileText} label="GST Registration Type" value={String(fd.gstType)} />}
-                    {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={String(fd.partnershipType)} />}
-                    {fd.trustType && <DetailRow icon={FileText} label="Trust Type" value={String(fd.trustType)} />}
-                    {fd.societyType && <DetailRow icon={FileText} label="Society Type" value={String(fd.societyType)} />}
-                    {fd.hufName && <DetailRow icon={Building2} label="HUF Name" value={String(fd.hufName)} />}
-                    {fd.kartaName && <DetailRow icon={User} label="Karta Name" value={String(fd.kartaName)} />}
-                    {fd.enterpriseName && <DetailRow icon={Building2} label="Enterprise Name" value={String(fd.enterpriseName)} />}
-                    {fd.firmName && <DetailRow icon={Building2} label="Firm Name" value={String(fd.firmName)} />}
-                    {fd.legalName && <DetailRow icon={Building2} label="Legal Entity Name" value={String(fd.legalName)} />}
-                    {fd.societyName && <DetailRow icon={Building2} label="Society Name" value={String(fd.societyName)} />}
-                    {fd.trustName && <DetailRow icon={Building2} label="Trust Name" value={String(fd.trustName)} />}
-                    {fd.ngoName && <DetailRow icon={Building2} label="NGO / VO Name" value={String(fd.ngoName)} />}
-                    {fd.citizenshipLabel && <DetailRow icon={User} label="Applicant Type" value={String(fd.citizenshipLabel)} />}
-                    {/* Proposed Name only belongs to Company and LLP reserve-name filings */}
-                    {(fd.suffix || fd.llpType || fd.entityClass || r.serviceSlug === "company" || r.serviceSlug === "llp") && (fd.name1 || r.businessName) ? (
-                      <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
-                    ) : (r.businessName && !r.serviceSlug?.startsWith("dsc") && !r.serviceSlug?.startsWith("huf") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName && !fd.hufName) ? (
-                      <DetailRow icon={Building2} label="Business / Entity Name" value={r.businessName} />
-                    ) : null}
-                    {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={String(fd.name2)} />}
-                    {fd.suffix && <DetailRow icon={Building2} label="Entity Suffix" value={String(fd.suffix)} />}
-                    {fd.llpType && <DetailRow icon={Building2} label="LLP Type" value={String(fd.llpType)} />}
-                    {fd.foreignCountry && <DetailRow icon={Building2} label="Country of Incorporation" value={String(fd.foreignCountry)} />}
-                    {fd.entityClass && <DetailRow icon={Building2} label="Company Class" value={String(fd.entityClass)} />}
-                    {fd.liability && <DetailRow icon={Building2} label="Liability" value={String(fd.liability)} />}
-                    {fd.industryType && <DetailRow icon={Building2} label="Industry Type" value={String(fd.industryType)} />}
-                    {r.form && <DetailRow icon={FileText} label="Filing Form" value={r.form} />}
-                    {/* Guarantee companies have no share capital — show members instead. */}
-                    {authorisedCapital != null && <DetailRow icon={Coins} label="Authorised Capital" value={inr(authorisedCapital)} />}
-                    {paidCapital != null && <DetailRow icon={Coins} label="Paid-up Capital" value={inr(paidCapital)} />}
-                    {fd.directors != null && <DetailRow icon={User} label="Directors" value={String(fd.directors)} />}
-                    {fd.shareholders != null && <DetailRow icon={User} label="Shareholders" value={String(fd.shareholders)} />}
-                    {fd.members != null && <DetailRow icon={User} label="Members" value={String(fd.members)} />}
-                    {fd.partners != null && <DetailRow icon={User} label="Partners" value={String(fd.partners)} />}
-                    {fd.nominee && <DetailRow icon={User} label="Nominee" value={fd.nominee} />}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  <DetailRow icon={User} label="Full Name" value={r.contactName || (r.applicant ? `${r.applicant.firstName ?? ""} ${r.applicant.lastName ?? ""}`.trim() : "—")} />
+                  <DetailRow icon={Mail} label="Email" value={r.contactEmail || r.applicant?.email || "—"} />
+                  <DetailRow icon={Phone} label="Mobile" value={r.contactPhone || r.applicant?.phone || "—"} />
+                  <DetailRow icon={Calendar} label="Submitted" value={formatDateTime(r.createdAt)} />
                 </div>
               </div>
 

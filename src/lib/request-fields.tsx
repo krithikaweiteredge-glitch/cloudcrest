@@ -10,33 +10,8 @@
  * visible for the user and the admin".
  */
 
-/** Keys already shown in a dedicated field/card, so the catch-all skips them. */
+/** Keys already shown in a dedicated field/card (Applicant contact, Registered office, Objects), so the catch-all skips them. */
 const KNOWN_FORM_KEYS = new Set([
-  "name1",
-  "name2",
-  "suffix",
-  "industryType",
-  "entityClass",
-  "liability",
-  "members",
-  "llpType",
-  "foreignCountry",
-  "gstType",
-  "partnershipType",
-  "trustType",
-  "societyType",
-  "hufName",
-  "kartaName",
-  "enterpriseName",
-  "firmName",
-  "legalName",
-  "societyName",
-  "trustName",
-  "ngoName",
-  "citizenshipLabel",
-  "dscType",
-  "dscPlan",
-  "price",
   "applicantName",
   "applicantMobile",
   "applicantEmail",
@@ -44,29 +19,57 @@ const KNOWN_FORM_KEYS = new Set([
   "contactName",
   "contactEmail",
   "contactPhone",
-  "directors",
-  "shareholders",
-  "partners",
-  "partnersCount",
-  "nominee",
   "address",
   "city",
   "state",
   "pincode",
   "objects",
-  "capital",
-  "paidCapital",
-  "totalCapital",
 ]);
 
-/** Acronyms that should stay upper-cased rather than title-cased. */
+/** Acronyms and specific field name overrides. */
 const LABEL_OVERRIDES: Record<string, string> = {
+  name1: "Proposed Name 1",
+  name2: "Proposed Name 2",
+  suffix: "Entity Suffix",
+  industrytype: "Industry Type",
+  entityclass: "Company Class",
+  liability: "Liability",
+  members: "Members",
+  llptype: "LLP Type",
+  foreigncountry: "Country of Incorporation",
+  gsttype: "GST Registration Type",
+  partnershiptype: "Partnership Type",
+  trusttype: "Trust Type",
+  societytype: "Society Type",
+  hufname: "HUF Name",
+  kartaname: "Karta Name",
+  enterprisename: "Enterprise Name",
+  firmname: "Firm Name",
+  legalname: "Legal Entity Name",
+  societyname: "Society Name",
+  trustname: "Trust Name",
+  ngoname: "NGO / VO Name",
+  citizenshiplabel: "Applicant Type",
+  dsctype: "DSC Type",
+  dscplan: "DSC Plan",
+  price: "Price",
+  directors: "Number of Directors",
+  shareholders: "Number of Shareholders",
+  partners: "Number of Partners",
+  partnerscount: "Number of Partners",
+  nominee: "Nominee Name",
+  capital: "Authorised Capital",
+  paidcapital: "Paid-up Capital",
+  totalcapital: "Authorised Capital",
+  authorisedcapital: "Authorised Capital",
   gstin: "GSTIN",
   pan: "PAN",
   tan: "TAN",
   din: "DIN",
   dpin: "DPIN",
   llp: "LLP",
+  huf: "HUF",
+  dsc: "DSC",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
@@ -78,6 +81,27 @@ export function humanizeFieldKey(key: string): string {
     .replace(/[_-]+/g, " ")
     .trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+export function formatFieldValue(key: string, value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  const k = key.toLowerCase();
+  if (typeof value === "number") {
+    if (k.includes("capital") || k === "price") {
+      return `₹${value.toLocaleString("en-IN")}`;
+    }
+    return String(value);
+  }
+  if (typeof value === "string") {
+    if ((k.includes("capital") || k === "price") && !isNaN(Number(value)) && Number(value) > 0) {
+      return `₹${Number(value).toLocaleString("en-IN")}`;
+    }
+    return value;
+  }
+  return String(value);
 }
 
 /**
@@ -104,7 +128,7 @@ export function renderExtraFormFields(fd: Record<string, unknown> | null | undef
         {extra.map(([k, v]) => (
           <div key={k}>
             <span className="text-[11px] text-muted-foreground block">{humanizeFieldKey(k)}</span>
-            <span className="font-medium text-foreground break-words">{String(v)}</span>
+            <span className="font-medium text-foreground break-words">{formatFieldValue(k, v)}</span>
           </div>
         ))}
       </div>
