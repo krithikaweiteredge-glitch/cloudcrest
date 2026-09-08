@@ -367,6 +367,233 @@ function parseDocLabel(name: string): { label: string; fileName: string } {
   return { label, fileName };
 }
 
+function getRequiredDocumentsForRequest(request: any): string[] {
+  if (!request) return [];
+  const title = (request.serviceTitle || "").toLowerCase();
+  const form = (request.form || "").toLowerCase();
+  const slug = (request.serviceSlug || "").toLowerCase();
+
+  let fd: any = {};
+  if (request.formData) {
+    try {
+      fd = typeof request.formData === "string" ? JSON.parse(request.formData) : request.formData;
+    } catch (_) {}
+  }
+
+  if (title.includes("dsc") || slug.startsWith("dsc") || form.includes("class 3")) {
+    const isCombo = title.includes("combo") || slug.includes("combo") || fd.dscType?.toLowerCase().includes("combo");
+    return [
+      "PAN Card (mandatory)",
+      "Aadhaar Card (for eKYC verification)",
+      "Recent passport-size colour photograph",
+      ...(isCombo ? ["GST Certificate"] : []),
+    ];
+  }
+
+  if (title.includes("din") || slug.startsWith("din") || form.includes("dir-3")) {
+    const isForeign = fd.citizenship === "foreign";
+    return isForeign
+      ? [
+          "Passport (mandatory)",
+          "Address proof of residential address outside India",
+          "Passport-size colour photograph",
+          "Notarised and apostilled ID & address proofs",
+          "Digital Signature Certificate (DSC)",
+        ]
+      : [
+          "Passport-size colour photograph",
+          "PAN card (mandatory)",
+          "Aadhaar card",
+          "Address proof (utility bill < 2 mo)",
+          "Digital Signature Certificate (DSC)",
+        ];
+  }
+
+  if (title.includes("huf") || slug.startsWith("huf") || form.includes("huf deed")) {
+    return [
+      "PAN Card of Karta",
+      "Aadhaar Card of Karta & Family Members",
+      "Address Proof of HUF Principal Place",
+      "HUF Declaration / Deed",
+    ];
+  }
+
+  if (title.includes("msme") || slug.startsWith("msme") || form.includes("udyam")) {
+    return [
+      "Aadhaar Card of Applicant",
+      "PAN Card of Entity / Proprietor",
+      "Bank Account Proof (Cancelled Cheque / Passbook)",
+      "Business Address Proof",
+    ];
+  }
+
+  if (title.includes("iec") || slug.startsWith("iec") || form.includes("anf-2a")) {
+    return [
+      "Firm / Entity PAN Card",
+      "Business Address Proof (Utility Bill / Rent Agreement)",
+      "Authorised Signatory Aadhaar & PAN Card",
+      "Bank Account Proof (Cancelled Cheque / Statement)",
+    ];
+  }
+
+  if (title.includes("lei") || slug.startsWith("lei")) {
+    return [
+      "Certificate of Incorporation / Registration Certificate",
+      "Entity PAN Card",
+      "Authorised Signatory Identity Proof",
+      "Board Resolution / Authorisation Letter",
+    ];
+  }
+
+  if (title.includes("company") || title.includes("incorporation") || form.includes("spice") || slug === "company") {
+    const isSec8 = title.includes("section 8") || title.includes("foundation") || fd.entity === "sec8";
+    const isOpc = title.includes("one person") || title.includes("opc") || fd.entity === "opc";
+    return [
+      "PAN & Aadhaar of all directors",
+      "Passport-size photographs",
+      "Address proof (utility bill < 2 mo)",
+      "Registered office proof",
+      "Rent agreement + NOC (if rented)",
+      "Digital Signature Certificate (DSC)",
+      "MoA & AoA drafts",
+      ...(isSec8 ? ["Form INC-12 / Section 8 License Approval"] : []),
+      ...(isOpc ? ["INC-3 Nominee Consent Form"] : []),
+    ];
+  }
+
+  if (title.includes("llp") || title.includes("limited liability partnership") || form.includes("fillip") || slug === "llp") {
+    return [
+      "PAN & Aadhaar of all partners",
+      "Passport-size photographs",
+      "Address proof (utility bill < 2 mo)",
+      "Registered office proof",
+      "Rent agreement + NOC (if rented)",
+      "Digital Signature Certificate (DSC)",
+      "LLP Agreement draft",
+    ];
+  }
+
+  if (title.includes("gst") || slug.startsWith("gst")) {
+    return [
+      "PAN Card of Entity / Proprietor",
+      "Aadhaar Card of Proprietor / Partners / Directors",
+      "Business Premises Address Proof (Electricity Bill / Rent Agreement)",
+      "Bank Account Proof (Cancelled Cheque / Passbook)",
+      "Owner NOC / Rent Agreement",
+    ];
+  }
+
+  if (title.includes("partnership") || slug.startsWith("partnership")) {
+    return [
+      "PAN Card of all Partners",
+      "Aadhaar Card / ID Proof of Partners",
+      "Partnership Deed",
+      "Principal Place of Business Address Proof",
+    ];
+  }
+
+  if (title.includes("trust") || title.includes("society") || title.includes("ngo") || slug.startsWith("trust") || slug.startsWith("society")) {
+    return [
+      "PAN Card of Trust / Trustees / Members",
+      "Aadhaar Card / ID Proof of Trustees",
+      "Trust Deed / Society Rules & Bye-laws",
+      "Registered Office Address Proof",
+    ];
+  }
+
+  if (title.includes("trademark") || title.includes("patent") || title.includes("copyright") || title.includes("design")) {
+    return [
+      "Incorporation Certificate / Deed / PAN",
+      "Brand Name / Logo Representation File",
+      "Power of Attorney (TM-48)",
+    ];
+  }
+
+  return [
+    "PAN Card of Applicant / Entity",
+    "Aadhaar / Photo ID Proof",
+    "Address Proof of Premises",
+    "Business Registration Proof",
+  ];
+}
+
+function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: any[]) {
+  const claimedDocIds = new Set<number | string>();
+  const matches: Record<string, any> = {};
+
+  if (!requiredDocs || !uploadedDocs || uploadedDocs.length === 0) {
+    return { matches, unclaimedDocs: uploadedDocs || [] };
+  }
+
+  // Pass 1: Explicit Label Matches
+  for (const reqDoc of requiredDocs) {
+    const reqLower = reqDoc.toLowerCase();
+    for (const doc of uploadedDocs) {
+      if (claimedDocIds.has(doc.id)) continue;
+      const parsed = parseDocLabel(doc.name);
+      const parsedLabelLower = parsed.label.toLowerCase();
+
+      if (
+        parsedLabelLower !== "uploaded document" &&
+        (parsedLabelLower === reqLower || parsedLabelLower.includes(reqLower) || reqLower.includes(parsedLabelLower))
+      ) {
+        matches[reqDoc] = doc;
+        claimedDocIds.add(doc.id);
+        break;
+      }
+    }
+  }
+
+  // Pass 2: Strict Keyword Matching for unclaimed required docs
+  for (const reqDoc of requiredDocs) {
+    if (matches[reqDoc]) continue;
+    const reqLower = reqDoc.toLowerCase();
+
+    for (const doc of uploadedDocs) {
+      if (claimedDocIds.has(doc.id)) continue;
+      const docText = (doc.name || "").toLowerCase();
+      const parsed = parseDocLabel(doc.name);
+      const labelText = parsed.label.toLowerCase();
+      const combined = `${labelText} ${docText}`;
+
+      let isMatch = false;
+
+      if (reqLower.includes("pan")) {
+        if (/\bpan\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("aadhaar") || reqLower.includes("photo id")) {
+        if (/\b(aadhaar|adhar|voter|passport|identity)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("photograph") || reqLower.includes("photo")) {
+        if (/\b(photograph|photo|pic|picture)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("address proof")) {
+        if (/\b(address|utility|bill|electricity|water|gas)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("office") || reqLower.includes("premises")) {
+        if (/\b(office|premises|property|tax)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("rent") || reqLower.includes("noc")) {
+        if (/\b(rent|lease|noc|agreement)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("dsc") || reqLower.includes("signature")) {
+        if (/\b(dsc|signature|digital)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("moa") || reqLower.includes("aoa")) {
+        if (/\b(moa|aoa|memorandum|articles|draft)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("cheque") || reqLower.includes("bank") || reqLower.includes("passbook")) {
+        if (/\b(cheque|bank|passbook|statement)\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("gst")) {
+        if (/\bgst\b/.test(combined)) isMatch = true;
+      } else if (reqLower.includes("deed") || reqLower.includes("declaration")) {
+        if (/\b(deed|declaration|agreement)\b/.test(combined)) isMatch = true;
+      }
+
+      if (isMatch) {
+        matches[reqDoc] = doc;
+        claimedDocIds.add(doc.id);
+        break;
+      }
+    }
+  }
+
+  const unclaimedDocs = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));
+  return { matches, unclaimedDocs };
+}
+
 function formatDateTime(dateStr?: string | null) {
   if (!dateStr) return "—";
   const s = String(dateStr).trim();
@@ -670,71 +897,185 @@ function AdminDetailDialog({
                 );
               })()}
 
-              {/* Documents */}
-              <div className="space-y-3 pt-2 border-t border-border">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Uploaded Documents ({docs.length})
-                </h4>
-                {docs.length > 0 ? (
-                  <ul className="grid grid-cols-1 gap-2.5">
-                    {docs.map((doc) => {
-                      const parsed = parseDocLabel(doc.name);
-                      return (
-                        <li key={doc.id} className="rounded-xl border border-border/70 bg-card p-3.5 shadow-sm space-y-2.5">
-                          {/* Required Document Name Header */}
-                          <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider min-w-0 truncate">
-                              <FileText className="size-3 shrink-0" />
-                              {parsed.label}
-                            </span>
-                            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                              <span className="size-1.5 rounded-full bg-emerald-500" />
-                              Submitted by user
-                            </span>
-                          </div>
+              {/* Documents Section with Required Documents Checklist */}
+              {(() => {
+                const requiredDocs = r.requiredDocuments && r.requiredDocuments.length > 0
+                  ? r.requiredDocuments
+                  : getRequiredDocumentsForRequest(r);
+                const uploadedList = r.documents || [];
+                const { matches, unclaimedDocs } = computeDocumentChecklistMatches(requiredDocs, uploadedList);
+                const uploadedCount = Object.keys(matches).length;
+                const progressPct = requiredDocs.length > 0 ? Math.round((uploadedCount / requiredDocs.length) * 100) : 0;
 
-                          {/* Uploaded File Details Below Document Name */}
-                          <div className="flex items-center justify-between gap-3 pt-0.5">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
-                                <FileText className="size-4 text-muted-foreground" />
-                              </div>
-                              <div className="min-w-0 space-y-0.5">
-                                <div className="font-semibold text-xs text-foreground truncate">{parsed.fileName}</div>
-                                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                                  {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
-                                  {doc.sizeBytes ? <span>·</span> : null}
-                                  <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                return (
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    {/* Header with Upload count and Progress */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <FileText className="size-3.5 text-primary" /> Application Documents Checklist
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Track uploaded vs pending documents required for this registration.
+                        </p>
+                      </div>
+                      <span className="mono text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md">
+                        {uploadedCount} / {requiredDocs.length} Uploaded
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    {requiredDocs.length > 0 && (
+                      <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-foreground">
+                            Document Verification Progress ({uploadedCount} of {requiredDocs.length} uploaded)
+                          </span>
+                          <span className="mono text-[11px] font-bold text-primary">{progressPct}% Complete</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-primary to-emerald-500 h-full transition-all duration-500 rounded-full"
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Required Documents Checklist */}
+                    {requiredDocs.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Required Documents Checklist
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {requiredDocs.map((reqDoc: string, idx: number) => {
+                            const matchedDoc = matches[reqDoc];
+                            const isUploaded = !!matchedDoc;
+                            const parsedMatch = matchedDoc ? parseDocLabel(matchedDoc.name) : null;
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`p-3 rounded-xl border transition-colors flex items-center justify-between gap-3 ${
+                                  isUploaded
+                                    ? "bg-emerald-500/[0.04] border-emerald-500/30"
+                                    : "bg-amber-500/[0.03] border-amber-500/30"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span
+                                    className={`size-6 rounded-full grid place-items-center shrink-0 text-xs ${
+                                      isUploaded
+                                        ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold"
+                                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold"
+                                    }`}
+                                  >
+                                    {isUploaded ? "✓" : idx + 1}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-semibold text-foreground truncate">{reqDoc}</div>
+                                    {isUploaded ? (
+                                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mt-0.5 truncate">
+                                        <span className="font-medium truncate">{parsedMatch?.fileName || matchedDoc.name}</span>
+                                        {matchedDoc.sizeBytes ? <span>· {(matchedDoc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
+                                        <span>·</span>
+                                        <span>Uploaded {formatDateTime(matchedDoc.createdAt)}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                                        Pending upload by applicant
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {isUploaded ? (
+                                    <>
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
+                                        Uploaded
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => viewDoc(matchedDoc.storagePath)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground cursor-pointer"
+                                      >
+                                        <Eye className="size-3" /> View
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => downloadDoc(matchedDoc)}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                                      >
+                                        <Download className="size-3" /> Download
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                                      Pending
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => viewDoc(doc.storagePath)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground"
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Additional Unclaimed Uploaded Documents */}
+                    {unclaimedDocs.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Additional Uploaded Documents ({unclaimedDocs.length})
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {unclaimedDocs.map((doc: any) => {
+                            const parsed = parseDocLabel(doc.name);
+                            return (
+                              <div
+                                key={doc.id}
+                                className="p-3 rounded-xl border border-border/70 bg-card flex items-center justify-between gap-3 shadow-sm"
                               >
-                                <Eye className="size-3" /> View
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => downloadDoc(doc)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors"
-                              >
-                                <Download className="size-3" /> Download
-                              </button>
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="p-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-                    No files were uploaded for this registration.
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="size-8 rounded-lg bg-muted grid place-items-center shrink-0">
+                                    <FileText className="size-4 text-muted-foreground" />
+                                  </div>
+                                  <div className="min-w-0 space-y-0.5">
+                                    <div className="font-semibold text-xs text-foreground truncate">{parsed.fileName}</div>
+                                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                      {doc.sizeBytes ? <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span> : null}
+                                      {doc.sizeBytes ? <span>·</span> : null}
+                                      <span>Uploaded {formatDateTime(doc.createdAt)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => viewDoc(doc.storagePath)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-primary/10 hover:text-primary transition-colors text-foreground cursor-pointer"
+                                  >
+                                    <Eye className="size-3" /> View
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadDoc(doc)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                                  >
+                                    <Download className="size-3" /> Download
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </>
           )}
         </div>
