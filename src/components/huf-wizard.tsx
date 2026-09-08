@@ -746,11 +746,11 @@ export function HufStepperWizard({
         authority={authority}
         form="HUF Deed & PAN"
         documents={HUF_DOCUMENTS}
+        initialName={kartaName}
         initialEmail={applicantEmail}
         initialPhone={applicantMobile}
         formData={{
           hufName,
-          name1: hufName,
           kartaName,
           applicantMobile,
           applicantEmail,

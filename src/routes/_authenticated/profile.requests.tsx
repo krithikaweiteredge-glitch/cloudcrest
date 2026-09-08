@@ -591,15 +591,19 @@ function RegistrationDetailDialog({
                   {fd.partnershipType && <DetailLine icon={FileText} label="Partnership Type" value={String(fd.partnershipType)} />}
                   {fd.trustType && <DetailLine icon={FileText} label="Trust Type" value={String(fd.trustType)} />}
                   {fd.societyType && <DetailLine icon={FileText} label="Society Type" value={String(fd.societyType)} />}
+                  {fd.hufName && <DetailLine icon={Building2} label="HUF Name" value={String(fd.hufName)} />}
+                  {fd.kartaName && <DetailLine icon={User} label="Karta Name" value={String(fd.kartaName)} />}
                   {fd.enterpriseName && <DetailLine icon={Building2} label="Enterprise Name" value={String(fd.enterpriseName)} />}
                   {fd.firmName && <DetailLine icon={Building2} label="Firm Name" value={String(fd.firmName)} />}
                   {fd.legalName && <DetailLine icon={Building2} label="Legal Entity Name" value={String(fd.legalName)} />}
                   {fd.societyName && <DetailLine icon={Building2} label="Society Name" value={String(fd.societyName)} />}
                   {fd.trustName && <DetailLine icon={Building2} label="Trust Name" value={String(fd.trustName)} />}
+                  {fd.ngoName && <DetailLine icon={Building2} label="NGO / VO Name" value={String(fd.ngoName)} />}
                   {fd.citizenshipLabel && <DetailLine icon={User} label="Applicant Type" value={String(fd.citizenshipLabel)} />}
-                  {(fd.name1 || fd.name2 || fd.suffix || fd.llpType || fd.entityClass) ? (
+                  {/* Proposed Name only belongs to Company and LLP reserve-name filings */}
+                  {(fd.suffix || fd.llpType || fd.entityClass || request.serviceSlug === "company" || request.serviceSlug === "llp") && (fd.name1 || request.businessName) ? (
                     <DetailLine icon={Building2} label="Proposed Name 1" value={fd.name1 || request.businessName || "—"} />
-                  ) : (request.businessName && !request.serviceSlug?.startsWith("dsc") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName) ? (
+                  ) : (request.businessName && !request.serviceSlug?.startsWith("dsc") && !request.serviceSlug?.startsWith("huf") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName && !fd.hufName) ? (
                     <DetailLine icon={Building2} label="Business / Entity Name" value={request.businessName} />
                   ) : null}
                   {fd.name2 && <DetailLine icon={Building2} label="Proposed Name 2" value={String(fd.name2)} />}

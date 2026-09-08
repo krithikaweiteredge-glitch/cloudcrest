@@ -567,15 +567,19 @@ function AdminDetailDialog({
                     {fd.partnershipType && <DetailRow icon={FileText} label="Partnership Type" value={String(fd.partnershipType)} />}
                     {fd.trustType && <DetailRow icon={FileText} label="Trust Type" value={String(fd.trustType)} />}
                     {fd.societyType && <DetailRow icon={FileText} label="Society Type" value={String(fd.societyType)} />}
+                    {fd.hufName && <DetailRow icon={Building2} label="HUF Name" value={String(fd.hufName)} />}
+                    {fd.kartaName && <DetailRow icon={User} label="Karta Name" value={String(fd.kartaName)} />}
                     {fd.enterpriseName && <DetailRow icon={Building2} label="Enterprise Name" value={String(fd.enterpriseName)} />}
                     {fd.firmName && <DetailRow icon={Building2} label="Firm Name" value={String(fd.firmName)} />}
                     {fd.legalName && <DetailRow icon={Building2} label="Legal Entity Name" value={String(fd.legalName)} />}
                     {fd.societyName && <DetailRow icon={Building2} label="Society Name" value={String(fd.societyName)} />}
                     {fd.trustName && <DetailRow icon={Building2} label="Trust Name" value={String(fd.trustName)} />}
+                    {fd.ngoName && <DetailRow icon={Building2} label="NGO / VO Name" value={String(fd.ngoName)} />}
                     {fd.citizenshipLabel && <DetailRow icon={User} label="Applicant Type" value={String(fd.citizenshipLabel)} />}
-                    {(fd.name1 || fd.name2 || fd.suffix || fd.llpType || fd.entityClass) ? (
+                    {/* Proposed Name only belongs to Company and LLP reserve-name filings */}
+                    {(fd.suffix || fd.llpType || fd.entityClass || r.serviceSlug === "company" || r.serviceSlug === "llp") && (fd.name1 || r.businessName) ? (
                       <DetailRow icon={Building2} label="Proposed Name" value={fd.name1 || r.businessName || "—"} />
-                    ) : (r.businessName && !r.serviceSlug?.startsWith("dsc") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName) ? (
+                    ) : (r.businessName && !r.serviceSlug?.startsWith("dsc") && !r.serviceSlug?.startsWith("huf") && !fd.enterpriseName && !fd.firmName && !fd.legalName && !fd.societyName && !fd.trustName && !fd.hufName) ? (
                       <DetailRow icon={Building2} label="Business / Entity Name" value={r.businessName} />
                     ) : null}
                     {fd.name2 && <DetailRow icon={Building2} label="Alternate Name" value={String(fd.name2)} />}
