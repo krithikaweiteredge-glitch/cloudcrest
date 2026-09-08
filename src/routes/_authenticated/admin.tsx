@@ -302,69 +302,24 @@ function AdminPage() {
 function parseDocLabel(name: string): { label: string; fileName: string } {
   if (!name) return { label: "Uploaded Document", fileName: "document" };
 
-  // 1. Remove all non-ASCII / corrupted symbols (like 'â   ', 'â', etc.) from the whole string
-  const sanitized = name
-    .replace(/â[^\s]*/g, " - ")
-    .replace(/[^\x20-\x7E]/g, " - ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const trimmed = name.trim();
 
-  // 2. Separate into rawLabel and rawFileName by separator: ' __FILE__ ', ' :: ', ' : ', ' - '
-  let rawLabel = "";
-  let rawFileName = sanitized;
-
-  const separators = [" __FILE__ ", " :: ", " : ", " - "];
-  for (const sep of separators) {
-    if (sanitized.includes(sep)) {
-      const idx = sanitized.indexOf(sep);
-      rawLabel = sanitized.substring(0, idx).trim();
-      rawFileName = sanitized.substring(idx + sep.length).trim();
-      break;
-    }
+  // Split on explicit backend/vault label delimiters (e.g. "Label :: filename.ext")
+  if (trimmed.includes(" :: ")) {
+    const parts = trimmed.split(" :: ");
+    const label = parts[0].trim();
+    const fileName = parts.slice(1).join(" :: ").trim();
+    return { label: label || "Uploaded Document", fileName: fileName || name };
   }
 
-  if (!rawLabel) {
-    rawLabel = "Uploaded Document";
+  if (trimmed.includes(" __FILE__ ")) {
+    const parts = trimmed.split(" __FILE__ ");
+    const label = parts[0].trim();
+    const fileName = parts.slice(1).join(" __FILE__ ").trim();
+    return { label: label || "Uploaded Document", fileName: fileName || name };
   }
 
-  // 3. Map rawLabel to customer-facing document title
-  let label = rawLabel;
-  const lowerLabel = rawLabel.toLowerCase();
-
-  if (lowerLabel.includes("karta")) {
-    label = "PAN of Karta";
-  } else if (lowerLabel === "moa" || lowerLabel.includes("trust deed") || lowerLabel.includes("moa")) {
-    label = "Trust Deed / MoA";
-  } else if (lowerLabel === "aoa" || lowerLabel.includes("aoa")) {
-    label = "AoA";
-  } else if (lowerLabel.includes("member")) {
-    label = "Members List";
-  } else if (lowerLabel.includes("pan")) {
-    label = "PAN Card";
-  } else if (lowerLabel.includes("aadhaar") || lowerLabel.includes("adhar")) {
-    label = "Aadhaar Card";
-  } else if (lowerLabel.includes("passport")) {
-    label = "Passport";
-  } else if (lowerLabel.includes("voter")) {
-    label = "Voter ID";
-  } else if (lowerLabel.includes("bank") || lowerLabel.includes("statement")) {
-    label = "Bank Statement";
-  } else if (lowerLabel.includes("utility") || lowerLabel.includes("bill") || lowerLabel.includes("electricity")) {
-    label = "Utility Bill / Address Proof";
-  } else if (lowerLabel.includes("photo")) {
-    label = "Passport Photo";
-  } else if (lowerLabel.includes("deed")) {
-    label = "Trust Deed / Agreement";
-  } else if (lowerLabel.includes("certificate") || lowerLabel.includes("cert")) {
-    label = "Certificate";
-  } else if (label.length > 0) {
-    label = label.charAt(0).toUpperCase() + label.slice(1);
-  }
-
-  let fileName = rawFileName.replace(/^[-\s]+|[-\s]+$/g, "").trim();
-  if (!fileName) fileName = "Uploaded File";
-
-  return { label, fileName };
+  return { label: trimmed, fileName: trimmed };
 }
 
 function getRequiredDocumentsForRequest(request: any): string[] {
@@ -527,15 +482,16 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
 
   // Pass 1: Explicit Label Matches
   for (const reqDoc of requiredDocs) {
-    const reqLower = reqDoc.toLowerCase();
+    const reqNorm = reqDoc.toLowerCase().replace(/[^a-z0-9]/g, "");
     for (const doc of uploadedDocs) {
       if (claimedDocIds.has(doc.id)) continue;
       const parsed = parseDocLabel(doc.name);
-      const parsedLabelLower = parsed.label.toLowerCase();
+      const parsedNorm = parsed.label.toLowerCase().replace(/[^a-z0-9]/g, "");
 
       if (
-        parsedLabelLower !== "uploaded document" &&
-        (parsedLabelLower === reqLower || parsedLabelLower.includes(reqLower) || reqLower.includes(parsedLabelLower))
+        parsed.label !== "Uploaded Document" &&
+        parsedNorm.length >= 3 &&
+        (parsedNorm === reqNorm || reqNorm.includes(parsedNorm) || parsedNorm.includes(reqNorm))
       ) {
         matches[reqDoc] = doc;
         claimedDocIds.add(doc.id);
@@ -544,7 +500,7 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
     }
   }
 
-  // Pass 2: Strict Keyword Matching for unclaimed required docs
+  // Pass 2: Keyword Matching for unclaimed required docs
   for (const reqDoc of requiredDocs) {
     if (matches[reqDoc]) continue;
     const reqLower = reqDoc.toLowerCase();
@@ -558,28 +514,34 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
 
       let isMatch = false;
 
-      if (reqLower.includes("pan")) {
-        if (/\bpan\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("aadhaar") || reqLower.includes("photo id")) {
-        if (/\b(aadhaar|adhar|voter|passport|identity)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("photograph") || reqLower.includes("photo")) {
-        if (/\b(photograph|photo|pic|picture)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("address proof")) {
-        if (/\b(address|utility|bill|electricity|water|gas)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("office") || reqLower.includes("premises")) {
-        if (/\b(office|premises|property|tax)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("rent") || reqLower.includes("noc")) {
-        if (/\b(rent|lease|noc|agreement)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("dsc") || reqLower.includes("signature")) {
-        if (/\b(dsc|signature|digital)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("moa") || reqLower.includes("aoa")) {
-        if (/\b(moa|aoa|memorandum|articles|draft)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("cheque") || reqLower.includes("bank") || reqLower.includes("passbook")) {
-        if (/\b(cheque|bank|passbook|statement)\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("gst")) {
-        if (/\bgst\b/.test(combined)) isMatch = true;
-      } else if (reqLower.includes("deed") || reqLower.includes("declaration")) {
-        if (/\b(deed|declaration|agreement)\b/.test(combined)) isMatch = true;
+      if (reqLower.includes("pan") && /\bpan\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("aadhaar") || reqLower.includes("adhar") || reqLower.includes("photo id") || reqLower.includes("identity")) && /\b(aadhaar|adhar|voter|passport|identity|id)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("photograph") || reqLower.includes("photo") || reqLower.includes("passport-size")) && /\b(photograph|photo|pic|picture|passport)\b/.test(combined)) {
+        isMatch = true;
+      } else if (reqLower.includes("address proof") && /\b(address|utility|bill|electricity|water|gas)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("office") || reqLower.includes("premises") || reqLower.includes("ownership")) && /\b(office|premises|property|tax|electricity|utility)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("rent") || reqLower.includes("noc")) && /\b(rent|lease|noc|agreement|owner)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("dsc") || reqLower.includes("signature")) && /\b(dsc|signature|digital)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("moa") || reqLower.includes("aoa")) && /\b(moa|aoa|memorandum|articles|draft)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("cheque") || reqLower.includes("bank") || reqLower.includes("passbook")) && /\b(cheque|bank|passbook|statement)\b/.test(combined)) {
+        isMatch = true;
+      } else if (reqLower.includes("gst") && /\bgst\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("deed") || reqLower.includes("declaration") || reqLower.includes("trust deed")) && /\b(deed|declaration|agreement|trust|stamp)\b/.test(combined)) {
+        isMatch = true;
+      } else if (reqLower.includes("witness") && /\bwitness\b/.test(combined)) {
+        isMatch = true;
+      } else if (reqLower.includes("corpus") && /\b(corpus|valuation|property|cash|bank)\b/.test(combined)) {
+        isMatch = true;
+      } else if ((reqLower.includes("title") || reqLower.includes("valuation")) && /\b(title|valuation|property)\b/.test(combined)) {
+        isMatch = true;
       }
 
       if (isMatch) {
@@ -588,6 +550,12 @@ function computeDocumentChecklistMatches(requiredDocs: string[], uploadedDocs: a
         break;
       }
     }
+  }
+
+  // Pass 3: If only 1 required document and 1 uploaded document, pair them up
+  if (requiredDocs.length === 1 && uploadedDocs.length === 1 && !matches[requiredDocs[0]]) {
+    matches[requiredDocs[0]] = uploadedDocs[0];
+    claimedDocIds.add(uploadedDocs[0].id);
   }
 
   const unclaimedDocs = uploadedDocs.filter((doc) => !claimedDocIds.has(doc.id));

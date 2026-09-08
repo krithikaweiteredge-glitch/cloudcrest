@@ -13,38 +13,25 @@ export const Route = createFileRoute("/_authenticated/profile/documents")({
 
 function parseDocLabel(name: string): { label: string; fileName: string } {
   if (!name) return { label: "Uploaded Document", fileName: "document" };
-  const sanitized = name
-    .replace(/â[^\s]*/g, " - ")
-    .replace(/[^\x20-\x7E]/g, " - ")
-    .replace(/\s+/g, " ")
-    .trim();
 
-  let rawLabel = "";
-  let rawFileName = sanitized;
+  const trimmed = name.trim();
 
-  if (sanitized.includes(" __FILE__ ")) {
-    const parts = sanitized.split(" __FILE__ ");
-    rawLabel = parts[0];
-    rawFileName = parts.slice(1).join(" __FILE__ ");
-  } else if (sanitized.includes(" :: ")) {
-    const parts = sanitized.split(" :: ");
-    rawLabel = parts[0];
-    rawFileName = parts.slice(1).join(" :: ");
-  } else if (sanitized.includes(" : ")) {
-    const parts = sanitized.split(" : ");
-    rawLabel = parts[0];
-    rawFileName = parts.slice(1).join(" : ");
-  } else if (sanitized.includes(" - ")) {
-    const parts = sanitized.split(" - ");
-    if (parts.length > 1 && parts[0].length < 40) {
-      rawLabel = parts[0];
-      rawFileName = parts.slice(1).join(" - ");
-    }
+  // Split on explicit backend/vault label delimiters (e.g. "Label :: filename.ext")
+  if (trimmed.includes(" :: ")) {
+    const parts = trimmed.split(" :: ");
+    const label = parts[0].trim();
+    const fileName = parts.slice(1).join(" :: ").trim();
+    return { label: label || "Uploaded Document", fileName: fileName || name };
   }
 
-  let label = rawLabel.trim() || "Uploaded Document";
-  let fileName = rawFileName.replace(/^[-\s]+|[-\s]+$/g, "").trim() || "Uploaded File";
-  return { label, fileName };
+  if (trimmed.includes(" __FILE__ ")) {
+    const parts = trimmed.split(" __FILE__ ");
+    const label = parts[0].trim();
+    const fileName = parts.slice(1).join(" __FILE__ ").trim();
+    return { label: label || "Uploaded Document", fileName: fileName || name };
+  }
+
+  return { label: trimmed, fileName: trimmed };
 }
 
 function getRequiredDocumentsForRequest(request: any): string[] {
