@@ -517,7 +517,11 @@ export function DscWizard({
             { label: "Class", value: "Class 3 (Individual / Org)" },
             ...(applicantName ? [{ label: "Applicant", value: applicantName }] : []),
           ]}
-          professionalFee={fees.lines[0]?.amount || selectedType.price}
+          professionalFee={
+            fees.lines.find((l) => /professional/i.test(l.label))?.amount ||
+            fees.lines[0]?.amount ||
+            selectedType.price
+          }
           gstPercent={18}
           formNo="CCA Class 3"
           certificates={DSC_CERTIFICATES}

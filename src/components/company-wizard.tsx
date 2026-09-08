@@ -1333,14 +1333,22 @@ export function CompanyWizard({ initialName }: { initialName?: string }) {
                 <div className="text-sm font-semibold text-foreground mt-0.5">{selected.title}</div>
               </div>
 
-              {typeof selected.professionalFee === "number" && selected.professionalFee > 0 && (
-                <div className="pt-2.5 border-t border-border/60">
-                  <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
-                  <div className="text-xs font-semibold mono text-primary mt-0.5">
-                    ₹{selected.professionalFee.toLocaleString("en-IN")} + 18% GST
+              {(() => {
+                const proFee =
+                  fees.lines.find((l) => /professional/i.test(l.label))?.amount ||
+                  (typeof selected.professionalFee === "number" && selected.professionalFee > 0
+                    ? selected.professionalFee
+                    : undefined);
+                if (typeof proFee !== "number" || proFee <= 0) return null;
+                return (
+                  <div className="pt-2.5 border-t border-border/60">
+                    <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+                    <div className="text-xs font-semibold mono text-primary mt-0.5">
+                      ₹{proFee.toLocaleString("en-IN")} + 18% GST
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">
                 Form · {selected.form}

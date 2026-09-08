@@ -665,11 +665,13 @@ function ServiceDialog({
         .filter((l) => l.label.trim())
         .map((l) => ({ label: l.label.trim(), amount: Number(l.amount) || 0 }));
       const feeTotal = cleanedFeeLines.reduce((sum, l) => sum + l.amount, 0);
+      const profFeeAmount =
+        cleanedFeeLines.find((l) => /professional/i.test(l.label))?.amount ?? feeTotal;
 
       const payload = {
         name,
         description: tabsList.find((t) => t.id === "about")?.content || "",
-        professionalFee: String(feeTotal),
+        professionalFee: String(profFeeAmount),
         govtFee: "0",
         gstPercent: "0",
         active,

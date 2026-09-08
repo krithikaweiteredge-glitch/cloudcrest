@@ -247,11 +247,12 @@ export function TrustStepperWizard({
 
   const total = fees.total;
   const professionalFee =
-    typeof activeService?.professionalFee === "number" && activeService.professionalFee > 0
+    fees.lines.find((l) => l.label.toLowerCase() === "professional fee")?.amount ||
+    fees.lines.find((l) => l.label.toLowerCase().startsWith("professional"))?.amount ||
+    fees.lines.find((l) => l.label.toLowerCase().includes("professional"))?.amount ||
+    (typeof activeService?.professionalFee === "number" && activeService.professionalFee > 0
       ? activeService.professionalFee
-      : fees.lines.find((l) => l.label.toLowerCase() === "professional fee")?.amount ||
-        fees.lines.find((l) => l.label.toLowerCase().startsWith("professional"))?.amount ||
-        5999;
+      : 5999);
 
   // Sync settlorName
   useEffect(() => {

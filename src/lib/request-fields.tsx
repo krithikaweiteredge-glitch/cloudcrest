@@ -80,6 +80,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
   dpin: "DPIN",
   llp: "LLP",
   huf: "HUF",
+  total: "Total Estimated Fee",
   dsc: "DSC",
 };
 
@@ -108,13 +109,13 @@ export function formatFieldValue(key: string, value: unknown): string {
   }
   const k = key.toLowerCase();
   if (typeof value === "number") {
-    if (k.includes("capital") || k === "price" || k === "corpusvalue") {
+    if (k.includes("capital") || k === "price" || k === "corpusvalue" || k === "total" || k.includes("fee")) {
       return `₹${value.toLocaleString("en-IN")}`;
     }
     return String(value);
   }
   if (typeof value === "string") {
-    if ((k.includes("capital") || k === "price" || k === "corpusvalue") && !isNaN(Number(value)) && Number(value) > 0) {
+    if ((k.includes("capital") || k === "price" || k === "corpusvalue" || k === "total" || k.includes("fee")) && !isNaN(Number(value)) && Number(value) > 0) {
       return `₹${Number(value).toLocaleString("en-IN")}`;
     }
     return value;
