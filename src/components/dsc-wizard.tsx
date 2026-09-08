@@ -487,18 +487,6 @@ export function DscWizard({
                         <dd className="font-semibold text-foreground mt-0.5">{applicantEmail || "—"}</dd>
                       </div>
 
-                      <div className="sm:col-span-2 rounded-lg border border-border/70 bg-panel/40 p-3">
-                        <dt className="text-muted-foreground mb-1.5">Documents to Upload Upon Submission</dt>
-                        <dd className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                          {activeDocuments.map((doc) => (
-                            <span key={doc} className="flex items-center gap-1.5 text-[11px] text-foreground/90">
-                              <span className="size-1 rounded-full bg-success" />
-                              {doc}
-                            </span>
-                          ))}
-                        </dd>
-                      </div>
-
                       <div className="sm:col-span-2 rounded-lg border border-primary/25 bg-primary/[0.04] p-3.5 flex justify-between items-center">
                         <div>
                           <dt className="text-muted-foreground font-medium">Total Estimated Cost</dt>
