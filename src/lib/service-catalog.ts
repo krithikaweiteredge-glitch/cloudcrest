@@ -23,6 +23,8 @@ export type CatalogService = {
   actsRulesPdfs: ActsRulePdf[];
   /** Custom fee lines authored by the admin. Empty means "use the standard three". */
   feeLines: FeeLine[];
+  /** Per-type wizard rules JSON (company variants, business conversions). Null when unset. */
+  wizardRules?: string | null;
   professionalFee?: number;
   govtFee?: number;
   gstPercent?: number;
@@ -82,6 +84,7 @@ type ServiceBySlugResponse = {
     tabs: string | null;
     actsRulesPdfs: string | null;
     feeLines?: string | null;
+    wizardRules?: string | null;
     // `decimal` columns come back from pg as strings, and are absent entirely
     // for signed-out visitors.
     professionalFee?: string | number | null;
@@ -120,6 +123,7 @@ function toCatalogService(data: ServiceBySlugResponse, slug: string): CatalogSer
     tabs,
     actsRulesPdfs: parseJsonArray<ActsRulePdf>(s.actsRulesPdfs),
     feeLines: parseJsonArray<FeeLine>(s.feeLines),
+    wizardRules: s.wizardRules ?? null,
     documents: (data.documents ?? []).map((d) => d.name).filter(Boolean),
     professionalFee: toFee(s.professionalFee),
     govtFee: toFee(s.govtFee),
@@ -220,6 +224,7 @@ export async function fetchServiceChain(slugs: string[]): Promise<CatalogService
       tabs: hasTabs ? cur.tabs : merged.tabs,
       actsRulesPdfs: hasPdfs ? cur.actsRulesPdfs : merged.actsRulesPdfs,
       feeLines: hasFeeLines ? cur.feeLines : merged.feeLines,
+      wizardRules: cur.wizardRules ?? merged.wizardRules,
       professionalFee: hasFeeLines || hasProfFee ? cur.professionalFee : merged.professionalFee,
       govtFee: hasFeeLines || hasGovtFee ? cur.govtFee : merged.govtFee,
       gstPercent: hasFeeLines || hasProfFee ? cur.gstPercent : merged.gstPercent,

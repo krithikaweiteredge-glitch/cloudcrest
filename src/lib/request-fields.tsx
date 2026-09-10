@@ -173,6 +173,17 @@ const LABEL_OVERRIDES: Record<string, string> = {
   authorisedphone: "Authorised Phone",
   email: "Email",
   phone: "Phone",
+  // Business conversions
+  conversiontype: "Conversion Type",
+  existingentityname: "Existing Company Name",
+  cin: "CIN of the Company",
+  currentshareholders: "Current Number of Shareholders",
+  currentdirectors: "Current Number of Directors",
+  proposedshareholders: "Proposed Number of Shareholders",
+  proposeddirectors: "Proposed Number of Directors",
+  designatedpartners: "Number of Designated Partners",
+  paidupcapital: "Paid-up Capital",
+  capitalcontribution: "Total Capital Contribution (As Per Books)",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */

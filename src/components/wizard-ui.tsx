@@ -388,7 +388,8 @@ export function WizardSidebar({
   certificates,
 }: {
   selection?: { label: string; value: string }[];
-  professionalFee?: number;
+  /** `null` = not priced yet in the catalog; the fee row is left out rather than quoting ₹0. */
+  professionalFee?: number | null;
   gstPercent?: number;
   formNo?: string;
   certificates?: string[];
@@ -404,12 +405,14 @@ export function WizardSidebar({
               <div className="text-sm font-semibold text-foreground mt-0.5">{s.value || "Not selected"}</div>
             </div>
           ))}
-          <div className="pt-2.5 border-t border-border/60">
-            <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
-            <div className="text-xs font-semibold mono text-primary mt-0.5">
-              ₹{professionalFee.toLocaleString("en-IN")} + {gstPercent}% GST
+          {professionalFee != null && (
+            <div className="pt-2.5 border-t border-border/60">
+              <div className="text-[11px] text-muted-foreground font-medium">Professional Fee</div>
+              <div className="text-xs font-semibold mono text-primary mt-0.5">
+                ₹{professionalFee.toLocaleString("en-IN")} + {gstPercent}% GST
+              </div>
             </div>
-          </div>
+          )}
           {formNo && (
             <div className="pt-2.5 border-t border-border/60 text-[10px] mono text-primary">
               Form · {formNo}

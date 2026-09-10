@@ -1,3 +1,4 @@
+import { ConversionModule } from "@/components/conversion-wizard";
 import { CompanyWizard } from "@/components/company-wizard";
 import { LlpWizard } from "@/components/llp-wizard";
 import { GstWizard } from "@/components/gst-wizard";
@@ -38,6 +39,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "lei") return <LeiModule initialName={initialName} />;
   if (slug === "rera") return <ReraModule initialName={initialName} />;
   if (slug === "dsc" || slug.startsWith("dsc-")) return <DscModule initialName={initialName} slug={slug} />;
+  if (slug.startsWith("conversion-")) return <ConversionModule slug={slug} initialName={initialName} />;
   if (DEPARTMENT_SLUGS.has(slug)) return <DepartmentPage slug={slug} />;
   return <ServiceDetailPage slug={slug} />;
 }

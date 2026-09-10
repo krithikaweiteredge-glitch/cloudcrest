@@ -1,3 +1,4 @@
+import { resolveConversionRules, serializeConversionRules } from "@/lib/conversion-rules";
 import { useState } from "react";
 import { assetUrl } from "@/lib/file-url";
 import { resolveWizardRules } from "@/lib/company-types";
@@ -564,6 +565,18 @@ function ServiceDialog({
   // Variant card tags (e.g. "Most common", "Full ITC") and the "Popular" badge.
   const [wizTags, setWizTags] = useState(effectiveTags.join(", "));
   const [wizPopular, setWizPopular] = useState(effectivePopular);
+  // Business-conversion stepper rules (conversion-* services): the eligibility
+  // banner, the statutory limits it validates and the notes on individual steps.
+  const initialConversion = resolveConversionRules(svc?.wizardRules);
+  const optCount = (n: number | null) => (n == null ? "" : String(n));
+  const [convEligibility, setConvEligibility] = useState(initialConversion.eligibility);
+  const [convMinShr, setConvMinShr] = useState(optCount(initialConversion.minShareholders));
+  const [convMaxShr, setConvMaxShr] = useState(optCount(initialConversion.maxShareholders));
+  const [convMinDir, setConvMinDir] = useState(optCount(initialConversion.minDirectors));
+  const [convMinPartners, setConvMinPartners] = useState(optCount(initialConversion.minPartners));
+  const [convNoteName, setConvNoteName] = useState(initialConversion.notes.name);
+  const [convNoteMembers, setConvNoteMembers] = useState(initialConversion.notes.members);
+  const [convNoteCapital, setConvNoteCapital] = useState(initialConversion.notes.capital);
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
@@ -702,7 +715,20 @@ function ServiceDialog({
                   }
                 : {}),
             })
-          : undefined,
+          : isConversionService
+            ? serializeConversionRules({
+                eligibility: convEligibility.trim(),
+                minShareholders: convMinShr ? Number(convMinShr) : null,
+                maxShareholders: convMaxShr ? Number(convMaxShr) : null,
+                minDirectors: convMinDir ? Number(convMinDir) : null,
+                minPartners: convMinPartners ? Number(convMinPartners) : null,
+                notes: {
+                  name: convNoteName.trim(),
+                  members: convNoteMembers.trim(),
+                  capital: convNoteCapital.trim(),
+                },
+              })
+            : undefined,
       };
       if (state.mode === "create") {
         await call("/services", "POST", { ...payload, subcategoryId: state.subcategoryId });
@@ -726,6 +752,7 @@ function ServiceDialog({
   const isLauncherVariant = [...LAUNCHER_SLUGS].some((l) => currentSlug.startsWith(l + "-"));
   const isWizardService = isWizardLauncher || isWizardVariant;
   const isCompanyVariant = currentSlug.startsWith("company-");
+  const isConversionService = currentSlug.startsWith("conversion-");
 
   return (
     <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose} wide>
@@ -812,6 +839,58 @@ function ServiceDialog({
             </div>
           )}
         </div>
+        )}
+
+        {isConversionService && (
+          <div className="pt-3 mt-1 border-t border-border space-y-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-border pb-2">
+              Conversion Stepper Rules
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              What the business-conversion stepper shows and checks for this type. Leave a field blank to show
+              nothing there or skip that check. The document checklist and fees are set in their own sections.
+            </p>
+            <Field label="Eligibility & rules — shown above the stepper form (one per line)">
+              <textarea
+                rows={4}
+                value={convEligibility}
+                onChange={(e) => setConvEligibility(e.target.value)}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+              />
+            </Field>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {([
+                ["Min. shareholders", convMinShr, setConvMinShr],
+                ["Max. shareholders", convMaxShr, setConvMaxShr],
+                ["Min. directors", convMinDir, setConvMinDir],
+                ["Min. partners", convMinPartners, setConvMinPartners],
+              ] as const).map(([label, value, set]) => (
+                <Field key={label} label={label}>
+                  <input
+                    value={value}
+                    onChange={(e) => set(e.target.value.replace(/[^0-9]/g, ""))}
+                    inputMode="numeric"
+                    placeholder="—"
+                    className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
+                  />
+                </Field>
+              ))}
+            </div>
+            {([
+              ["Note on the Name step", convNoteName, setConvNoteName],
+              ["Note on the Members / Partners step", convNoteMembers, setConvNoteMembers],
+              ["Note on the Capital step", convNoteCapital, setConvNoteCapital],
+            ] as const).map(([label, value, set]) => (
+              <Field key={label} label={label}>
+                <textarea
+                  rows={2}
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                />
+              </Field>
+            ))}
+          </div>
         )}
 
         {isLauncherVariant && (
