@@ -753,6 +753,17 @@ function ServiceDialog({
   const isWizardService = isWizardLauncher || isWizardVariant;
   const isCompanyVariant = currentSlug.startsWith("company-");
   const isConversionService = currentSlug.startsWith("conversion-");
+  // A closure with types (Trust, Section 8) shows its own About above the type
+  // choice — e.g. why Section 8 has two routes — so that text stays editable
+  // here even though the page tabs themselves live on the types.
+  const isTypePickerParent = hasVariants && currentSlug.startsWith("closure-");
+  const pickerIntro = tabsList.find((t) => t.id === "about")?.content ?? "";
+  const setPickerIntro = (value: string) =>
+    setTabsList((prev) =>
+      prev.some((t) => t.id === "about")
+        ? prev.map((t) => (t.id === "about" ? { ...t, content: value } : t))
+        : [{ id: "about", title: "About", content: value, visible: true }, ...prev],
+    );
 
   return (
     <Shell title={state.mode === "create" ? "New service" : "Edit service"} onClose={onClose} wide>
@@ -1033,6 +1044,19 @@ function ServiceDialog({
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1.5">
               Service Page Tabs
             </div>
+            {isTypePickerParent && (
+              <div className="mb-3">
+                <Field label="Intro shown above the type choice">
+                  <textarea
+                    rows={4}
+                    value={pickerIntro}
+                    onChange={(e) => setPickerIntro(e.target.value)}
+                    placeholder="Explain the types the customer is choosing between"
+                    className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus"
+                  />
+                </Field>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border bg-muted/20 p-3 leading-relaxed">
               {hasVariants ? (
                 <>

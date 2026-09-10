@@ -184,6 +184,12 @@ const LABEL_OVERRIDES: Record<string, string> = {
   designatedpartners: "Number of Designated Partners",
   paidupcapital: "Paid-up Capital",
   capitalcontribution: "Total Capital Contribution (As Per Books)",
+  // Business closures
+  closuretype: "Closure Type",
+  entityname: "Name of the Entity",
+  llpin: "LLPIN (LLP Identification Number)",
+  contactperson: "Primary Contact Person Name",
+  reasonforclosure: "Reason for Closure",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
