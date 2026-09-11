@@ -43,7 +43,9 @@ export function ServiceDetailPage({
   backLabel?: string;
   onStartApplication?: () => void;
 }) {
-  const { service, loading, error } = useCatalogService(slug);
+  // A failed fetch resolves to `service: null`, so the not-found branch below
+  // covers errors too.
+  const { service, loading } = useCatalogService(slug);
 
   if (loading) {
     return (
@@ -53,7 +55,7 @@ export function ServiceDetailPage({
     );
   }
 
-  if (error || !service) {
+  if (!service) {
     return (
       <div className="py-24 text-center max-w-md mx-auto px-6">
         <h2 className="text-lg font-semibold mb-2">Service not found</h2>

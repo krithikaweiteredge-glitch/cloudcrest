@@ -113,7 +113,7 @@ export function AdminCatalogPanel() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [serviceDialog, setServiceDialog] = useState<
-    | { mode: "create"; subcategoryId: number }
+    | { mode: "create"; subcategoryId: number; parentSlug?: string }
     | { mode: "edit"; service: any; hasVariants: boolean }
     | null
   >(null);

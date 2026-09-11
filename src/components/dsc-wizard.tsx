@@ -336,7 +336,7 @@ export function DscWizard({
     <div>
       <WizardHero
         title="Digital Signature Certificate (DSC)"
-        subtitle="Class 3 digital signature issuance licensed under the Controller of Certifying Authorities (CCA). Valid for MCA, Income Tax, GST, and e-Tendering."
+        blurb="Class 3 digital signature issuance licensed under the Controller of Certifying Authorities (CCA). Valid for MCA, Income Tax, GST, and e-Tendering."
         highlights={HIGHLIGHTS}
       />
 
