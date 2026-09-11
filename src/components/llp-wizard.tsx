@@ -11,6 +11,7 @@ import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, User, Building2, Coins, Lock, Globe, Loader2,
 } from "lucide-react";
+import { blockNegativeKeys, nonNegative } from "@/lib/number-input";
 
 const STEPS = [
   { key: "type", label: "Type" },
@@ -1018,7 +1019,8 @@ function NumberInput({ value, onChange, min = 0, max, step = 1, error }: { value
       min={min}
       max={max}
       step={step}
-      onChange={(e) => onChange(Number(e.target.value))}
+      onKeyDown={blockNegativeKeys}
+      onChange={(e) => onChange(nonNegative(Number(e.target.value)))}
       className={
         "w-full bg-input border rounded-lg px-3 py-2.5 text-sm mono ring-focus transition-shadow " +
         (error ? "border-destructive focus:ring-destructive/25" : "border-border")

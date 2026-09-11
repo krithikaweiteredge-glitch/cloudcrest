@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { FolderLock, FileText, Download, UploadCloud, Loader2, X, CheckCircle2, Send } from "lucide-react";
 import { EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
+import { expandZipFiles } from "@/lib/zip-upload";
 
 export const Route = createFileRoute("/_authenticated/profile/documents")({
   component: DocsPage,
@@ -120,15 +121,17 @@ function DocsPage() {
   };
 
   const handleVaultUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
 
     setUploading(true);
     setUploadError(null);
 
     try {
+      // A .zip is unpacked here and each document inside stored separately.
+      const files = await expandZipFiles(picked);
       const formData = new FormData();
-      for (const f of Array.from(files)) {
+      for (const f of files) {
         formData.append("file", f);
       }
 
@@ -158,7 +161,7 @@ function DocsPage() {
         <div>
           <h2 className="text-lg font-display font-semibold">Documents Vault</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Every file you've uploaded, encrypted and searchable across services. Select any document to attach it to an application.
+            Every file you've uploaded, encrypted and searchable across services. Select any document to attach it to an application. You can also upload a ZIP of several documents at once.
           </p>
         </div>
         <div>

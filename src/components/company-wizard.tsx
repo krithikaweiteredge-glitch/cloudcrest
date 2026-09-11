@@ -27,6 +27,7 @@ import {
   Circle, FileText, Info, ShieldCheck, Zap, ClipboardList, FileDown, Send, Lock,
   PenLine, Phone, MessageCircle, X, Loader2,
 } from "lucide-react";
+import { blockNegativeKeys, nonNegative } from "@/lib/number-input";
 
 // Cloudcrest advisor contact — one place so the call / WhatsApp links stay in sync.
 const ADVISOR_PHONE_DISPLAY = "+91 89770 79433";
@@ -1577,7 +1578,8 @@ function NumberInput({
       max={max}
       step={step}
       placeholder={placeholder}
-      onChange={(e) => onChange(Number(e.target.value))}
+      onKeyDown={blockNegativeKeys}
+      onChange={(e) => onChange(nonNegative(Number(e.target.value)))}
       className={
         "w-full bg-input border rounded-lg px-3 py-2.5 text-sm mono ring-focus transition-shadow " +
         (error ? "border-destructive focus:ring-destructive/25" : "border-border")

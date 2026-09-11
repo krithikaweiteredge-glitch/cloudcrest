@@ -6,6 +6,7 @@ import { SignInDialog } from "@/components/sign-in-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveFees, type CatalogService } from "@/lib/service-catalog";
 import { INDIAN_STATES } from "@/lib/form-options";
+import { blockNegativeKeys, nonNegativeString } from "@/lib/number-input";
 import {
   ShieldCheck, ScrollText, ClipboardList, FileDown, FileCheck2, FileText,
   AlertTriangle, ArrowLeft, ArrowRight, Send, Download, Lock, Sparkles, Zap,
@@ -557,7 +558,8 @@ export function PartnershipStepperWizard({
                           min="1000"
                           step="5000"
                           value={totalCapital}
-                          onChange={(e) => setTotalCapital(e.target.value)}
+                          onKeyDown={blockNegativeKeys}
+                          onChange={(e) => setTotalCapital(nonNegativeString(e.target.value))}
                           placeholder="e.g. 100000"
                           className={
                             "w-full bg-input border rounded-lg pl-8 pr-3.5 py-2.5 text-sm ring-focus transition-shadow " +

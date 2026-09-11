@@ -5,6 +5,7 @@ import { resolveWizardRules } from "@/lib/company-types";
 import { DEPARTMENT_SLUGS } from "@/lib/modules";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { nonNegativeString } from "@/lib/number-input";
 import {
   Plus, Pencil, Trash2, ChevronRight, ChevronDown, Loader2, X, FileText, Settings2, Layers, FolderTree,
 } from "lucide-react";
@@ -819,7 +820,7 @@ function ServiceDialog({
                   <input
                     value={line.amount}
                     onChange={(e) => {
-                      const val = e.target.value;
+                      const val = nonNegativeString(e.target.value);
                       setFeeLines((prev) =>
                         prev.map((l, i) => (i === idx ? { ...l, amount: val } : l)),
                       );
@@ -968,7 +969,7 @@ function ServiceDialog({
                   <Field label="Min. directors">
                     <input
                       value={wizMinDir}
-                      onChange={(e) => setWizMinDir(e.target.value)}
+                      onChange={(e) => setWizMinDir(nonNegativeString(e.target.value, false))}
                       inputMode="numeric"
                       placeholder="2"
                       className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"
@@ -977,7 +978,7 @@ function ServiceDialog({
                   <Field label="Min. shareholders">
                     <input
                       value={wizMinShr}
-                      onChange={(e) => setWizMinShr(e.target.value)}
+                      onChange={(e) => setWizMinShr(nonNegativeString(e.target.value, false))}
                       inputMode="numeric"
                       placeholder="2"
                       className="w-full bg-input border border-border rounded-lg px-3 py-2.5 text-sm ring-focus mono"

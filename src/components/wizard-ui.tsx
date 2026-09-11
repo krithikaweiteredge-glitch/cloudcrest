@@ -7,6 +7,7 @@
  * panel, the checklist and the form controls stay identical across them.
  */
 import { ArrowLeft, ArrowRight, CheckCircle2, Download, FileText, Lock, Send } from "lucide-react";
+import { blockNegativeKeys, nonNegativeString } from "@/lib/number-input";
 
 /* -------------------------------------------------------------------------- */
 /* Form controls                                                              */
@@ -83,7 +84,9 @@ export function Input({
       type={type}
       value={value}
       maxLength={maxLength}
-      onChange={(e) => onChange(e.target.value)}
+      {...(type === "number"
+        ? { min: 0, onKeyDown: blockNegativeKeys, onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(nonNegativeString(e.target.value)) }
+        : { onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value) })}
       placeholder={placeholder}
       className={fieldClass(error)}
     />

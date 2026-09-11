@@ -7,6 +7,7 @@ import { FileText, Download, UploadCloud, FolderLock, X, Loader2, Info, User, Ma
 import { StatusPill, EmptyState } from "./profile.index";
 import { BrandLoader } from "@/components/brand-loader";
 import { splitRequestNotes } from "@/lib/request-notes";
+import { expandZipFiles } from "@/lib/zip-upload";
 import { renderExtraFormFields } from "@/lib/request-fields";
 import {
   matchDocumentsToChecklist,
@@ -359,8 +360,8 @@ function RegistrationDetailDialog({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
 
     setUploading(true);
     setUploadError(null);
@@ -369,7 +370,9 @@ function RegistrationDetailDialog({
     const currentLabel = activeUploadLabel;
 
     try {
-      for (const f of Array.from(files)) {
+      // A .zip is unpacked and every document inside uploaded on its own.
+      const files = await expandZipFiles(picked);
+      for (const f of files) {
         const formData = new FormData();
         formData.append("file", f);
         if (currentLabel) {

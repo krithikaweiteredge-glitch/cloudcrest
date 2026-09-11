@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { X, UploadCloud, FileText, CheckCircle2, ShieldCheck, Send, Loader2, LogIn, Download, Users, Coins, FolderLock } from "lucide-react";
+import { X, UploadCloud, FileText, CheckCircle2, ShieldCheck, Send, Loader2, LogIn, Download, Users, Coins, FolderLock, FileArchive, ArrowLeftRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { expandZipFiles, matchDocLabel } from "@/lib/zip-upload";
 import type { FeeContext } from "@/lib/fees-api";
 
 type UploadedFile = { file: File; name: string; size: number };
@@ -93,6 +94,8 @@ export function RegisterDialog({
   const [submitting, setSubmitting] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [zipNotice, setZipNotice] = useState<string | null>(null);
   const [refNo, setRefNo] = useState<string>("");
 
   // Prefill from profile. Anything the wizard already collected wins, so the
@@ -126,10 +129,50 @@ export function RegisterDialog({
 
   if (!open) return null;
 
-  const addFilesToDoc = (label: string, list: FileList | null) => {
-    if (!list || list.length === 0) return;
-    const added = Array.from(list).map((f) => ({ file: f, name: f.name, size: f.size }));
-    setDocFiles((prev) => ({ ...prev, [label]: [...(prev[label] ?? []), ...added] }));
+  // Any .zip picked under a heading is unpacked and its files filed there.
+  const addFilesToDoc = async (label: string, list: File[]) => {
+    if (list.length === 0) return;
+    setError(null);
+    setZipNotice(null);
+    try {
+      const files = await expandZipFiles(list);
+      const added = files.map((f) => ({ file: f, name: f.name, size: f.size }));
+      setDocFiles((prev) => ({ ...prev, [label]: [...(prev[label] ?? []), ...added] }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read the selected files");
+    }
+  };
+
+  // One ZIP holding every document: each file inside is filed under the
+  // checklist heading its name best matches, or "Additional documents".
+  const addZipForAll = async (list: File[]) => {
+    if (list.length === 0) return;
+    setError(null);
+    setZipNotice(null);
+    setExtracting(true);
+    try {
+      const files = await expandZipFiles(list);
+      const buckets: Record<string, UploadedFile[]> = {};
+      for (const f of files) {
+        const label = matchDocLabel(f.name, documents) ?? OTHER_DOCS_KEY;
+        (buckets[label] ??= []).push({ file: f, name: f.name, size: f.size });
+      }
+      setDocFiles((prev) => {
+        const next = { ...prev };
+        for (const [label, arr] of Object.entries(buckets)) next[label] = [...(next[label] ?? []), ...arr];
+        return next;
+      });
+      const matched = files.length - (buckets[OTHER_DOCS_KEY]?.length ?? 0);
+      setZipNotice(
+        `Added ${files.length} file${files.length === 1 ? "" : "s"} from the ZIP — ${matched} matched to the checklist` +
+          (buckets[OTHER_DOCS_KEY]?.length ? `, ${buckets[OTHER_DOCS_KEY].length} under Additional documents.` : ".") +
+          " Check each item below — use the ⇄ button on a file to move it if it landed in the wrong place.",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read the ZIP file");
+    } finally {
+      setExtracting(false);
+    }
   };
   const removeDocFile = (label: string, index: number) => {
     setDocFiles((prev) => {
@@ -139,7 +182,38 @@ export function RegisterDialog({
       return next;
     });
   };
+  const moveDocFile = (from: string, index: number, to: string) => {
+    if (from === to) return;
+    setDocFiles((prev) => {
+      const moved = prev[from]?.[index];
+      if (!moved) return prev;
+      const fromArr = prev[from].filter((_, i) => i !== index);
+      const next = { ...prev, [from]: fromArr, [to]: [...(prev[to] ?? []), moved] };
+      if (fromArr.length === 0) delete next[from];
+      return next;
+    });
+  };
   const hasFiles = Object.values(docFiles).some((a) => a.length > 0);
+
+  const fileChip = (label: string, f: UploadedFile, i: number) => (
+    <span key={i} className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-muted rounded px-1.5 py-0.5">
+      <FileText className="size-3 text-primary" />
+      <span className="max-w-[160px] truncate">{f.name}</span>
+      <span className="relative inline-flex hover:text-primary" title="Move to another document">
+        <ArrowLeftRight className="size-3" />
+        <select
+          value={label}
+          onChange={(e) => moveDocFile(label, i, e.target.value)}
+          aria-label={`Move ${f.name} to another document`}
+          className="absolute inset-0 opacity-0 cursor-pointer"
+        >
+          {documents.map((d) => <option key={d} value={d}>{d}</option>)}
+          <option value={OTHER_DOCS_KEY}>{OTHER_DOCS_KEY}</option>
+        </select>
+      </span>
+      <button type="button" onClick={() => removeDocFile(label, i)} className="hover:text-destructive"><X className="size-3" /></button>
+    </span>
+  );
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,7 +397,7 @@ export function RegisterDialog({
   const reset = () => {
     setSubmitted(false);
     setName(""); setBusiness(""); setEmail(""); setPhone(""); setNotes("");
-    setDocFiles({}); setSelectedVaultIds([]); setSaveToVault(true); setError(null);
+    setDocFiles({}); setSelectedVaultIds([]); setSaveToVault(true); setError(null); setZipNotice(null);
     onClose();
   };
 
@@ -440,8 +514,31 @@ export function RegisterDialog({
             <div className="rounded-xl border border-border bg-panel p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="label-eyebrow text-primary">Required documents — upload each</div>
-                <span className="text-[10px] mono text-muted-foreground">PDF · JPG · PNG · ≤ 10 MB</span>
+                <span className="text-[10px] mono text-muted-foreground">PDF · JPG · PNG · ZIP · ≤ 10 MB each</span>
               </div>
+
+              {/* Bulk path: one ZIP with every document, sorted by file name. */}
+              <label className={"mb-3 flex items-center gap-3 rounded-lg border border-dashed border-primary/40 bg-primary/[0.04] px-3.5 py-3 transition-colors " + (extracting ? "opacity-70 cursor-wait" : "cursor-pointer hover:bg-primary/[0.08]")}>
+                <div className="size-9 rounded-md bg-primary/10 text-primary grid place-items-center shrink-0">
+                  {extracting ? <Loader2 className="size-4 animate-spin" /> : <FileArchive className="size-4" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold">{extracting ? "Unpacking ZIP…" : "Upload all documents as one ZIP"}</div>
+                  <div className="text-[11px] text-muted-foreground leading-snug">
+                    Files are matched to the checklist by name (e.g. <span className="mono">pan_card.pdf</span>); anything unmatched goes under Additional documents.
+                  </div>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg gradient-brand text-white text-xs font-semibold">
+                  <UploadCloud className="size-3.5" /> Choose ZIP
+                </span>
+                <input type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden disabled={extracting} onChange={(e) => { addZipForAll(Array.from(e.target.files ?? [])); e.currentTarget.value = ""; }} />
+              </label>
+
+              {zipNotice && (
+                <div className="mb-3 text-[11px] text-success rounded-md border border-success/30 bg-success/10 px-3 py-2">
+                  {zipNotice}
+                </div>
+              )}
 
               <div className="space-y-2">
                 {documents.map((doc) => {
@@ -453,13 +550,7 @@ export function RegisterDialog({
                         <div className="text-[13px] font-medium leading-snug">{doc}</div>
                         {done && (
                           <div className="mt-1.5 flex flex-wrap gap-1.5">
-                            {dfiles.map((f, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-muted rounded px-1.5 py-0.5">
-                                <FileText className="size-3 text-primary" />
-                                <span className="max-w-[160px] truncate">{f.name}</span>
-                                <button type="button" onClick={() => removeDocFile(doc, i)} className="hover:text-destructive"><X className="size-3" /></button>
-                              </span>
-                            ))}
+                            {dfiles.map((f, i) => fileChip(doc, f, i))}
                           </div>
                         )}
                       </div>
@@ -468,7 +559,7 @@ export function RegisterDialog({
                       </span>
                       <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold cursor-pointer hover:bg-primary/20 transition-colors">
                         <UploadCloud className="size-3.5" /> {done ? "Add" : "Upload"}
-                        <input type="file" multiple hidden onChange={(e) => { addFilesToDoc(doc, e.target.files); e.currentTarget.value = ""; }} />
+                        <input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.zip,image/*,application/pdf,application/zip" onChange={(e) => { addFilesToDoc(doc, Array.from(e.target.files ?? [])); e.currentTarget.value = ""; }} />
                       </label>
                     </div>
                   );
@@ -483,19 +574,13 @@ export function RegisterDialog({
                     <div className="text-[13px] font-medium">Additional documents <span className="text-muted-foreground font-normal">(optional)</span></div>
                     {(docFiles[OTHER_DOCS_KEY] ?? []).length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {(docFiles[OTHER_DOCS_KEY] ?? []).map((f, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-muted rounded px-1.5 py-0.5">
-                            <FileText className="size-3 text-primary" />
-                            <span className="max-w-[160px] truncate">{f.name}</span>
-                            <button type="button" onClick={() => removeDocFile(OTHER_DOCS_KEY, i)} className="hover:text-destructive"><X className="size-3" /></button>
-                          </span>
-                        ))}
+                        {(docFiles[OTHER_DOCS_KEY] ?? []).map((f, i) => fileChip(OTHER_DOCS_KEY, f, i))}
                       </div>
                     )}
                   </div>
                   <label className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold cursor-pointer hover:border-primary/50 transition-colors">
                     <UploadCloud className="size-3.5 text-primary" /> Upload
-                    <input type="file" multiple hidden onChange={(e) => { addFilesToDoc(OTHER_DOCS_KEY, e.target.files); e.currentTarget.value = ""; }} />
+                    <input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.zip,image/*,application/pdf,application/zip" onChange={(e) => { addFilesToDoc(OTHER_DOCS_KEY, Array.from(e.target.files ?? [])); e.currentTarget.value = ""; }} />
                   </label>
                 </div>
               </div>

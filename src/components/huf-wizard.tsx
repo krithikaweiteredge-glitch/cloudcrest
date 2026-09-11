@@ -6,6 +6,7 @@ import { SignInDialog } from "@/components/sign-in-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { resolveFees, useCatalogService, type CatalogService, type ResolvedFees } from "@/lib/service-catalog";
 import { INDIAN_STATES } from "@/lib/form-options";
+import { blockNegativeKeys } from "@/lib/number-input";
 import {
   ShieldCheck,
   ScrollText,
@@ -865,6 +866,7 @@ function NumberInput({
         value={value}
         min={min}
         max={max}
+        onKeyDown={blockNegativeKeys}
         onChange={(e) => {
           const val = parseInt(e.target.value, 10);
           if (!isNaN(val)) onChange(Math.max(min, Math.min(max, val)));

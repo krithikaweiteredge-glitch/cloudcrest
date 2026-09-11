@@ -9,6 +9,7 @@ import {
   AlertTriangle, Download, ArrowLeft, ArrowRight, CheckCircle2,
   FileText, Info, ShieldCheck, Zap, Send, Lock, Factory,
 } from "lucide-react";
+import { blockNegativeKeys, nonNegative } from "@/lib/number-input";
 
 /**
  * MSME (Udyam) registration wizard.
@@ -900,7 +901,8 @@ function NumberInput({ value, onChange, min = 0, error }: { value: number; onCha
       type="number"
       value={value}
       min={min}
-      onChange={(e) => onChange(Number(e.target.value))}
+      onKeyDown={blockNegativeKeys}
+      onChange={(e) => onChange(nonNegative(Number(e.target.value)))}
       className={fieldClass(error) + " mono"}
     />
   );
