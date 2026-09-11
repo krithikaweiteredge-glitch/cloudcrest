@@ -1,11 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeftRight, CheckCircle2, Info, Landmark, Loader2, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  Building2,
+  CheckCircle2,
+  Info,
+  Landmark,
+  Loader2,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
 import { Stepper } from "@/components/stepper";
 import { RegisterDialog } from "@/components/register-dialog";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { useAuth } from "@/hooks/use-auth";
-import { useCatalogService, resolveDocuments, resolveFees } from "@/lib/service-catalog";
+import { useCatalogService, resolveDocuments } from "@/lib/service-catalog";
+import { useFeeEstimate, type ConversionFeeContext } from "@/lib/fees-api";
 import { resolveConversionRules, ruleLines } from "@/lib/conversion-rules";
 import { useMcaNameCheck, type McaNameCheckResult } from "@/lib/use-mca-name-check";
 import { INDIAN_STATES, INDUSTRY_TYPES } from "@/lib/form-options";
@@ -20,6 +31,7 @@ import {
   WizardHero,
   WizardSidebar,
   downloadSummaryPdf,
+  fieldClass,
 } from "@/components/wizard-ui";
 
 /**
@@ -34,7 +46,9 @@ import {
  *     slots by RegisterDialog at submission, not listed inside a step;
  *   - the eligibility rules, statutory minimums and per-step notes —
  *     `wizardRules`, see lib/conversion-rules;
- *   - fees — the service's fee lines.
+ *   - fees — the backend prices every conversion (its catalog fee lines plus the
+ *     government fee it computes from the capital / directors / state entered
+ *     here); this file only describes the application with a fee context.
  *
  * What IS here is the form's shape: which inputs each conversion asks for. The
  * HTML varies it per type (an OPC → Pvt application states the existing company
@@ -44,65 +58,87 @@ import {
  * layout — existing name, office — so it still works.
  */
 
-type NameKind = "existing" | "existingWithCin" | "proposedCompany" | "proposedCompanyShort" | "proposedLlp";
+/**
+ * `existingSearch` — the applicant searches the MCA registry, picks their
+ * company from the dropdown and its details (CIN, registered office, capital)
+ * are fetched, so the Office step is dropped for these conversions.
+ */
+type NameKind =
+  | "existing"
+  | "existingSearch"
+  | "existingWithCin"
+  | "proposedCompany"
+  | "proposedCompanyShort"
+  | "proposedLlp";
 type MembersKind = "currentProposed" | "counts" | "partners" | null;
-type CapitalKind = "paidUpOnly" | "authorisedPaid" | "contribution" | null;
+type CapitalKind = "paidUpOnly" | "authorisedOnly" | "authorisedPaid" | "contribution" | null;
 
 type ConversionLayout = {
   name: NameKind;
   namePlaceholder: string;
   members: MembersKind;
   capital: CapitalKind;
+  /** Whether the Registered Office step is shown. */
+  office: boolean;
 };
 
 const LAYOUTS: Record<string, ConversionLayout> = {
   "conversion-pvt-to-opc": {
-    name: "existing",
-    namePlaceholder: "Enter existing company name",
+    name: "existingSearch",
+    namePlaceholder: "Start typing your company name…",
     members: null,
-    capital: "paidUpOnly",
+    capital: "authorisedOnly",
+    office: false,
   },
   "conversion-pvt-to-public": {
-    name: "existing",
-    namePlaceholder: "e.g. ABC PRIVATE LIMITED",
+    name: "existingSearch",
+    namePlaceholder: "Start typing your company name…",
     members: "currentProposed",
-    capital: "authorisedPaid",
+    capital: "authorisedOnly",
+    office: false,
   },
   "conversion-llp-to-pvt": {
     name: "proposedCompany",
     namePlaceholder: "e.g. ZENIN TECH SERVICES PRIVATE LIMITED",
     members: "counts",
     capital: "authorisedPaid",
+    office: true,
   },
   "conversion-opc-to-pvt": {
-    name: "existing",
-    namePlaceholder: "e.g. ABC (OPC) PRIVATE LIMITED",
+    name: "existingSearch",
+    namePlaceholder: "Start typing your company name…",
     members: "counts",
-    capital: "authorisedPaid",
+    capital: "authorisedOnly",
+    office: false,
   },
   "conversion-proprietorship-to-pvt": {
     name: "proposedCompany",
     namePlaceholder: "e.g. ZENIN ENTERPRISES PRIVATE LIMITED",
     members: null,
     capital: "authorisedPaid",
+    office: true,
   },
   "conversion-partnership-to-llp": {
     name: "proposedLlp",
     namePlaceholder: "e.g. ZENIN TECH ADVISORS",
     members: "partners",
     capital: "contribution",
+    office: true,
   },
   "conversion-partnership-to-pvt": {
     name: "proposedCompanyShort",
     namePlaceholder: "e.g. ZENIN TECH ADVISORS PRIVATE LIMITED",
     members: "counts",
     capital: "authorisedPaid",
+    office: true,
   },
   "conversion-public-to-pvt": {
-    name: "existingWithCin",
-    namePlaceholder: "Enter existing public company name",
+    name: "existingSearch",
+    namePlaceholder: "Start typing your company name…",
     members: "currentProposed",
-    capital: null,
+    // The government fee is charged per form on the authorised-capital slab.
+    capital: "authorisedOnly",
+    office: true,
   },
 };
 
@@ -111,7 +147,10 @@ const GENERIC_LAYOUT: ConversionLayout = {
   namePlaceholder: "Enter existing entity name",
   members: null,
   capital: null,
+  office: true,
 };
+
+const isExistingName = (k: NameKind) => k === "existing" || k === "existingSearch" || k === "existingWithCin";
 
 const CIN_RE = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/;
 const PIN_RE = /^\d{6}$/;
@@ -163,6 +202,8 @@ export function ConversionWizard({
   // Step 2 — name.
   const [existingName, setExistingName] = useState(initialName || "");
   const [cin, setCin] = useState("");
+  // The registry record picked from the company-search dropdown.
+  const [mcaCompany, setMcaCompany] = useState<McaCompanyDetails | null>(null);
   const [name1, setName1] = useState(initialName || "");
   const [name2, setName2] = useState("");
   const [industryType, setIndustryType] = useState("");
@@ -210,7 +251,7 @@ export function ConversionWizard({
     if (layout.members) {
       list.push({ key: "members", label: layout.members === "partners" ? "Partners" : "Members & Directors" });
     }
-    list.push({ key: "office", label: "Office" });
+    if (layout.office) list.push({ key: "office", label: "Office" });
     if (layout.capital) list.push({ key: "capital", label: "Capital" });
     list.push({ key: "fees", label: "Fees" }, { key: "summary", label: "Summary" });
     return list;
@@ -219,24 +260,31 @@ export function ConversionWizard({
   const stepKey = steps[step]?.key;
 
   const authority = service?.authority || "MCA";
-  const fees = resolveFees(service, authority, { professional: 0, govt: 0, gstPercent: 18 });
-  // The admin's professional fee, or null (the sidebar then omits the row).
-  // When the service has fee lines, only a line labelled "Professional Fee"
-  // counts: the admin editor also writes the lines' total into the
-  // professional-fee column, which would otherwise present a charge such as the
-  // newspaper-advertisement cost as the professional fee.
+
+  // Fees come from the backend: the conversion's catalog fee lines plus the
+  // government fee it computes from these figures (per-form filing slab on the
+  // authorised capital, or the new company / LLP registration fees). The same
+  // context goes with the application so the backend recomputes it at submit.
+  const feeContext: ConversionFeeContext = {
+    kind: "conversion",
+    slug,
+    capital: toAmount(authorisedCapital) || 0,
+    paidCapital: toAmount(paidUpCapital) || 0,
+    contribution: toAmount(contribution) || 0,
+    directors: toInt(layout.members === "currentProposed" ? proposedDirectors : directors) || 0,
+    partners: toInt(partners) || 0,
+    state: officeState,
+  };
+  const fees = useFeeEstimate(feeContext, !!user);
+  // The "Professional Fee" line, or null (the sidebar then omits the row).
   const professionalFee = (() => {
-    if ((service?.feeLines ?? []).length > 0) {
-      const line = fees.lines.find((l) => /professional/i.test(l.label))?.amount;
-      return line && line > 0 ? line : null;
-    }
-    const column = service?.professionalFee;
-    return column && column > 0 ? column : null;
+    const line = fees.lines.find((l) => /professional/i.test(l.label))?.amount;
+    return line && line > 0 ? line : null;
   })();
   const { documents } = resolveDocuments(service, []);
   const title = service?.title || "Business Conversion";
 
-  const isProposed = layout.name.startsWith("proposed");
+  const isProposed = !isExistingName(layout.name);
   const entityName = isProposed ? name1 : existingName;
 
   // MCA availability for a proposed name, as in the Company and LLP wizards.
@@ -254,16 +302,21 @@ export function ConversionWizard({
 
     add("conversionType", "Conversion Type", title);
 
-    if (layout.name === "existing" || layout.name === "existingWithCin") {
+    if (isExistingName(layout.name)) {
       add("existingEntityName", "Existing Company Name", existingName.trim());
-      if (layout.name === "existingWithCin") add("cin", "CIN of the Company", cin.trim().toUpperCase());
+      if (layout.name !== "existing") add("cin", "CIN of the Company", cin.trim().toUpperCase());
+      if (layout.name === "existingSearch" && mcaCompany) {
+        add("incorporationDate", "Date of Incorporation", mcaCompany.incorporationDate || "");
+        add("companyStatus", "Company Status", mcaCompany.companyStatus || "");
+        add("registeredOffice", "Registered Office (as per MCA)", mcaCompany.address || "");
+      }
     } else {
       const llp = layout.name === "proposedLlp";
       add("name1", llp ? "Proposed LLP Name 1" : "Proposed Company Name 1", llp ? `${name1.trim()} LLP` : name1.trim());
       if (layout.name !== "proposedCompanyShort" && name2.trim()) {
         add("name2", llp ? "Proposed LLP Name 2" : "Proposed Company Name 2", llp ? `${name2.trim()} LLP` : name2.trim());
       }
-      if (layout.name === "proposedCompany") add("industryType", "Industry Type", industryType);
+      add("industryType", "Industry Type", industryType);
       add("objects", "Main Objects / Business Activity", objects.trim());
     }
 
@@ -279,13 +332,17 @@ export function ConversionWizard({
       add("designatedPartners", "Number of Designated Partners", toInt(partners));
     }
 
-    add("address", "Registered Office Address", address.trim());
-    add("state", "State", officeState);
-    add("city", "City", city.trim());
-    add("pincode", "PIN Code", pincode.trim());
+    if (layout.office) {
+      add("address", "Registered Office Address", address.trim());
+      add("state", "State", officeState);
+      add("city", "City", city.trim());
+      add("pincode", "PIN Code", pincode.trim());
+    }
 
     if (layout.capital === "paidUpOnly") {
       add("paidUpCapital", "Existing Paid-up Capital", toAmount(paidUpCapital));
+    } else if (layout.capital === "authorisedOnly") {
+      add("authorisedCapital", "Authorised Share Capital", toAmount(authorisedCapital));
     } else if (layout.capital === "authorisedPaid") {
       add("authorisedCapital", "Authorised Share Capital", toAmount(authorisedCapital));
       add("paidUpCapital", "Paid-up Share Capital", toAmount(paidUpCapital));
@@ -295,7 +352,7 @@ export function ConversionWizard({
 
     return rows;
   }, [
-    title, layout, existingName, cin, name1, name2, industryType, objects,
+    title, layout, existingName, cin, mcaCompany, name1, name2, industryType, objects,
     currentShareholders, currentDirectors, proposedShareholders, proposedDirectors,
     shareholders, directors, partners, address, officeState, city, pincode,
     authorisedCapital, paidUpCapital, contribution,
@@ -322,7 +379,7 @@ export function ConversionWizard({
     };
 
     if (key === "name") {
-      if (layout.name === "existing" || layout.name === "existingWithCin") {
+      if (isExistingName(layout.name)) {
         if (!existingName.trim()) fail("existingName", "Existing company name is required.");
         if (layout.name === "existingWithCin") {
           if (!cin.trim()) fail("cin", "CIN of the company is required.");
@@ -365,6 +422,8 @@ export function ConversionWizard({
     } else if (key === "capital") {
       if (layout.capital === "paidUpOnly") {
         checkAmount("paidUpCapital", paidUpCapital, "Existing paid-up capital");
+      } else if (layout.capital === "authorisedOnly") {
+        checkAmount("authorisedCapital", authorisedCapital, "Authorised share capital");
       } else if (layout.capital === "authorisedPaid") {
         checkAmount("authorisedCapital", authorisedCapital, "Authorised share capital");
         checkAmount("paidUpCapital", paidUpCapital, "Paid-up share capital");
@@ -489,6 +548,41 @@ export function ConversionWizard({
                       : "The company being converted, exactly as registered with the ROC."
                   }
                 >
+                  {layout.name === "existingSearch" && (
+                    <Field
+                      label="Existing Company Name *"
+                      error={errors.existingName}
+                      hint="Type your company's name and select it from the list — its details are fetched from the MCA registry."
+                    >
+                      <CompanySearch
+                        value={existingName}
+                        placeholder={layout.namePlaceholder}
+                        error={errors.existingName}
+                        selected={mcaCompany}
+                        onType={(v) => {
+                          setExistingName(v);
+                          setMcaCompany(null);
+                          setCin("");
+                        }}
+                        onSelect={(c) => {
+                          setExistingName(c.name);
+                          setCin(c.cin || "");
+                          setMcaCompany(c);
+                          const cap = toAmount(String(c.authorizedCapital ?? ""));
+                          if (cap > 0) setAuthorisedCapital(String(cap));
+                          // Conversions that keep the Office step start from the registered office.
+                          if (layout.office) {
+                            if (c.address) setAddress(c.address);
+                            const pin = c.address?.match(/\b(\d{6})\b/)?.[1];
+                            if (pin) setPincode(pin);
+                            const st = INDIAN_STATES.find((s) => s.toLowerCase() === (c.state || "").trim().toLowerCase());
+                            if (st) setOfficeState(st);
+                          }
+                        }}
+                      />
+                    </Field>
+                  )}
+
                   {(layout.name === "existing" || layout.name === "existingWithCin") && (
                     <>
                       <Field label="Existing Company Name *" error={errors.existingName}>
@@ -533,6 +627,7 @@ export function ConversionWizard({
                           error={errors.name1}
                         />
                         <McaNameStatus checking={name1Mca.checking} result={name1Mca.result} />
+                        <SimilarExistingNames name={name1} />
                       </Field>
                       {layout.name !== "proposedCompanyShort" && (
                         <Field
@@ -545,20 +640,19 @@ export function ConversionWizard({
                             suffix={layout.name === "proposedLlp" ? "LLP" : undefined}
                           />
                           <McaNameStatus checking={name2Mca.checking} result={name2Mca.result} />
+                          <SimilarExistingNames name={name2} />
                         </Field>
                       )}
-                      {layout.name === "proposedCompany" && (
-                        <Field label="Industry Type">
-                          <Select value={industryType} onChange={setIndustryType}>
-                            <option value="">Select industry type…</option>
-                            {INDUSTRY_TYPES.map((i) => (
-                              <option key={i} value={i}>
-                                {i}
-                              </option>
-                            ))}
-                          </Select>
-                        </Field>
-                      )}
+                      <Field label="Industry Type">
+                        <Select value={industryType} onChange={setIndustryType}>
+                          <option value="">Select industry type…</option>
+                          {INDUSTRY_TYPES.map((i) => (
+                            <option key={i} value={i}>
+                              {i}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
                       <Field label="Main Objects / Business Activity *" error={errors.objects}>
                         <TextArea
                           value={objects}
@@ -688,6 +782,19 @@ export function ConversionWizard({
                       <Input value={paidUpCapital} onChange={setPaidUpCapital} placeholder="e.g. 100000" error={errors.paidUpCapital} />
                     </Field>
                   )}
+                  {layout.capital === "authorisedOnly" && (
+                    <Field
+                      label="Authorised Share Capital *"
+                      error={errors.authorisedCapital}
+                      hint={
+                        mcaCompany && toAmount(String(mcaCompany.authorizedCapital ?? "")) > 0
+                          ? "Fetched from the MCA registry — change it if it has been altered since."
+                          : "The government filing fee for each form is based on this figure."
+                      }
+                    >
+                      <Input value={authorisedCapital} onChange={setAuthorisedCapital} placeholder="e.g. 1000000" error={errors.authorisedCapital} />
+                    </Field>
+                  )}
                   {layout.capital === "authorisedPaid" && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="Authorised Share Capital *" error={errors.authorisedCapital}>
@@ -713,7 +820,7 @@ export function ConversionWizard({
                   <FeesStep
                     signedIn={!!user}
                     onSignIn={() => setOpenSignIn(true)}
-                    loading={catalogLoading}
+                    loading={catalogLoading || fees.loading}
                     lines={fees.lines}
                     total={fees.total}
                     heading="Estimated Conversion Fee Breakdown"
@@ -765,7 +872,7 @@ export function ConversionWizard({
           selection={[
             { label: "Conversion", value: title },
             { label: isProposed ? "Proposed Name" : "Company", value: entityName },
-            { label: "State", value: officeState },
+            layout.office ? { label: "State", value: officeState } : { label: "CIN", value: cin },
           ]}
           professionalFee={professionalFee}
           gstPercent={service?.gstPercent || 18}
@@ -786,6 +893,7 @@ export function ConversionWizard({
         formData={formData}
         fees={fees.lines}
         feeTotal={fees.total}
+        feeContext={feeContext}
       />
 
       <SignInDialog
@@ -794,6 +902,292 @@ export function ConversionWizard({
         reason="Sign in to continue your business conversion — we'll save your progress, show the fee breakdown and let you submit the application."
         next={`/m/${slug}`}
       />
+    </div>
+  );
+}
+
+/** A registry match from `GET /api/mca/similar`. */
+type McaMatch = {
+  name: string;
+  identifier?: string;
+  entityType?: string;
+  industry?: string;
+  status?: string;
+};
+
+/** A company record from `POST /api/mca/company-details`. */
+type McaCompanyDetails = {
+  name: string;
+  cin?: string;
+  entityType?: string;
+  incorporationDate?: string | null;
+  address?: string;
+  state?: string;
+  companyStatus?: string;
+  status?: string;
+  authorizedCapital?: string | number;
+  paidUpCapital?: string | number;
+  roc?: string;
+};
+
+const BACKEND = () => import.meta.env.VITE_BACKEND_URL || "";
+
+type LookupState = "idle" | "loading" | "done" | "error";
+
+/**
+ * Debounced `GET /api/mca/similar` lookup: registered companies, LLPs and
+ * struck-off entities whose name is close to `term`. Pass an empty term to
+ * skip the lookup.
+ */
+function useSimilarNames(term: string): { matches: McaMatch[]; state: LookupState } {
+  const [matches, setMatches] = useState<McaMatch[]>([]);
+  const [state, setState] = useState<LookupState>("idle");
+
+  useEffect(() => {
+    const q = term.trim();
+    if (q.length < 2) {
+      setMatches([]);
+      setState("idle");
+      return;
+    }
+    setState("loading");
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${BACKEND()}/api/mca/similar?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        if (!res.ok) throw new Error(`Registry lookup failed (${res.status})`);
+        const data = await res.json();
+        setMatches(Array.isArray(data.matches) ? data.matches : []);
+        setState("done");
+      } catch (err) {
+        // An abort is just the next keystroke superseding this request.
+        if ((err as Error)?.name === "AbortError") return;
+        setMatches([]);
+        setState("error");
+      }
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [term]);
+
+  return { matches, state };
+}
+
+/**
+ * Already-registered names close to a proposed name, listed under the field as
+ * on the home search. Struck-off names are included: they stay restricted, so
+ * they block the proposed name just as an active company does.
+ */
+function SimilarExistingNames({ name }: { name: string }) {
+  const { matches, state } = useSimilarNames(name);
+  if (name.trim().length < 2 || state === "idle") return null;
+  if (state === "loading" && matches.length === 0) {
+    return <div className="mt-2 text-[11px] text-muted-foreground">Looking for similar existing names…</div>;
+  }
+  if (state === "error") {
+    return <div className="mt-2 text-[11px] text-destructive">Couldn't load similar existing names from the MCA registry.</div>;
+  }
+  if (matches.length === 0) {
+    return <div className="mt-2 text-[11px] text-muted-foreground">No existing company or LLP has a similar name.</div>;
+  }
+  return (
+    <div className="mt-2 rounded-lg border border-border bg-panel">
+      <div className="px-3 py-2 text-[11px] font-semibold text-foreground border-b border-border">
+        Similar existing names ({matches.length}) · companies, LLPs and struck-off entities
+      </div>
+      <ul className="max-h-56 overflow-y-auto divide-y divide-border/60">
+        {matches.map((m) => {
+          const struck = /strike/i.test(m.status || "");
+          return (
+            <li key={`${m.identifier ?? ""}-${m.name}`} className="px-3 py-2 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-foreground break-words">{m.name}</div>
+                <div className="text-[10px] text-muted-foreground mono">
+                  {[m.identifier, m.entityType].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <span
+                className={
+                  "shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded " +
+                  (struck ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")
+                }
+              >
+                {struck ? "Strike Off" : "Active"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * Existing-company picker: as the applicant types, registered companies with a
+ * similar name are listed from the MCA index; picking one fetches the company's
+ * details (CIN, registered office, capital) and hands them to the wizard.
+ */
+function CompanySearch({
+  value,
+  placeholder,
+  error,
+  selected,
+  onType,
+  onSelect,
+}: {
+  value: string;
+  placeholder?: string;
+  error?: string;
+  selected: McaCompanyDetails | null;
+  onType: (v: string) => void;
+  onSelect: (c: McaCompanyDetails) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // Look up while the applicant is typing — not once a company has been picked
+  // (the field then holds its registered name).
+  const { matches: found, state } = useSimilarNames(selected ? "" : value);
+  // Live Indian companies and LLPs (private, public, OPC, LLP) — drop foreign
+  // companies and struck-off names, which can't be converted.
+  const matches = found.filter((m) => m.entityType !== "Foreign Company" && !/strike/i.test(m.status || ""));
+
+  // Close the dropdown on an outside click.
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const pick = async (m: McaMatch) => {
+    setOpen(false);
+    setFetchError(null);
+    if (!m.identifier) {
+      onSelect({ name: m.name, entityType: m.entityType });
+      return;
+    }
+    setFetching(true);
+    try {
+      const res = await fetch(`${BACKEND()}/api/mca/company-details`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cin: m.identifier }),
+      });
+      const data = res.ok ? await res.json() : null;
+      if (data?.found && data.company) {
+        onSelect({
+          ...data.company,
+          name: data.company.name || m.name,
+          cin: data.company.cin || m.identifier,
+          // data.gov.in labels an LLP with no class as "Private Limited Company";
+          // the registry index's type is the reliable one.
+          entityType: m.entityType || data.company.entityType,
+        });
+      } else {
+        onSelect({ name: m.name, cin: m.identifier, entityType: m.entityType });
+        setFetchError("Couldn't fetch the full company details — please check the figures on the next steps.");
+      }
+    } catch {
+      onSelect({ name: m.name, cin: m.identifier, entityType: m.entityType });
+      setFetchError("Couldn't fetch the full company details — please check the figures on the next steps.");
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const showList = open && !selected && value.trim().length >= 2;
+  const money = (v?: string | number) => {
+    const n = Number(String(v ?? "").replace(/,/g, ""));
+    return v != null && String(v).trim() !== "" && Number.isFinite(n) ? `₹ ${n.toLocaleString("en-IN")}` : "";
+  };
+
+  return (
+    <div ref={boxRef} className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <input
+          value={value}
+          onChange={(e) => {
+            onType(e.target.value);
+            setOpen(true);
+            setFetchError(null);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className={fieldClass(error) + " pl-9"}
+          autoComplete="off"
+        />
+        {(state === "loading" || fetching) && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-primary" />
+        )}
+      </div>
+
+      {showList && (
+        <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-border bg-surface shadow-elev">
+          {state === "loading" && matches.length === 0 && (
+            <div className="px-3 py-2.5 text-xs text-muted-foreground">Searching the MCA registry…</div>
+          )}
+          {state === "error" && (
+            <div className="px-3 py-2.5 text-xs text-destructive">Couldn't reach the MCA registry. Try again in a moment.</div>
+          )}
+          {state === "done" && matches.length === 0 && (
+            <div className="px-3 py-2.5 text-xs text-muted-foreground">No registered company matches this name.</div>
+          )}
+          {matches.map((m) => (
+            <button
+              key={`${m.identifier ?? ""}-${m.name}`}
+              type="button"
+              onClick={() => pick(m)}
+              className="w-full text-left px-3 py-2.5 hover:bg-muted border-b border-border/60 last:border-0 cursor-pointer"
+            >
+              <div className="text-sm font-medium text-foreground">{m.name}</div>
+              <div className="text-[11px] text-muted-foreground mono">
+                {[m.identifier, m.entityType].filter(Boolean).join(" · ")}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {fetchError && <p className="mt-2 text-[11px] text-warning">{fetchError}</p>}
+
+      {selected && !fetching && (
+        <div className="mt-3 rounded-lg border border-success/30 bg-success/[0.06] p-3.5 text-xs">
+          <div className="flex items-center gap-2 font-semibold text-foreground mb-2">
+            <Building2 className="size-4 text-success" /> {selected.name}
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {[
+              ["CIN", selected.cin],
+              ["Type", selected.entityType],
+              ["Incorporated", selected.incorporationDate || ""],
+              ["Status", selected.companyStatus],
+              ["Authorised Capital", money(selected.authorizedCapital)],
+              ["Paid-up Capital", money(selected.paidUpCapital)],
+              ["ROC", selected.roc],
+            ]
+              .filter(([, v]) => v)
+              .map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="font-medium text-foreground">{v}</dd>
+                </div>
+              ))}
+            {selected.address && (
+              <div className="sm:col-span-2">
+                <dt className="text-muted-foreground">Registered Office</dt>
+                <dd className="font-medium text-foreground">{selected.address}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
     </div>
   );
 }

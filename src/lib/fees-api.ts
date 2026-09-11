@@ -42,7 +42,25 @@ export type LlpFeeContext = {
   jurisdiction?: "indian" | "foreign";
 };
 
-export type FeeContext = CompanyFeeContext | LlpFeeContext;
+/**
+ * A Business Conversion. The backend prices it from the conversion's catalog
+ * fee lines plus the government fee it computes from these figures (per-form
+ * filing slab, new-company or new-LLP registration fees — whichever applies).
+ */
+export type ConversionFeeContext = {
+  kind: "conversion";
+  slug: string;
+  /** Authorised share capital. */
+  capital: number;
+  paidCapital: number;
+  /** Partner contribution — Partnership → LLP. */
+  contribution: number;
+  directors: number;
+  partners: number;
+  state: string;
+};
+
+export type FeeContext = CompanyFeeContext | LlpFeeContext | ConversionFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];
