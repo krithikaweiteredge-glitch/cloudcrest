@@ -71,7 +71,25 @@ export type ClosureFeeContext = {
   capital: number;
 };
 
-export type FeeContext = CompanyFeeContext | LlpFeeContext | ConversionFeeContext | ClosureFeeContext;
+/**
+ * A Labour Licence in one state. The backend prices it from the state row's
+ * catalog fee lines plus the state's registration-fee slab on the head count.
+ */
+export type LabourFeeContext = {
+  kind: "labour";
+  /** The state row, `labour-licence-<state>`. */
+  slug: string;
+  state: string;
+  /** Total persons employed. */
+  employees: number;
+};
+
+export type FeeContext =
+  | CompanyFeeContext
+  | LlpFeeContext
+  | ConversionFeeContext
+  | ClosureFeeContext
+  | LabourFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

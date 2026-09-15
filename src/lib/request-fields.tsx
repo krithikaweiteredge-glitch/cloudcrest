@@ -190,6 +190,13 @@ const LABEL_OVERRIDES: Record<string, string> = {
   llpin: "LLPIN (LLP Identification Number)",
   contactperson: "Primary Contact Person Name",
   reasonforclosure: "Reason for Closure",
+  // Labour licence
+  establishmentname: "Name of Enterprise / Establishment",
+  organisationtype: "Type of Organisation",
+  employeesmale: "Persons Employed — Male",
+  employeesfemale: "Persons Employed — Female",
+  employeesothers: "Persons Employed — Others",
+  totalemployees: "Total Persons Employed",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
