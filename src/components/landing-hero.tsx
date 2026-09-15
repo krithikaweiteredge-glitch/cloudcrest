@@ -36,7 +36,7 @@ const DESCRIPTIONS: Record<string, string> = {
   msme: "Get your MSME / Udyam registration certificate quickly for subsidies, tenders and easy credit.",
   iec: "Get your Import-Export Code (IEC) from DGFT so your business can trade across borders.",
   dpiit: "Get recognised under Startup India (DPIIT) to unlock tax exemptions and funding benefits.",
-  "labour-licence": "Obtain your CLRA labour licence with complete documentation and liaison support.",
+  "labour-licence": "Obtain your labour licence with complete documentation and liaison support.",
   epf: "Register your business for Provident Fund (EPF) and stay compliant with EPFO from day one.",
   esi: "Register your business under ESI so your employees get medical and insurance benefits.",
   "shop-establishment": "Get your Shop & Establishment licence for your premises, handled with your local authority.",

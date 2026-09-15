@@ -45,7 +45,7 @@ export const MODULE_GROUPS: ModuleGroup[] = [
   {
     label: "Labour Law",
     items: [
-      { slug: "labour-licence", title: "Labour Licence", short: "Labour Licence", icon: HardHat, authority: "State Labour Dept.", form: "CLRA" },
+      { slug: "labour-licence", title: "Labour Licence", short: "Labour Licence", icon: HardHat, authority: "State Labour Dept.", form: "" },
       { slug: "epf", title: "EPF Registration", short: "EPF", icon: Coins, authority: "EPFO", form: "Form-1" },
       { slug: "esi", title: "ESI Registration", short: "ESI", icon: HeartPulse, authority: "ESIC", form: "Form-01" },
     ],
