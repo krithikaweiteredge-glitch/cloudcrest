@@ -60,7 +60,18 @@ export type ConversionFeeContext = {
   state: string;
 };
 
-export type FeeContext = CompanyFeeContext | LlpFeeContext | ConversionFeeContext;
+/**
+ * A Business Closure. The backend prices it from the closure's catalog fee
+ * lines, plus MGT-14 on the authorised-capital slab for the company closures.
+ */
+export type ClosureFeeContext = {
+  kind: "closure";
+  slug: string;
+  /** Existing authorised share capital — 0 for closures that don't ask for it. */
+  capital: number;
+};
+
+export type FeeContext = CompanyFeeContext | LlpFeeContext | ConversionFeeContext | ClosureFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

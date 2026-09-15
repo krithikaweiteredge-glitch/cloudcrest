@@ -5,14 +5,10 @@ import { RegisterDialog } from "@/components/register-dialog";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { REGISTRATION_STATES } from "@/components/entity-state-wizard";
+import { CompanySearch, type McaCompanyDetails, type McaMatch } from "@/components/mca-company-search";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  useCatalogFamily,
-  useCatalogService,
-  resolveDocuments,
-  resolveFees,
-  type CatalogService,
-} from "@/lib/service-catalog";
+import { useCatalogFamily, useCatalogService, resolveDocuments, type CatalogService } from "@/lib/service-catalog";
+import { useFeeEstimate, type ClosureFeeContext } from "@/lib/fees-api";
 import { INDIAN_STATES } from "@/lib/form-options";
 import {
   EMAIL_RE,
@@ -38,7 +34,9 @@ import {
  * Everything about a closure except the shape of its form lives on its catalog
  * row and is edited in Admin → Services: the service page (About / Who can
  * Apply / Documents / Acts, plus the docx's extra sections as tabs), the
- * document checklist the upload panel turns into slots, and the fee lines.
+ * document checklist the upload panel turns into slots, and the fee lines. The
+ * backend prices the application from those lines plus, for the company
+ * closures, MGT-14 on the authorised-capital slab (see backend config/closureFees).
  *
  * Flow, as elsewhere in the app:
  *
@@ -51,32 +49,57 @@ import {
  *
  * The Details step is the HTML's "Basic Details" card: company, LLP and
  * Section 8 closures ask for the full set (legal name, CIN/LLPIN, office state
- * from all states, contact, reason); partnership, trust, society and Nidhi ask
- * for name, state (Telangana / Andhra Pradesh / Karnataka) and reason.
+ * from all states, contact, reason); partnership, trust and society ask for
+ * name, state (Telangana / Andhra Pradesh / Karnataka) and reason.
+ *
+ * Per "Fee and changes required in closures", Pvt / Public / OPC / Nidhi and
+ * LLP closures search the MCA registry as the name is typed: picking the entity
+ * from the dropdown fills its CIN / LLPIN and state, and when it isn't listed
+ * those two become optional. The company closures also ask the existing
+ * authorised capital, which sets the MGT-14 fee. Section 8 closures search the
+ * registry the same way, without the capital (they aren't priced on MGT-14).
  */
 
 type ClosureLayout = {
   details: "full" | "basic";
   regLabel?: string;
   regKey?: "cin" | "llpin";
+  /** Pick the entity from the MCA registry; CIN / LLPIN and state are then optional. */
+  search?: "company" | "llp";
+  /** Ask the existing authorised capital (the MGT-14 slab). */
+  capital?: boolean;
 };
 
 const CIN: ClosureLayout = { details: "full", regLabel: "CIN (Corporate Identification Number)", regKey: "cin" };
 const LLPIN: ClosureLayout = { details: "full", regLabel: "LLPIN (LLP Identification Number)", regKey: "llpin" };
+const COMPANY_SEARCH: ClosureLayout = { ...CIN, search: "company", capital: true };
+const SEC8_SEARCH: ClosureLayout = { ...CIN, search: "company" };
+const LLP_SEARCH: ClosureLayout = { ...LLPIN, search: "llp" };
 const BASIC: ClosureLayout = { details: "basic" };
 
 const LAYOUTS: Record<string, ClosureLayout> = {
-  "closure-pvt": CIN,
-  "closure-public": CIN,
-  "closure-opc": CIN,
-  "closure-llp": LLPIN,
-  "closure-sec8-conversion": CIN,
-  "closure-sec8-liquidation": CIN,
+  "closure-pvt": COMPANY_SEARCH,
+  "closure-public": COMPANY_SEARCH,
+  "closure-opc": COMPANY_SEARCH,
+  "closure-nidhi": COMPANY_SEARCH,
+  "closure-llp": LLP_SEARCH,
+  "closure-sec8-conversion": SEC8_SEARCH,
+  "closure-sec8-liquidation": SEC8_SEARCH,
   "closure-partnership": BASIC,
   "closure-trust-public": BASIC,
   "closure-trust-private": BASIC,
   "closure-society": BASIC,
-  "closure-nidhi": BASIC,
+};
+
+/** Registry matches a closure's search offers: LLPs for an LLP, companies otherwise. */
+const SEARCH_ACCEPT: Record<NonNullable<ClosureLayout["search"]>, (m: McaMatch) => boolean> = {
+  company: (m) => m.entityType !== "LLP",
+  llp: (m) => m.entityType === "LLP",
+};
+
+const toAmount = (v: string) => {
+  const n = Number(v.replace(/,/g, ""));
+  return v.trim() !== "" && Number.isFinite(n) ? n : NaN;
 };
 
 /** Closures whose applicant first picks a sub-type, each with its own service page. */
@@ -85,7 +108,7 @@ const TYPE_PICKER_BASES = new Set(["closure-trust", "closure-sec8"]);
 /** A sub-type an admin adds later follows its family's form. */
 function layoutFor(slug: string): ClosureLayout {
   if (LAYOUTS[slug]) return LAYOUTS[slug];
-  if (slug.startsWith("closure-sec8-")) return CIN;
+  if (slug.startsWith("closure-sec8-")) return SEC8_SEARCH;
   return BASIC;
 }
 
@@ -260,7 +283,10 @@ export function ClosureWizard({
   const full = layout.details === "full";
 
   const [entityName, setEntityName] = useState(initialName || "");
+  // The registry record picked from the search dropdown.
+  const [mcaCompany, setMcaCompany] = useState<McaCompanyDetails | null>(null);
   const [regNo, setRegNo] = useState("");
+  const [authorisedCapital, setAuthorisedCapital] = useState("");
   const [officeState, setOfficeState] = useState("");
   const [contactName, setContactName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -289,19 +315,23 @@ export function ClosureWizard({
   const authority = service?.authority || "";
   const stateOptions = full ? INDIAN_STATES : REGISTRATION_STATES.map((s) => s.name);
 
-  const fees = resolveFees(service, authority || "Government", { professional: 0, govt: 0, gstPercent: 18 });
+  // Fees come from the backend: the closure's catalog fee lines plus MGT-14 on
+  // the authorised capital entered here. The same context goes with the
+  // application so the backend recomputes it at submit.
+  const capitalFigure = layout.capital ? toAmount(authorisedCapital) : NaN;
+  const feeContext: ClosureFeeContext = {
+    kind: "closure",
+    slug,
+    capital: Number.isNaN(capitalFigure) ? 0 : capitalFigure,
+  };
+  const fees = useFeeEstimate(feeContext, !!user);
   const { documents } = resolveDocuments(service, []);
 
-  // The admin's professional fee, or null (the sidebar then leaves the row out).
-  // With fee lines, only a line labelled "Professional Fee" counts — a line such
-  // as the STK-2 government fee must not be shown as the professional fee.
+  // The "Professional Fee" line, or null (the sidebar then leaves the row out) —
+  // a line such as the STK-2 government fee must not be shown as the professional fee.
   const professionalFee = (() => {
-    if ((service?.feeLines ?? []).length > 0) {
-      const line = fees.lines.find((l) => /professional/i.test(l.label))?.amount;
-      return line && line > 0 ? line : null;
-    }
-    const column = service?.professionalFee;
-    return column && column > 0 ? column : null;
+    const line = fees.lines.find((l) => /professional/i.test(l.label))?.amount;
+    return line && line > 0 ? line : null;
   })();
 
   const answers = useMemo(() => {
@@ -313,6 +343,14 @@ export function ClosureWizard({
     add("entityName", full ? "Legal Name of Entity" : "Name of the Entity", entityName);
     if (full && layout.regKey && layout.regLabel) add(layout.regKey, layout.regLabel, regNo.toUpperCase());
     add("state", full ? "Registered Office State" : "State", officeState);
+    if (mcaCompany) {
+      add("incorporationDate", "Date of Incorporation", mcaCompany.incorporationDate || "");
+      add("companyStatus", "Status (as per MCA)", mcaCompany.companyStatus || "");
+      add("registeredOffice", "Registered Office (as per MCA)", mcaCompany.address || "");
+    }
+    if (layout.capital && !Number.isNaN(capitalFigure)) {
+      add("authorisedCapital", "Existing Authorised Share Capital", `₹ ${capitalFigure.toLocaleString("en-IN")}`);
+    }
     if (full) {
       add("contactPerson", "Primary Contact Person Name", contactName);
       add("applicantMobile", "Mobile Number", mobile);
@@ -320,7 +358,7 @@ export function ClosureWizard({
     }
     add("reasonForClosure", full ? "Reason for Closure" : "Reason for Resolving / Closure", reason);
     return rows;
-  }, [title, full, layout, entityName, regNo, officeState, contactName, mobile, email, reason]);
+  }, [title, full, layout, entityName, regNo, officeState, mcaCompany, capitalFigure, contactName, mobile, email, reason]);
 
   const validateStep = (key: string | undefined): boolean => {
     const e: Record<string, string> = {};
@@ -332,8 +370,13 @@ export function ClosureWizard({
 
     if (key === "details") {
       if (!entityName.trim()) fail("entityName", "Name of the entity is required.");
-      if (full && !regNo.trim()) fail("regNo", `${layout.regLabel} is required.`);
-      if (!officeState) fail("officeState", "Please select the state.");
+      // With the registry search, CIN / LLPIN and state are optional — the
+      // entity may not be listed.
+      if (full && !layout.search && !regNo.trim()) fail("regNo", `${layout.regLabel} is required.`);
+      if (!layout.search && !officeState) fail("officeState", "Please select the state.");
+      if (layout.capital && (Number.isNaN(capitalFigure) || capitalFigure <= 0)) {
+        fail("authorisedCapital", "Enter the existing authorised share capital in rupees.");
+      }
       if (full) {
         if (!contactName.trim()) fail("contactName", "Primary contact person name is required.");
         if (!IN_MOBILE_RE.test(mobile.trim())) fail("mobile", "Enter a valid 10-digit mobile number.");
@@ -423,21 +466,58 @@ export function ClosureWizard({
             <div className="mt-6 space-y-6">
               {stepKey === "details" && (
                 <Section title="Basic Details of the Entity">
-                  <Field
-                    label={full ? "Legal Name of Entity (as per registration documents)" : "Name of the Entity"}
-                    error={errors.entityName}
-                  >
-                    <Input
-                      value={entityName}
-                      onChange={setEntityName}
-                      placeholder={full ? "Enter full legal name" : "Enter full name of the entity"}
+                  {layout.search ? (
+                    <Field
+                      label="Legal Name of Entity (as per registration documents)"
                       error={errors.entityName}
-                    />
-                  </Field>
+                      hint={`Type the name and select your ${layout.search === "llp" ? "LLP" : "company"} from the list — its details are fetched from the MCA registry. Not listed? Enter the name and carry on.`}
+                    >
+                      <CompanySearch
+                        value={entityName}
+                        placeholder={`Start typing your ${layout.search === "llp" ? "LLP" : "company"} name…`}
+                        error={errors.entityName}
+                        selected={mcaCompany}
+                        accept={SEARCH_ACCEPT[layout.search]}
+                        emptyText={`No registered ${layout.search === "llp" ? "LLP" : "company"} matches this name — enter the details below.`}
+                        onType={(v) => {
+                          setEntityName(v);
+                          if (mcaCompany) {
+                            setMcaCompany(null);
+                            setRegNo("");
+                            setOfficeState("");
+                          }
+                        }}
+                        onSelect={(c) => {
+                          setEntityName(c.name);
+                          setMcaCompany(c);
+                          setRegNo((c.cin || "").toUpperCase());
+                          const st = INDIAN_STATES.find((s) => s.toLowerCase() === (c.state || "").trim().toLowerCase());
+                          setOfficeState(st ?? "");
+                          const cap = toAmount(String(c.authorizedCapital ?? ""));
+                          if (layout.capital && cap > 0) setAuthorisedCapital(String(cap));
+                        }}
+                      />
+                    </Field>
+                  ) : (
+                    <Field
+                      label={full ? "Legal Name of Entity (as per registration documents)" : "Name of the Entity"}
+                      error={errors.entityName}
+                    >
+                      <Input
+                        value={entityName}
+                        onChange={setEntityName}
+                        placeholder={full ? "Enter full legal name" : "Enter full name of the entity"}
+                        error={errors.entityName}
+                      />
+                    </Field>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {full && (
-                      <Field label={layout.regLabel ?? ""} error={errors.regNo}>
+                      <Field
+                        label={`${layout.regLabel ?? ""}${layout.search && !mcaCompany ? " (optional)" : ""}`}
+                        error={errors.regNo}
+                      >
                         <Input
                           value={regNo}
                           onChange={(v) => setRegNo(v.toUpperCase())}
@@ -446,7 +526,10 @@ export function ClosureWizard({
                         />
                       </Field>
                     )}
-                    <Field label={full ? "Registered Office State" : "State"} error={errors.officeState}>
+                    <Field
+                      label={`${full ? "Registered Office State" : "State"}${layout.search && !mcaCompany ? " (optional)" : ""}`}
+                      error={errors.officeState}
+                    >
                       <Select value={officeState} onChange={setOfficeState} error={errors.officeState}>
                         <option value="">-- Select State --</option>
                         {stateOptions.map((s) => (
@@ -457,6 +540,25 @@ export function ClosureWizard({
                       </Select>
                     </Field>
                   </div>
+
+                  {layout.capital && (
+                    <Field
+                      label="Existing Authorised Share Capital (₹)"
+                      error={errors.authorisedCapital}
+                      hint={
+                        mcaCompany && toAmount(String(mcaCompany.authorizedCapital ?? "")) > 0
+                          ? "Fetched from the MCA registry — change it if it has been altered since. It sets the MGT-14 filing fee."
+                          : "As per the company's latest records. It sets the MGT-14 filing fee."
+                      }
+                    >
+                      <Input
+                        value={authorisedCapital}
+                        onChange={(v) => setAuthorisedCapital(v.replace(/[^\d]/g, ""))}
+                        placeholder="e.g. 100000"
+                        error={errors.authorisedCapital}
+                      />
+                    </Field>
+                  )}
 
                   {full && (
                     <>
@@ -500,7 +602,7 @@ export function ClosureWizard({
                 <FeesStep
                   signedIn={!!user}
                   onSignIn={() => setOpenSignIn(true)}
-                  loading={catalogLoading}
+                  loading={catalogLoading || fees.loading}
                   lines={fees.lines}
                   total={fees.total}
                   heading="Estimated Closure Fee Breakdown"
@@ -521,7 +623,10 @@ export function ClosureWizard({
                       <div
                         key={a.key}
                         className={
-                          a.key === "closureType" || a.key === "entityName" || a.key === "reasonForClosure"
+                          a.key === "closureType" ||
+                          a.key === "entityName" ||
+                          a.key === "registeredOffice" ||
+                          a.key === "reasonForClosure"
                             ? "sm:col-span-2"
                             : ""
                         }
@@ -567,12 +672,14 @@ export function ClosureWizard({
         authority={authority}
         form={service?.form && service.form !== "—" ? service.form : undefined}
         documents={documents}
+        capital={Number.isNaN(capitalFigure) ? undefined : capitalFigure}
         initialName={full ? contactName : undefined}
         initialEmail={full ? email : undefined}
         initialPhone={full ? mobile : undefined}
         formData={formData}
         fees={fees.lines}
         feeTotal={fees.total}
+        feeContext={feeContext}
       />
 
       <SignInDialog
