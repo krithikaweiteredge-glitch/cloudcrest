@@ -7,6 +7,7 @@ import { PartnershipWizard } from "@/components/partnership-wizard";
 import { SocietyWizard } from "@/components/society-wizard";
 import { HufWizard } from "@/components/huf-wizard";
 import { LabourLicenceWizard } from "@/components/labour-licence-wizard";
+import { ProfessionalTaxWizard } from "@/components/professional-tax-wizard";
 import { TrustWizard } from "@/components/trust-wizard";
 import { SoleProprietorshipWizard } from "@/components/sole-proprietorship-wizard";
 import { MsmeModule } from "@/components/msme-wizard";
@@ -33,6 +34,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "society" || slug.startsWith("society-")) return <SocietyWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "huf") return <HufWizard initialName={initialName} />;
   if (slug === "labour-licence" || slug.startsWith("labour-licence-")) return <LabourLicenceWizard initialName={initialName} />;
+  if (slug === "professional-tax" || slug.startsWith("professional-tax-")) return <ProfessionalTaxWizard initialName={initialName} />;
   if (slug === "trust" || slug.startsWith("trust-")) return <TrustWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-")) return <SoleProprietorshipWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;

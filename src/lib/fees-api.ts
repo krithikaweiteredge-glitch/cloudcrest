@@ -84,12 +84,25 @@ export type LabourFeeContext = {
   employees: number;
 };
 
+/**
+ * A Professional Tax registration in one state. The client's document names no
+ * government fee, so the backend simply returns the state row's own catalog fee
+ * lines — there is nothing computed to send figures for.
+ */
+export type ProfessionalTaxFeeContext = {
+  kind: "professional-tax";
+  /** The state row, `professional-tax-<state>`. */
+  slug: string;
+  state: string;
+};
+
 export type FeeContext =
   | CompanyFeeContext
   | LlpFeeContext
   | ConversionFeeContext
   | ClosureFeeContext
-  | LabourFeeContext;
+  | LabourFeeContext
+  | ProfessionalTaxFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

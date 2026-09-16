@@ -197,6 +197,9 @@ const LABEL_OVERRIDES: Record<string, string> = {
   employeesfemale: "Persons Employed — Female",
   employeesothers: "Persons Employed — Others",
   totalemployees: "Total Persons Employed",
+  // Professional Tax
+  organisationname: "Name of Enterprise / Organisation",
+  businessdetails: "Business Details",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
