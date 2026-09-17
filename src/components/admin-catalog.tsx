@@ -1,4 +1,5 @@
 import { resolveConversionRules, serializeConversionRules } from "@/lib/conversion-rules";
+import { ROAD_WIDTHS, resolveRoadWidthRates, type RoadWidthKey } from "@/lib/trade-licence-rates";
 import { useState } from "react";
 import { assetUrl } from "@/lib/file-url";
 import { resolveWizardRules } from "@/lib/company-types";
@@ -578,6 +579,12 @@ function ServiceDialog({
   const [convNoteName, setConvNoteName] = useState(initialConversion.notes.name);
   const [convNoteMembers, setConvNoteMembers] = useState(initialConversion.notes.members);
   const [convNoteCapital, setConvNoteCapital] = useState(initialConversion.notes.capital);
+  // Trade Licence state rows (trade-licence-<state>): ₹ per sq.ft. by road width,
+  // which the backend multiplies by the premises area for the Govt Fee.
+  const [roadRates, setRoadRates] = useState<Record<RoadWidthKey, string>>(() => {
+    const r = resolveRoadWidthRates(svc?.wizardRules);
+    return { single: String(r.single), double: String(r.double), multiple: String(r.multiple), star: String(r.star) };
+  });
   const [shortTitle, setShortTitle] = useState(svc?.shortTitle || "");
   const [authority, setAuthority] = useState(svc?.authority || "");
   const [formNo, setFormNo] = useState(svc?.formNo || "");
@@ -729,7 +736,13 @@ function ServiceDialog({
                   capital: convNoteCapital.trim(),
                 },
               })
-            : undefined,
+            : isTradeLicenceState
+              ? JSON.stringify({
+                  roadWidthRates: Object.fromEntries(
+                    ROAD_WIDTHS.map(({ key }) => [key, Number(roadRates[key]) || 0]),
+                  ),
+                })
+              : undefined,
       };
       if (state.mode === "create") {
         await call("/services", "POST", { ...payload, subcategoryId: state.subcategoryId });
@@ -754,6 +767,7 @@ function ServiceDialog({
   const isWizardService = isWizardLauncher || isWizardVariant;
   const isCompanyVariant = currentSlug.startsWith("company-");
   const isConversionService = currentSlug.startsWith("conversion-");
+  const isTradeLicenceState = currentSlug.startsWith("trade-licence-");
   // A closure with types (Trust, Section 8) shows its own About above the type
   // choice — e.g. why Section 8 has two routes — so that text stays editable
   // here even though the page tabs themselves live on the types.
@@ -851,6 +865,34 @@ function ServiceDialog({
             </div>
           )}
         </div>
+        )}
+
+        {isTradeLicenceState && (
+          <div className="pt-3 mt-1 border-t border-border space-y-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-border pb-2">
+              Govt Fee — Rate per sq.ft. by Road Width
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              The applicant picks the road width and enters the area; the Govt Fee is area × the rate below,
+              added after the fee lines above.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ROAD_WIDTHS.map(({ key, label }) => (
+                <Field key={key} label={`${label} — ₹ / sq.ft.`}>
+                  <input
+                    value={roadRates[key]}
+                    onChange={(e) => {
+                      const val = nonNegativeString(e.target.value);
+                      setRoadRates((prev) => ({ ...prev, [key]: val }));
+                    }}
+                    inputMode="decimal"
+                    placeholder="0"
+                    className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm ring-focus mono"
+                  />
+                </Field>
+              ))}
+            </div>
+          </div>
         )}
 
         {isConversionService && (

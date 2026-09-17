@@ -96,13 +96,40 @@ export type ProfessionalTaxFeeContext = {
   state: string;
 };
 
+/**
+ * A Trade Licence in one state. The backend prices it from the state row's
+ * catalog fee lines plus the Govt Fee: area × the row's per-sq.ft. rate for
+ * the road width.
+ */
+export type TradeLicenceFeeContext = {
+  kind: "trade-licence";
+  /** The state row, `trade-licence-<state>`. */
+  slug: string;
+  state: string;
+  /** single / double / multiple / star — "" until picked. */
+  roadWidth: string;
+  /** Premises area in sq.ft. */
+  area: number;
+};
+
+/**
+ * An EPF or ESI registration. The client's document names no government fee,
+ * so the backend returns the row's own catalog fee lines.
+ */
+export type EmployerRegistrationFeeContext = {
+  kind: "employer-registration";
+  slug: "epf" | "esi";
+};
+
 export type FeeContext =
   | CompanyFeeContext
   | LlpFeeContext
   | ConversionFeeContext
   | ClosureFeeContext
   | LabourFeeContext
-  | ProfessionalTaxFeeContext;
+  | ProfessionalTaxFeeContext
+  | TradeLicenceFeeContext
+  | EmployerRegistrationFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];
