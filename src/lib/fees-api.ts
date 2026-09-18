@@ -146,6 +146,20 @@ export type LutFeeContext = {
   financialYear: string;
 };
 
+/**
+ * A PAN or TAN application. The client prices both at a flat professional fee
+ * plus GST, so the backend returns the `pan-tan-pan` / `pan-tan-tan` row's own
+ * catalog fee lines, falling back to the shared `pan-tan` launcher row.
+ */
+export type PanTanFeeContext = {
+  kind: "pan-tan";
+  slug: string;
+  /** "pan" or "tan". */
+  service: string;
+  /** Applicant category (PAN) or deductor category (TAN). */
+  category: string;
+};
+
 export type FeeContext =
   | CompanyFeeContext
   | LlpFeeContext
@@ -156,7 +170,8 @@ export type FeeContext =
   | TradeLicenceFeeContext
   | EmployerRegistrationFeeContext
   | GstFeeContext
-  | LutFeeContext;
+  | LutFeeContext
+  | PanTanFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

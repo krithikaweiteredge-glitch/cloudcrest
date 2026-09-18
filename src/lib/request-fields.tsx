@@ -212,6 +212,18 @@ const LABEL_OVERRIDES: Record<string, string> = {
   witness2address: "Witness 2 — Address",
   // GST registration
   constitution: "Constitution of Business",
+  // PAN / TAN
+  pantanservice: "Service",
+  applicantcategory: "Applicant Category",
+  formno: "Form",
+  pandeliverymode: "PAN Type",
+  dscmode: "DSC Mode",
+  deductorcategory: "Category of Deductor",
+  nationality: "Nationality of Deductor",
+  deductorname: "Deductor Name",
+  responsiblename: "Person Responsible — Name",
+  responsibledesignation: "Person Responsible — Designation",
+  responsiblepan: "Person Responsible — PAN",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */
