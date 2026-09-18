@@ -22,7 +22,6 @@ import {
   FeesStep,
   IN_MOBILE_RE,
   Input,
-  NoteBox,
   OptionCard,
   Section,
   Select,
@@ -643,12 +642,6 @@ function PanStepper({ initialName = "", onExit }: { initialName?: string; onExit
                 ))}
               </Select>
             </Field>
-          )}
-
-          {category === "foreign-individual" && (
-            <NoteBox>
-              No further selection is needed — Form 95 goes straight to the document checklist.
-            </NoteBox>
           )}
 
           <Field label="Applicant / Entity Name *" error={errors.applicantName}>
