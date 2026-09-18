@@ -573,6 +573,32 @@ function PanStepper({ initialName = "", onExit }: { initialName?: string; onExit
       professionalFee={professionalFee}
       gstPercent={service?.gstPercent || 18}
       formNo={form}
+      dialogs={
+        <>
+          <RegisterDialog
+            open={openReg}
+            onClose={() => setOpenReg(false)}
+            serviceSlug="pan-tan-pan"
+            serviceTitle={`PAN — ${selected?.title ?? "Application"}`}
+            authority={authority}
+            form={form}
+            documents={documents}
+            initialName={contactName}
+            initialEmail={email}
+            initialPhone={mobile}
+            formData={formData}
+            fees={fees.lines}
+            feeTotal={fees.total}
+            feeContext={feeContext}
+          />
+          <SignInDialog
+            open={openSignIn}
+            onClose={() => setOpenSignIn(false)}
+            reason="Sign in to continue your PAN application — we'll save your progress, show the fee breakdown and let you submit."
+            next="/m/pan-tan"
+          />
+        </>
+      }
     >
       {stepKey === "category" && (
         <Section
@@ -690,29 +716,6 @@ function PanStepper({ initialName = "", onExit }: { initialName?: string; onExit
       )}
 
       {stepKey === "summary" && <SummaryStep answers={answers} documents={documents} />}
-
-      <RegisterDialog
-        open={openReg}
-        onClose={() => setOpenReg(false)}
-        serviceSlug="pan-tan-pan"
-        serviceTitle={`PAN — ${selected?.title ?? "Application"}`}
-        authority={authority}
-        form={form}
-        documents={documents}
-        initialName={contactName}
-        initialEmail={email}
-        initialPhone={mobile}
-        formData={formData}
-        fees={fees.lines}
-        feeTotal={fees.total}
-        feeContext={feeContext}
-      />
-      <SignInDialog
-        open={openSignIn}
-        onClose={() => setOpenSignIn(false)}
-        reason="Sign in to continue your PAN application — we'll save your progress, show the fee breakdown and let you submit."
-        next="/m/pan-tan"
-      />
     </StepperShell>
   );
 }
@@ -891,6 +894,32 @@ function TanStepper({ initialName = "", onExit }: { initialName?: string; onExit
       professionalFee={professionalFee}
       gstPercent={service?.gstPercent || 18}
       formNo={form}
+      dialogs={
+        <>
+          <RegisterDialog
+            open={openReg}
+            onClose={() => setOpenReg(false)}
+            serviceSlug="pan-tan-tan"
+            serviceTitle="TAN Application"
+            authority={authority}
+            form={form}
+            documents={documents}
+            initialName={contactName}
+            initialEmail={email}
+            initialPhone={mobile}
+            formData={formData}
+            fees={fees.lines}
+            feeTotal={fees.total}
+            feeContext={feeContext}
+          />
+          <SignInDialog
+            open={openSignIn}
+            onClose={() => setOpenSignIn(false)}
+            reason="Sign in to continue your TAN application — we'll save your progress, show the fee breakdown and let you submit."
+            next="/m/pan-tan"
+          />
+        </>
+      }
     >
       {stepKey === "category" && (
         <Section title="DSC Mode & Category of Deductor" desc="Form 135 — non-government category.">
@@ -1065,29 +1094,6 @@ function TanStepper({ initialName = "", onExit }: { initialName?: string; onExit
       )}
 
       {stepKey === "summary" && <SummaryStep answers={answers} documents={documents} />}
-
-      <RegisterDialog
-        open={openReg}
-        onClose={() => setOpenReg(false)}
-        serviceSlug="pan-tan-tan"
-        serviceTitle="TAN Application"
-        authority={authority}
-        form={form}
-        documents={documents}
-        initialName={contactName}
-        initialEmail={email}
-        initialPhone={mobile}
-        formData={formData}
-        fees={fees.lines}
-        feeTotal={fees.total}
-        feeContext={feeContext}
-      />
-      <SignInDialog
-        open={openSignIn}
-        onClose={() => setOpenSignIn(false)}
-        reason="Sign in to continue your TAN application — we'll save your progress, show the fee breakdown and let you submit."
-        next="/m/pan-tan"
-      />
     </StepperShell>
   );
 }
@@ -1170,6 +1176,7 @@ function StepperShell({
   gstPercent,
   formNo,
   children,
+  dialogs,
 }: {
   heroTitle: string;
   eyebrow: string;
@@ -1190,6 +1197,14 @@ function StepperShell({
   gstPercent: number;
   formNo: string;
   children: React.ReactNode;
+  /**
+   * The modals this wizard owns. They render OUTSIDE the `animate-in-up`
+   * column: that class ends on `transform: translateY(0)` with fill-mode
+   * `both`, and a non-`none` transform makes the element a containing block for
+   * `position: fixed` descendants — which would clip the dialog to the column
+   * instead of the viewport.
+   */
+  dialogs?: React.ReactNode;
 }) {
   return (
     <div>
@@ -1247,6 +1262,8 @@ function StepperShell({
           formNo={formNo}
         />
       </div>
+
+      {dialogs}
     </div>
   );
 }
