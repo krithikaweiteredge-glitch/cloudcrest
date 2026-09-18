@@ -200,6 +200,18 @@ const LABEL_OVERRIDES: Record<string, string> = {
   // Professional Tax
   organisationname: "Name of Enterprise / Organisation",
   businessdetails: "Business Details",
+  // Letter of Undertaking
+  financialyear: "Financial Year",
+  gstuserid: "GST Portal User ID",
+  gstpassword: "GST Portal Password",
+  witness1name: "Witness 1 — Name",
+  witness1occupation: "Witness 1 — Occupation",
+  witness1address: "Witness 1 — Address",
+  witness2name: "Witness 2 — Name",
+  witness2occupation: "Witness 2 — Occupation",
+  witness2address: "Witness 2 — Address",
+  // GST registration
+  constitution: "Constitution of Business",
 };
 
 /** Turn a camelCase / snake_case form key into a human "Title Case" label. */

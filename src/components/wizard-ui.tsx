@@ -6,7 +6,8 @@
  * (DIN, IEC, LEI, RERA) share this module instead, so the hero band, the fee
  * panel, the checklist and the form controls stay identical across them.
  */
-import { ArrowLeft, ArrowRight, CheckCircle2, Download, FileText, Lock, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Download, Eye, EyeOff, FileText, Lock, Send } from "lucide-react";
+import { useState } from "react";
 import { blockNegativeKeys, nonNegativeString } from "@/lib/number-input";
 
 /* -------------------------------------------------------------------------- */
@@ -90,6 +91,53 @@ export function Input({
       placeholder={placeholder}
       className={fieldClass(error)}
     />
+  );
+}
+
+/**
+ * A password field that hides what is typed but lets the person reveal it with
+ * the eye control — for portal credentials a wizard collects on the applicant's
+ * behalf, where a typo is invisible and costly.
+ *
+ * The value is ordinary form state: whatever a wizard does with it afterwards
+ * (store it, mask it on a summary, keep it out of a PDF) is the wizard's call,
+ * not this control's.
+ */
+export function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  error,
+  maxLength,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
+  maxLength?: number;
+}) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={shown ? "text" : "password"}
+        value={value}
+        maxLength={maxLength}
+        autoComplete="off"
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={fieldClass(error) + " pr-10"}
+      />
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        aria-label={shown ? "Hide password" : "Show password"}
+        title={shown ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted ring-focus transition-colors cursor-pointer"
+      >
+        {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
   );
 }
 

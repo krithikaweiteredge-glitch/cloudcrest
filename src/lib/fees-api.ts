@@ -136,6 +136,16 @@ export type GstFeeContext = {
   constitution: string;
 };
 
+/**
+ * A Letter of Undertaking. The client's document names no fee, so the backend
+ * returns the `lut` row's own catalog fee lines — whatever the admin published.
+ */
+export type LutFeeContext = {
+  kind: "lut";
+  slug: "lut";
+  financialYear: string;
+};
+
 export type FeeContext =
   | CompanyFeeContext
   | LlpFeeContext
@@ -145,7 +155,8 @@ export type FeeContext =
   | ProfessionalTaxFeeContext
   | TradeLicenceFeeContext
   | EmployerRegistrationFeeContext
-  | GstFeeContext;
+  | GstFeeContext
+  | LutFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

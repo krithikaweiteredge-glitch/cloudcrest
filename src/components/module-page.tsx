@@ -3,6 +3,7 @@ import { ConversionModule } from "@/components/conversion-wizard";
 import { CompanyWizard } from "@/components/company-wizard";
 import { LlpWizard } from "@/components/llp-wizard";
 import { GstWizard } from "@/components/gst-wizard";
+import { LutModule } from "@/components/lut-wizard";
 import { PartnershipWizard } from "@/components/partnership-wizard";
 import { SocietyWizard } from "@/components/society-wizard";
 import { HufWizard } from "@/components/huf-wizard";
@@ -41,6 +42,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "trade-licence" || slug.startsWith("trade-licence-")) return <TradeLicenceWizard initialName={initialName} />;
   if (slug === "trust" || slug.startsWith("trust-")) return <TrustWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-")) return <SoleProprietorshipWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "lut") return <LutModule initialName={initialName} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;
   if (slug === "ngo-darpan") return <NgoDarpanModule initialName={initialName} />;
   if (slug === "din") return <DinModule initialName={initialName} />;
