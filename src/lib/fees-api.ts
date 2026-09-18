@@ -121,6 +121,21 @@ export type EmployerRegistrationFeeContext = {
   slug: "epf" | "esi";
 };
 
+/**
+ * A GST registration of one taxpayer type. The client's document prices every
+ * registration at a Professional Fee plus GST and names no government fee, so
+ * the backend returns the `gst-<type>` row's own catalog fee lines — whatever
+ * the admin published — falling back to the base `gst` row when the type row
+ * isn't priced yet. State and constitution ride along for the record.
+ */
+export type GstFeeContext = {
+  kind: "gst";
+  /** The type row, `gst-<type>`. */
+  slug: string;
+  state: string;
+  constitution: string;
+};
+
 export type FeeContext =
   | CompanyFeeContext
   | LlpFeeContext
@@ -129,7 +144,8 @@ export type FeeContext =
   | LabourFeeContext
   | ProfessionalTaxFeeContext
   | TradeLicenceFeeContext
-  | EmployerRegistrationFeeContext;
+  | EmployerRegistrationFeeContext
+  | GstFeeContext;
 
 type EstimateResponse = {
   lines: FeeLine[];

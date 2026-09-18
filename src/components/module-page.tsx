@@ -31,7 +31,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   // service, including anything an admin publishes, renders the catalog page.
   if (slug === "company") return <CompanyWizard initialName={initialName} />;
   if (slug === "llp") return <LlpWizard initialName={initialName} />;
-  if (slug === "gst") return <GstWizard initialName={initialName} />;
+  if (slug === "gst" || slug.startsWith("gst-")) return <GstWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "partnership" || slug.startsWith("partnership-")) return <PartnershipWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "society" || slug.startsWith("society-")) return <SocietyWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "huf") return <HufWizard initialName={initialName} />;

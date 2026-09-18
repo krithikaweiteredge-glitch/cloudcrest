@@ -19,6 +19,13 @@ export type RegistrationType = {
   popular?: boolean;
   /** One-line description on the picker card. */
   blurb: string;
+  /**
+   * The categories a grouped card stands in for, listed under its title on the
+   * picker — e.g. the GST "Other Registrations" card, which covers the
+   * non-resident online services provider, SEZ and UIN registrations because
+   * all three ask for the same documents.
+   */
+  covers?: string[];
   /** "About this registration" copy. */
   about: string;
   /** "Who can apply" bullets. */
@@ -238,6 +245,19 @@ export function TypePickerPage({
                 <div className="mb-3">
                   <div className="text-sm font-semibold leading-tight">{t.title}</div>
                   <div className="text-[10px] mono text-muted-foreground mt-1">{t.form}</div>
+                  {t.covers && t.covers.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {t.covers.map((c) => (
+                        <li
+                          key={c}
+                          className="text-[11px] leading-snug text-muted-foreground flex gap-1.5"
+                        >
+                          <span className="text-primary/70">•</span>
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {isPopular && (
