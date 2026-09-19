@@ -4,6 +4,7 @@ import { CompanyWizard } from "@/components/company-wizard";
 import { LlpWizard } from "@/components/llp-wizard";
 import { GstWizard } from "@/components/gst-wizard";
 import { LutModule } from "@/components/lut-wizard";
+import { LowerTaxDeductionModule } from "@/components/lower-tax-deduction-wizard";
 import { PanTanModule } from "@/components/pan-tan-wizard";
 import { PartnershipWizard } from "@/components/partnership-wizard";
 import { SocietyWizard } from "@/components/society-wizard";
@@ -44,6 +45,7 @@ export function ModulePage({ slug, initialName }: { slug: string; initialName?: 
   if (slug === "trust" || slug.startsWith("trust-")) return <TrustWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-")) return <SoleProprietorshipWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "lut") return <LutModule initialName={initialName} />;
+  if (slug === "lower-tax-deduction") return <LowerTaxDeductionModule initialName={initialName} />;
   if (slug === "pan-tan" || slug.startsWith("pan-tan-")) return <PanTanModule key={slug} initialName={initialName} slug={slug} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;
   if (slug === "ngo-darpan") return <NgoDarpanModule initialName={initialName} />;
