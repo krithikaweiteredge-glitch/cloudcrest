@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import AppShell from "@/components/app-shell";
 import { ModulePage } from "@/components/module-page";
-import { getModule } from "@/lib/modules";
+import { getModule, LEGACY_SLUG_REDIRECTS } from "@/lib/modules";
 
 interface ServiceSearch {
   name?: string;
@@ -21,6 +21,14 @@ export const Route = createFileRoute("/m/$slug")({
     return {
       name: search.name ? String(search.name) : undefined,
     };
+  },
+  // A service that has been renamed keeps its old URL working: /m/80iac lands
+  // on /m/section-140 rather than on an empty page.
+  beforeLoad: ({ params, search }) => {
+    const renamed = LEGACY_SLUG_REDIRECTS[params.slug];
+    if (renamed) {
+      throw redirect({ to: "/m/$slug", params: { slug: renamed }, search, replace: true });
+    }
   },
   head: ({ params }) => {
     // Built-in modules have static titles. Admin-published services aren't known

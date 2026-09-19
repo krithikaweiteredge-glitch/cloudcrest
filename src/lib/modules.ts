@@ -83,6 +83,18 @@ export function getModule(slug: string): ModuleItem | undefined {
   return ALL_MODULES.find((m) => m.slug === slug);
 }
 
+/**
+ * Slugs that have been renamed, and what they were renamed to. `/m/<old>` is
+ * redirected to `/m/<new>` (see `routes/m.$slug.tsx`) so links, bookmarks and
+ * anything that stored the old slug keep working.
+ *
+ * `80iac` → `section-140`: Section 140 of the Income-tax Act, 2025 replaced
+ * Section 80-IAC of the 1961 Act, and the service is named for it now.
+ */
+export const LEGACY_SLUG_REDIRECTS: Record<string, string> = {
+  "80iac": "section-140",
+};
+
 /** A service published from the admin catalog (DB-driven). */
 export type CatalogGroup = {
   label: string;
@@ -162,7 +174,7 @@ const ITEM_ORDER = [
   "closure-partnership", "closure-nidhi", "closure-sec8", "closure-public",
   "closure-trust", "closure-society",
   // Tax Registrations
-  "gst", "lut", "pan-tan", "dpiit", "lower-tax-deduction", "80iac", "12a", "80g",
+  "gst", "lut", "pan-tan", "dpiit", "lower-tax-deduction", "section-140", "12a", "80g",
   "icegate", "form-10a", "non-deduction-declaration", "rcmc",
   // Other Business Registrations (msme/iec live in the Tax category in the DB but
   // are listed here per the document's grouping)
