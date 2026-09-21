@@ -5,6 +5,8 @@ import { getModule, LEGACY_SLUG_REDIRECTS } from "@/lib/modules";
 
 interface ServiceSearch {
   name?: string;
+  /** Company structure picked on the home name check (`pvt`, `public`, `opc`). */
+  type?: string;
 }
 
 /** `trade-licence` -> `Trade Licence`, used before the service payload arrives. */
@@ -20,6 +22,7 @@ export const Route = createFileRoute("/m/$slug")({
   validateSearch: (search: Record<string, unknown>): ServiceSearch => {
     return {
       name: search.name ? String(search.name) : undefined,
+      type: search.type ? String(search.type) : undefined,
     };
   },
   // A service that has been renamed keeps its old URL working: /m/80iac lands
@@ -50,10 +53,10 @@ export const Route = createFileRoute("/m/$slug")({
 
 function RouteComponent() {
   const { slug } = Route.useParams();
-  const { name } = Route.useSearch() as ServiceSearch;
+  const { name, type } = Route.useSearch() as ServiceSearch;
   return (
     <AppShell>
-      <ModulePage slug={slug} initialName={name} />
+      <ModulePage slug={slug} initialName={name} initialType={type} />
     </AppShell>
   );
 }

@@ -5,6 +5,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { HeroBackdrop } from "@/components/hero-backdrop";
 import { SignInDialog } from "@/components/sign-in-dialog";
 import {
+  NameCheckProgress,
+  NameCheckResult,
+  STRUCTURE_FILTERS,
+  matchesStructure,
+  type CompanyMatch,
+  type NameCheck,
+  type StructureFilter,
+} from "@/components/name-check-result";
+import {
   Search, ArrowRight, ShieldCheck, Sparkles, Clock, Users, FileText, CheckCircle2, AlertCircle,
 } from "lucide-react";
 
@@ -15,13 +24,13 @@ import {
 // site instead of the frontend's own domain (which 404s).
 const BACKEND = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
-// The search bar used to carry a Private Limited / LLP / Limited dropdown that
-// both appended a suffix to the typed name and narrowed the "similar existing
-// companies" lookup to that one structure. Both were wrong for a name check: the
-// MCA blocks a brand across every structure at once ("Acme Pvt Ltd" bars "Acme
-// LLP"), so filtering hid the very names that make a choice unavailable. The
-// name is now checked exactly as typed, the results span all structures, and the
-// applicant picks Company or LLP after the name comes back clear.
+// The structure chips above the search bar (All / Private Limited / Public
+// Limited / OPC / LLP) say what the applicant intends to register. They never
+// change the verdict: the MCA blocks a brand across every structure at once
+// ("Acme Pvt Ltd" bars "Acme LLP"), so the availability check always runs
+// against all of them. The chips narrow the "similar registered names" list to
+// that structure and decide where "Proceed with this name" goes — straight to
+// that wizard, or, on "All", a Company / LLP choice first.
 
 // Short, customer-facing one-liners per service. Keyed by slug; anything not
 // listed falls back to a sensible template so new catalog services still read
@@ -71,26 +80,18 @@ export function LandingHero() {
       : navigate({ to: "/m/$slug", params: { slug } });
   const [q, setQ] = useState("");
   const [checking, setChecking] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // Shown briefly when a name is free, before routing to its registration wizard.
-  const [okMsg, setOkMsg] = useState<string | null>(null);
+  // The structure the applicant intends to register — see the note at the top.
+  const [structure, setStructure] = useState<StructureFilter>("all");
+  // The last completed availability check, rendered as the result box.
+  const [check, setCheck] = useState<NameCheck | null>(null);
+  // The name the in-flight check is running on (for the progress box).
+  const [checkingName, setCheckingName] = useState("");
   // Set when a signed-out visitor tries to check a name — prompts them to sign in.
   const [needAuth, setNeedAuth] = useState(false);
-  type Company = {
-    id?: number;
-    name: string;
-    domain?: string;
-    industry?: string;
-    location?: string;
-    status?: string;
-    companyStatus?: string;
-    identifier?: string;
-    /** "Private Limited Company" | "Public Limited Company" | "LLP" | … */
-    entityType?: string;
-  };
+  type Company = CompanyMatch;
 
   // Existing companies with the searched name, returned by the availability check.
-  const [matches, setMatches] = useState<Company[]>([]);
+  const matches: Company[] = check?.matches ?? [];
   // Already-registered companies & LLPs whose brand is close to what the user is
   // typing — exact, prefix, suffix or contained — fetched live from the MCA index
   // so they can pick a distinctive name.
@@ -108,10 +109,8 @@ export function LandingHero() {
   // private, public, LLP and struck-off entities and each row is labelled.
   useEffect(() => {
     // Editing the name invalidates the previous check's result — clear it so a
-    // stale status message doesn't sit above a list that has moved on.
-    setErrorMsg(null);
-    setOkMsg(null);
-    setMatches([]);
+    // stale verdict doesn't sit above a list that has moved on.
+    setCheck(null);
 
     const term = q.trim();
     if (term.length < 2) {
@@ -149,10 +148,9 @@ export function LandingHero() {
   const checkAndGo = async (finalName: string) => {
     if (checking || !finalName.trim()) return;
     setChecking(true);
-    setErrorMsg(null);
-    setOkMsg(null);
+    setCheckingName(finalName);
     setNeedAuth(false);
-    setMatches([]);
+    setCheck(null);
 
     try {
       const response = await fetch(`${BACKEND}/api/mca/name-check`, {
@@ -167,19 +165,34 @@ export function LandingHero() {
         throw new Error(data.error || "Failed to check name availability");
       }
 
-      if (data.available) {
-        setOkMsg(`“${finalName}” appears to be available.`);
-      } else {
-        setErrorMsg(data.reason || "This name is already registered or contains restricted terms.");
-        setMatches(Array.isArray(data.matches) ? data.matches : []);
-      }
-      // The close-matches list deliberately stays on screen either way — even an
-      // available name is worth comparing against the near-misses beside it.
+      setCheck({
+        name: finalName,
+        available: !!data.available,
+        reason: data.reason,
+        matches: Array.isArray(data.matches) ? data.matches : [],
+        source: data.source,
+      });
     } catch (err: any) {
       console.error("Name check error:", err);
-      setErrorMsg(err.message || "An error occurred while validating name.");
+      setCheck({
+        name: finalName,
+        available: false,
+        reason: err.message || "An error occurred while validating the name.",
+        matches: [],
+        source: "error",
+      });
     } finally {
       setChecking(false);
+    }
+  };
+
+  /** "Proceed with this name" — open the wizard for the chosen structure. */
+  const proceedWith = (target: Exclude<StructureFilter, "all">) => {
+    const name = check?.name ?? q.trim();
+    if (target === "llp") {
+      navigate({ to: "/m/$slug", params: { slug: "llp" }, search: { name } });
+    } else {
+      navigate({ to: "/m/$slug", params: { slug: "company" }, search: { name, type: target } });
     }
   };
 
@@ -193,7 +206,9 @@ export function LandingHero() {
   // printing the same company twice.
   const shownKeys = new Set(matches.map((m) => m.name.toLowerCase().replace(/[^a-z0-9]/g, "")));
   const similarShown = similar.filter(
-    (m) => !shownKeys.has(m.name.toLowerCase().replace(/[^a-z0-9]/g, "")),
+    (m) =>
+      !shownKeys.has(m.name.toLowerCase().replace(/[^a-z0-9]/g, "")) &&
+      matchesStructure(m, structure),
   );
   // The panel opens as soon as there is something to say — results, "nothing
   // close", or "couldn't reach the registry" — not only when rows came back.
@@ -232,6 +247,27 @@ export function LandingHero() {
 
           {/* Search */}
           <div className="mt-9 mx-auto w-full max-w-3xl px-2 sm:px-0">
+            <div className="mb-4 flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Business structure">
+              {STRUCTURE_FILTERS.map((f) => {
+                const active = structure === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setStructure(f.key)}
+                    className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold border transition-all ${
+                      active
+                        ? "bg-white text-primary border-white shadow-lg"
+                        : "bg-white/10 text-white/85 border-white/25 hover:bg-white/20"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
             <form
               onSubmit={(e) => { e.preventDefault(); checkAndGo(q.trim()); }}
               className="relative flex flex-col sm:flex-row items-stretch rounded-2xl bg-white shadow-elev overflow-hidden ring-1 ring-white/20 focus-within:ring-2 focus-within:ring-primary/50 transition-all duration-300"
@@ -271,121 +307,30 @@ export function LandingHero() {
                 </button>
             </form>
 
-            {okMsg && (
-              <div className="mt-3 text-left">
-                <div className="text-sm bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg backdrop-blur-md">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="size-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="font-semibold text-white">Name Available</div>
-                      <div className="text-xs text-emerald-200 mt-0.5">{okMsg}</div>
-                    </div>
-                  </div>
-                  {/* The structure is chosen here rather than in the search bar —
-                      the name check itself is the same for both. */}
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "company" } })}
-                      className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 font-sans"
-                    >
-                      Register as Company
-                      <ArrowRight className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "llp" } })}
-                      className="shrink-0 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/25 hover:bg-emerald-500/40 text-white border border-emerald-400/40 transition-colors cursor-pointer flex items-center justify-center gap-1.5 font-sans"
-                    >
-                      Register as LLP
-                      <ArrowRight className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {checking && <NameCheckProgress name={checkingName} />}
 
-            {errorMsg && (
-              <div className="mt-3 text-left">
-                <div className="text-sm bg-destructive/20 border border-rose-400/40 text-rose-100 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg backdrop-blur-md">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="size-5 text-rose-400 shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold text-white">Name Restricted / Taken</div>
-                      <div className="text-xs text-rose-200 mt-0.5">{errorMsg}</div>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "company" } })}
-                      className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
-                    >
-                      Company Wizard →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ to: "/m/$slug", params: { slug: "llp" } })}
-                      className="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-lg bg-rose-500/30 hover:bg-rose-500/40 text-white border border-rose-400/40 transition-colors cursor-pointer"
-                    >
-                      LLP Wizard →
-                    </button>
-                  </div>
-                </div>
-                {matches.length > 0 && (
-                  <div className="mt-2 rounded-xl bg-white text-foreground shadow-elev border border-border overflow-hidden">
-                    <div className="label-eyebrow px-4 pt-3 pb-1">Existing companies with this name</div>
-                    <ul className="pb-1">
-                      {matches.map((m, i) => {
-                        const statusText = m.companyStatus || m.status;
-                        const isStrike = statusText?.toLowerCase().includes("strike") || statusText?.toLowerCase().includes("dissolved");
-                        const isActive = statusText?.toLowerCase().includes("active");
-                        return (
-                          <li key={m.id ?? m.name + i} className="px-4 py-2.5 border-b border-border last:border-b-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="text-sm font-semibold">{m.name}</div>
-                              {statusText && (
-                                <span
-                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 border ${
-                                    isStrike
-                                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                                      : isActive
-                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                                      : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/30"
-                                  }`}
-                                >
-                                  {statusText}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[12px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                              {m.entityType && <span className="font-medium text-foreground/70">{m.entityType}</span>}
-                              {m.identifier && <span className="font-mono font-medium text-primary">CIN: {m.identifier}</span>}
-                              {(() => {
-                                const cleanLoc = m.location && m.identifier
-                                  ? m.location.replace(m.identifier, "").replace(/^[ ·-]+|[ ·-]+$/g, "").trim()
-                                  : m.location;
-                                return cleanLoc ? <span>{cleanLoc}</span> : null;
-                              })()}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
+            {!checking && check && (
+              <NameCheckResult
+                check={check}
+                similar={similar}
+                filter={structure}
+                backend={BACKEND}
+                onProceed={proceedWith}
+                onClose={() => setCheck(null)}
+              />
             )}
-
 
             {(showSimilar || filteredModules.length > 0) && (
               <div className="mt-3 rounded-xl bg-white text-foreground shadow-elev border border-border text-left overflow-hidden">
                 {showSimilar && (
                   <div>
                     <div className="label-eyebrow px-4 pt-3 pb-1">
-                      Close &amp; exact existing names
+                      Similar already registered names
                       <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">
-                        ({similarShown.length}) · companies, LLPs and struck-off entities
+                        ({similarShown.length}) ·{" "}
+                        {structure === "all"
+                          ? "companies, LLPs and struck-off entities"
+                          : STRUCTURE_FILTERS.find((f) => f.key === structure)?.label}
                       </span>
                     </div>
 
@@ -403,7 +348,9 @@ export function LandingHero() {
                       <div className="px-4 py-3 text-[13px] text-muted-foreground flex items-start gap-2">
                         <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
                         <span>
-                          No registered company or LLP has a name close to “{q.trim()}”.
+                          {structure === "all"
+                            ? `No registered company or LLP has a name close to “${q.trim()}”.`
+                            : `No registered ${STRUCTURE_FILTERS.find((f) => f.key === structure)?.label} has a name close to “${q.trim()}”.`}
                         </span>
                       </div>
                     )}

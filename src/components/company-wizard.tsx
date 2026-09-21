@@ -210,11 +210,18 @@ function useMcaNameCheck(rawName: string, suffix: string) {
   return { checking, result };
 }
 
-export function CompanyWizard({ initialName }: { initialName?: string }) {
+export function CompanyWizard({
+  initialName,
+  initialEntity,
+}: {
+  initialName?: string;
+  /** Entity key picked on the home name check (`pvt`, `public`, `opc`). */
+  initialEntity?: string;
+}) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(0);
-  const [entity, setEntity] = useState("pvt");
+  const [entity, setEntity] = useState(initialEntity || "pvt");
   // Some entity types offer a choice of legal suffix (e.g. Section 8 →
   // "Foundation / Trust / Association"). This holds the one the user picked.
   const [suffixChoice, setSuffixChoice] = useState("");

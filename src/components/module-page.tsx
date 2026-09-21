@@ -29,13 +29,22 @@ import { DepartmentPage } from "@/components/department-page";
 import { ServiceDetailPage } from "@/components/service-detail-page";
 import { DEPARTMENT_SLUGS } from "@/lib/modules";
 
-export function ModulePage({ slug, initialName }: { slug: string; initialName?: string }) {
+export function ModulePage({
+  slug,
+  initialName,
+  initialType,
+}: {
+  slug: string;
+  initialName?: string;
+  /** Company structure chosen on the home name check (`pvt`, `public`, `opc`). */
+  initialType?: string;
+}) {
   // Company and LLP keep their bespoke multi-step incorporation wizards. GST and
   // Partnership use the category-driven picker (choose a type → see who can apply
   // and the documents for it on the standard service page → apply). Industry
   // departments use the same picker, driven by the catalog family. Every other
   // service, including anything an admin publishes, renders the catalog page.
-  if (slug === "company") return <CompanyWizard initialName={initialName} />;
+  if (slug === "company") return <CompanyWizard initialName={initialName} initialEntity={initialType} />;
   if (slug === "llp") return <LlpWizard initialName={initialName} />;
   if (slug === "gst" || slug.startsWith("gst-")) return <GstWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "partnership" || slug.startsWith("partnership-")) return <PartnershipWizard key={slug} initialName={initialName} slug={slug} />;
