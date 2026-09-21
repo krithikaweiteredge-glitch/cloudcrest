@@ -95,6 +95,8 @@ export const LEGACY_SLUG_REDIRECTS: Record<string, string> = {
   "80iac": "section-140",
   // Section 332 of the Income-tax Act, 2025 replaced Sections 12A / 12AA / 12AB.
   "12a": "section-332",
+  // Approval under Section 354 of the Income-tax Act, 2025 replaced Section 80G.
+  "80g": "section-354",
 };
 
 /** A service published from the admin catalog (DB-driven). */
@@ -176,7 +178,7 @@ const ITEM_ORDER = [
   "closure-partnership", "closure-nidhi", "closure-sec8", "closure-public",
   "closure-trust", "closure-society",
   // Tax Registrations
-  "gst", "lut", "pan-tan", "dpiit", "lower-tax-deduction", "section-140", "section-332", "80g",
+  "gst", "lut", "pan-tan", "dpiit", "lower-tax-deduction", "section-140", "section-332", "section-354",
   "icegate", "form-10a", "non-deduction-declaration", "rcmc",
   // Other Business Registrations (msme/iec live in the Tax category in the DB but
   // are listed here per the document's grouping)
