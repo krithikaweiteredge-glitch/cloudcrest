@@ -8,6 +8,11 @@ import { LowerTaxDeductionModule } from "@/components/lower-tax-deduction-wizard
 import { Section140Module } from "@/components/section-140-wizard";
 import { Section332Module } from "@/components/section-332-wizard";
 import { Section354Module } from "@/components/section-354-wizard";
+import { Form10aModule } from "@/components/form-10a-wizard";
+import { NonDeductionDeclarationModule } from "@/components/non-deduction-declaration-wizard";
+import { RcmcModule } from "@/components/rcmc-wizard";
+import { IcegateModule } from "@/components/icegate-wizard";
+import { DpiitModule } from "@/components/dpiit-wizard";
 import { PanTanModule } from "@/components/pan-tan-wizard";
 import { PartnershipWizard } from "@/components/partnership-wizard";
 import { SocietyWizard } from "@/components/society-wizard";
@@ -44,33 +49,53 @@ export function ModulePage({
   // and the documents for it on the standard service page → apply). Industry
   // departments use the same picker, driven by the catalog family. Every other
   // service, including anything an admin publishes, renders the catalog page.
-  if (slug === "company") return <CompanyWizard initialName={initialName} initialEntity={initialType} />;
+  if (slug === "company")
+    return <CompanyWizard initialName={initialName} initialEntity={initialType} />;
   if (slug === "llp") return <LlpWizard initialName={initialName} />;
-  if (slug === "gst" || slug.startsWith("gst-")) return <GstWizard key={slug} initialName={initialName} slug={slug} />;
-  if (slug === "partnership" || slug.startsWith("partnership-")) return <PartnershipWizard key={slug} initialName={initialName} slug={slug} />;
-  if (slug === "society" || slug.startsWith("society-")) return <SocietyWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "gst" || slug.startsWith("gst-"))
+    return <GstWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "partnership" || slug.startsWith("partnership-"))
+    return <PartnershipWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "society" || slug.startsWith("society-"))
+    return <SocietyWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "huf") return <HufWizard initialName={initialName} />;
-  if (slug === "labour-licence" || slug.startsWith("labour-licence-")) return <LabourLicenceWizard initialName={initialName} />;
-  if (slug === "professional-tax" || slug.startsWith("professional-tax-")) return <ProfessionalTaxWizard initialName={initialName} />;
-  if (slug === "epf" || slug === "esi") return <EmployerRegistrationModule key={slug} slug={slug} initialName={initialName} />;
-  if (slug === "trade-licence" || slug.startsWith("trade-licence-")) return <TradeLicenceWizard initialName={initialName} />;
-  if (slug === "trust" || slug.startsWith("trust-")) return <TrustWizard key={slug} initialName={initialName} slug={slug} />;
-  if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-")) return <SoleProprietorshipWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "labour-licence" || slug.startsWith("labour-licence-"))
+    return <LabourLicenceWizard initialName={initialName} />;
+  if (slug === "professional-tax" || slug.startsWith("professional-tax-"))
+    return <ProfessionalTaxWizard initialName={initialName} />;
+  if (slug === "epf" || slug === "esi")
+    return <EmployerRegistrationModule key={slug} slug={slug} initialName={initialName} />;
+  if (slug === "trade-licence" || slug.startsWith("trade-licence-"))
+    return <TradeLicenceWizard initialName={initialName} />;
+  if (slug === "trust" || slug.startsWith("trust-"))
+    return <TrustWizard key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "sole-proprietorship" || slug.startsWith("sole-proprietorship-"))
+    return <SoleProprietorshipWizard key={slug} initialName={initialName} slug={slug} />;
   if (slug === "lut") return <LutModule initialName={initialName} />;
   if (slug === "lower-tax-deduction") return <LowerTaxDeductionModule initialName={initialName} />;
   if (slug === "section-140") return <Section140Module initialName={initialName} />;
   if (slug === "section-332") return <Section332Module initialName={initialName} />;
   if (slug === "section-354") return <Section354Module initialName={initialName} />;
-  if (slug === "pan-tan" || slug.startsWith("pan-tan-")) return <PanTanModule key={slug} initialName={initialName} slug={slug} />;
+  if (slug === "form-10a") return <Form10aModule initialName={initialName} />;
+  if (slug === "non-deduction-declaration")
+    return <NonDeductionDeclarationModule initialName={initialName} />;
+  if (slug === "rcmc") return <RcmcModule initialName={initialName} />;
+  if (slug === "icegate") return <IcegateModule initialName={initialName} />;
+  if (slug === "dpiit") return <DpiitModule initialName={initialName} />;
+  if (slug === "pan-tan" || slug.startsWith("pan-tan-"))
+    return <PanTanModule key={slug} initialName={initialName} slug={slug} />;
   if (slug === "msme") return <MsmeModule initialName={initialName} />;
   if (slug === "ngo-darpan") return <NgoDarpanModule initialName={initialName} />;
   if (slug === "din") return <DinModule initialName={initialName} />;
   if (slug === "iec") return <IecModule initialName={initialName} />;
   if (slug === "lei") return <LeiModule initialName={initialName} />;
   if (slug === "rera") return <ReraModule initialName={initialName} />;
-  if (slug === "dsc" || slug.startsWith("dsc-")) return <DscModule key={slug} initialName={initialName} slug={slug} />;
-  if (slug.startsWith("conversion-")) return <ConversionModule key={slug} slug={slug} initialName={initialName} />;
-  if (isClosureSlug(slug)) return <ClosureModule key={slug} slug={slug} initialName={initialName} />;
+  if (slug === "dsc" || slug.startsWith("dsc-"))
+    return <DscModule key={slug} initialName={initialName} slug={slug} />;
+  if (slug.startsWith("conversion-"))
+    return <ConversionModule key={slug} slug={slug} initialName={initialName} />;
+  if (isClosureSlug(slug))
+    return <ClosureModule key={slug} slug={slug} initialName={initialName} />;
   if (DEPARTMENT_SLUGS.has(slug)) return <DepartmentPage slug={slug} />;
   return <ServiceDetailPage slug={slug} />;
 }
